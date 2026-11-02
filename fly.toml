@@ -1,13 +1,13 @@
 # Fly.io: `fly launch --no-deploy` (pick your own app name), then `fly deploy`.
 # One always-on machine: the marsh lives in its memory, so it must not be scaled to several machines.
 app = "marsh-rut"
-primary_region = "yul"
+primary_region = "yyz"
 
 [build]
 
 [env]
   PORT = "8080"
-  # ALLOWED_ORIGINS = "https://<your-github-user>.github.io"
+  ALLOWED_ORIGINS = "https://my-git-007.github.io"
 
 [http_service]
   internal_port = 8080

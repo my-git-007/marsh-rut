@@ -9,19 +9,22 @@
     "build": "vite build",
     "preview": "vite preview",
     "server": "node server/server.js",
+    "bench": "node tools/bench-marshes.mjs",
     "check": "node tools/check-shared.js",
     "check:sounds": "node tools/check-sounds.js",
     "test:mp": "node tools/mp-test.mjs"
   },
   "dependencies": {
+    "jose": "6.2.12",
     "three": "0.128.0",
-    "ws": "8.18.0"
+    "ws": "8.22.0"
   },
   "devDependencies": {
     "acorn": "8.14.0",
     "acorn-walk": "8.3.4",
+    "firebase": "12.19.0",
     "prettier": "3.3.3",
-    "vite": "5.4.10"
+    "vite": "6.4.4"
   },
   "engines": {
     "node": ">=20"

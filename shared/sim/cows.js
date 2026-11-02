@@ -2,7 +2,6 @@
 // keep station on the cow and wander off to play. A cow that winds or sees a hunter close alarms and runs.
 import { TAU, clamp, rand, chance, random } from '../util.js';
 import { marshE, outDist, nearestPoint, WATER_PTS, off } from '../world.js';
-import { WIND } from '../wind.js';
 import { Body } from './body.js';
 import { coatPal } from './bullparams.js';
 import { SPOT_R, randomEdge, nearestEdge, edgeAwayFrom, marshPoint } from './places.js';
@@ -81,7 +80,7 @@ export class CowGroup {
     if (this.sawT <= 0) {
       this.sawT = 1; if (d < 45 && chance(0.12 * (0.5 + this.pers.wary))) { this.alarm(true, near); return; }
       let smelled = null, sd = 1e9;
-      for (const h of G.hunters.values()) { const hd = c.distTo(h) || 1; const cosA = ((c.x - h.x) / hd) * WIND.tx + ((c.z - h.z) / hd) * WIND.tz; if (hd < 300 && cosA > Math.cos(0.4 + WIND.swirl * 0.9) && hd < sd) { sd = hd; smelled = h; } }
+      for (const h of G.hunters.values()) { const hd = c.distTo(h) || 1; const cosA = ((c.x - h.x) / hd) * G.wind.tx + ((c.z - h.z) / hd) * G.wind.tz; if (hd < 300 && cosA > Math.cos(0.4 + G.wind.swirl * 0.9) && hd < sd) { sd = hd; smelled = h; } }
       if (smelled) this.scentAcc = (this.scentAcc || 0) + 1; else this.scentAcc = Math.max(0, (this.scentAcc || 0) - 1);
       if (smelled && this.scentAcc >= 3 && chance(0.3 * (1 - sd / 320))) this.alarm(true, smelled);
     }

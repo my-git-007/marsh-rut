@@ -20,6 +20,8 @@ import { V, showMsg } from './ui/input.js';
 import { layoutBinoc, updateHUD } from './ui/hud.js';
 import { updateCallLabel } from './calls.js';
 import { LocalHost, RemoteHost } from './net/hosts.js';
+import { initAccount, hideAccount } from './ui/account.js';
+import { getToken } from './auth/auth.js';
 import { handleEvent, updateViews } from './views/world-events.js';
 import { ANIMALS, G, NET, PLAYER, Q, TEST, UI, bearingOf } from './state.js';
 
@@ -27,14 +29,15 @@ window.addEventListener('error', (e) => { const el = document.getElementById('er
 window.__log = [];
 window.__marsh = { NET, PLAYER, ANIMALS, G, V };   // for tests and the console
 
-// Multiplayer when a server is configured: ?server=wss://… or VITE_SERVER_URL at build time. Otherwise solo.
-const SERVER = Q.get('server') || import.meta.env.VITE_SERVER_URL || '';
+// Online when a server is configured (?server=wss://… or VITE_SERVER_URL at build time): players log in and
+// the server runs each player's own marsh. Otherwise (or with ?solo) the marsh runs in this tab, no account.
+const SERVER = Q.has('solo') ? '' : Q.get('server') || import.meta.env.VITE_SERVER_URL || '';
 const SHOWCASE = Q.has('showcase') || /showcase/.test(location.hash);
 const go = document.getElementById('go');
 const st = (t) => { go.textContent = t; };
 const netMsg = (t) => { document.getElementById('netmsg').textContent = t || ''; };
 const tick = () => new Promise((r) => setTimeout(r, 0));
-let sky = null, grassBuilt = false;
+let sky = null, grassBuilt = false, USER = null;
 
 async function init() {
   st('Painting textures…'); await tick(); makeTextures(); await loadRefAssets();
@@ -42,12 +45,11 @@ async function init() {
   st('Planting forest…'); await tick(); buildForest(); buildShrubs(); buildStand();
   layoutBinoc(); onResize(); updateCallLabel();
   const sel = document.getElementById('pstand');
-  sel.innerHTML = '<option value="">any free stand</option>' + STANDS.map((s) => `<option value="${s.i}">${s.name}</option>`).join('');
-  try { document.getElementById('pname').value = localStorage.getItem('marshrut-name') || ''; } catch (e) {}
+  sel.innerHTML = STANDS.map((s) => `<option value="${s.i}">${s.name}</option>`).join('');
+  try { sel.value = localStorage.getItem('marshrut-stand') || '0'; } catch (e) {}
   if (SERVER && !TEST) {
-    document.getElementById('online').style.display = 'flex';
-    netMsg('Multiplayer marsh: ' + SERVER.replace(/^wss?:\/\//, ''));
-    st('Join the marsh'); go.disabled = false;
+    go.hidden = true; st('Into the marsh'); go.disabled = false;
+    initAccount((user) => { USER = user; go.hidden = !user; if (!user) netMsg(''); });
   } else {
     await seat(new LocalHost({ log: !!TEST }), 'You', Q.has('stand') ? +Q.get('stand') : 0);
     st('Climb into the stand'); go.disabled = false;
@@ -66,7 +68,7 @@ async function seat(host, name, stand) {
       const before = new Set(NET.hunters.map((h) => h.id)); NET.hunters = list;
       for (const h of list) if (!before.has(h.id)) showMsg(`${h.name} climbed into the ${STANDS[h.stand].name} stand`, 4000);
     };
-    host.onClose = () => showMsg('Lost the connection to the marsh server. Reload to rejoin.', 60000);
+    host.onClose = (why) => showMsg((why || 'Lost the connection to the marsh server.') + ' Reload the page to go back in.', 600000);
   }
   if (!grassBuilt) { grassBuilt = true; st('Growing grass…'); await tick(); buildGrass(); }
   if (TEST) setupTest();
@@ -75,17 +77,16 @@ async function seat(host, name, stand) {
 }
 
 async function joinOnline() {
-  const name = document.getElementById('pname').value.trim() || 'Hunter';
-  const sv = document.getElementById('pstand').value;
-  try { localStorage.setItem('marshrut-name', name); } catch (e) {}
-  if (document.getElementById('psolo').checked) { await seat(new LocalHost(), name, sv === '' ? 0 : +sv); return true; }
-  go.disabled = true; st('Walking in…'); netMsg('Connecting…');
+  if (!USER) return false;
+  const stand = +document.getElementById('pstand').value || 0;
+  try { localStorage.setItem('marshrut-stand', String(stand)); } catch (e) {}
+  go.disabled = true; st('Walking in…'); netMsg('Opening your marsh…');
   try {
-    await seat(new RemoteHost(SERVER), name, sv === '' ? undefined : +sv);
-    netMsg(`You are in the ${STANDS[PLAYER.stand].name} stand. ${NET.hunters.length - 1 ? NET.hunters.length - 1 + ' other hunter(s) on the marsh.' : 'Nobody else is out yet.'}`);
+    await seat(new RemoteHost(SERVER, getToken), USER.name, stand);
+    netMsg(`Your marsh is ready. You are in the ${STANDS[PLAYER.stand].name} stand.`);
     return true;
   } catch (e) {
-    netMsg(e.message + ' — tick “play solo” to hunt on your own.'); st('Join the marsh'); go.disabled = false; return false;
+    netMsg(e.message); st('Into the marsh'); go.disabled = false; return false;
   }
 }
 
@@ -104,7 +105,7 @@ function setupTest() {
 }
 
 go.addEventListener('click', async () => {
-  if (!NET.host) { if (!(await joinOnline())) return; st('Climb into the stand'); go.disabled = false; document.getElementById('online').style.display = 'none'; return; }
+  if (!NET.host) { if (!(await joinOnline())) return; st('Climb into the stand'); go.disabled = false; hideAccount(); return; }
   audioInit(); if (A.ctx.state === 'suspended') A.ctx.resume();
   document.getElementById('start').style.display = 'none'; UI.helpOn = false;
   if (!V.started) { V.started = true; showMsg('Listen. Scan the timber edges. Hold Space to call.', 6500); }

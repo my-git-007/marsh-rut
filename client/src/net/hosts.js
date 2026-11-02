@@ -2,16 +2,22 @@
 //   join(name, stand) -> Promise<{ you, hunters }>    seats this player at a stand
 //   update(dt)        -> { events, states }           states: Map id -> { x, z, h, speed, mode, flags, look, shuffle }
 //   call(type, dur, clip), pour(), cmd(name), debugText()
-// LocalHost runs the simulation right here in the tab (solo play, works offline and on GitHub Pages).
-// RemoteHost talks to the marsh server, which runs one simulation for everyone, and draws its snapshots
+// LocalHost runs the simulation right here in the tab (offline play and the test scenes).
+// RemoteHost talks to the marsh server, which runs this player's own marsh, and draws its snapshots
 // a little in the past so motion between them can be interpolated smoothly.
 import { Sim } from '../../../shared/sim/sim.js';
 import { Bull } from '../../../shared/sim/bull.js';
 import { MODES } from '../../../shared/sim/body.js';
-import { applyWind, WIND } from '../../../shared/wind.js';
+import { applyWind, windState, WIND } from '../../../shared/wind.js';
 import { wrapA } from '../../../shared/util.js';
 import { INTERP_DELAY, PROTOCOL_VERSION } from '../../../shared/protocol.js';
 
+const DENIED = {
+  login: 'Your login has expired. Log in again.',
+  busy: 'The marsh server is full right now. Try again in a few minutes.',
+  version: 'The game has been updated. Reload the page.',
+  full: 'Every stand is taken.',
+};
 const rowState = (r) => ({ x: r[1], z: r[2], h: r[3], speed: r[4], mode: MODES[r[5]] || 'walk', flags: r[6], look: r[7] == null ? null : { x: r[7], z: r[8] }, shuffle: r[9] });
 
 export class LocalHost {
@@ -22,7 +28,7 @@ export class LocalHost {
   }
   scenario(name, q) { this.sim.scenario(name, q); }
   update(dt) {
-    this.sim.update(dt);
+    this.sim.update(dt); applyWind(windState(this.sim.wind));   // show this marsh's wind
     const states = new Map();
     for (const b of this.sim.bodies.values()) states.set(b.id, { x: b.x, z: b.z, h: b.h, speed: b.speed, mode: b.mode, flags: b.flags(), look: b.look, shuffle: b.shuffle || 0 });
     return { events: this.sim.takeEvents(), states };
@@ -39,15 +45,16 @@ export class LocalHost {
 }
 
 export class RemoteHost {
-  constructor(url) { this.local = false; this.url = url; this.snaps = []; this.queue = []; this.hunters = []; this.offset = null; this.ping = 0; this.onHunters = null; this.onClose = null; this.stats = { bytes: 0, msgs: 0 }; }
-  join(name, stand) {
+  constructor(url, getToken) { this.local = false; this.url = url; this.getToken = getToken; this.snaps = []; this.queue = []; this.hunters = []; this.offset = null; this.ping = 0; this.onHunters = null; this.onClose = null; this.stats = { bytes: 0, msgs: 0 }; }
+  async join(name, stand) {
+    const token = await this.getToken();   // proves who this player is; the server opens their marsh
     return new Promise((resolve, reject) => {
       let ws;
       try { ws = this.ws = new WebSocket(this.url); } catch (e) { reject(e); return; }
       const timer = setTimeout(() => reject(new Error('no answer from ' + this.url)), 8000);
-      ws.onopen = () => ws.send(JSON.stringify({ t: 'hello', v: PROTOCOL_VERSION, name, stand }));
+      ws.onopen = () => ws.send(JSON.stringify({ t: 'hello', v: PROTOCOL_VERSION, token, stand }));
       ws.onerror = () => { clearTimeout(timer); reject(new Error('could not reach ' + this.url)); };
-      ws.onclose = () => { this.closed = true; this.onClose && this.onClose(); };
+      ws.onclose = () => { clearTimeout(timer); clearInterval(this.pingTimer); this.closed = true; if (!this.me) reject(new Error(this.why || 'the marsh server closed the connection')); else this.onClose && this.onClose(this.why); };
       ws.onmessage = (m) => {
         this.stats.bytes += m.data.length; this.stats.msgs++;
         const msg = JSON.parse(m.data);
@@ -56,7 +63,9 @@ export class RemoteHost {
           for (const a of msg.spawns) this.queue.push({ t: -1e9, ev: { e: 'spawn', a } });
           this.addSnap(msg.snap); resolve({ you: msg.you, hunters: msg.hunters });
           this.pingTimer = setInterval(() => this.send({ t: 'ping', c: performance.now() }), 2000);
-        } else if (msg.t === 'full') { clearTimeout(timer); reject(new Error('every stand on this marsh is taken')); }
+        } else if (msg.t === 'denied') {
+          this.why = DENIED[msg.reason] || 'The marsh server turned us away (' + msg.reason + ').';
+        } else if (msg.t === 'replaced') this.why = 'You opened the marsh in another window, so this one stopped.';
         else if (msg.t === 'tick') { this.addSnap(msg.snap); for (const ev of msg.ev || []) this.queue.push({ t: msg.snap.t, ev }); }
         else if (msg.t === 'hunters') { this.hunters = msg.list; this.onHunters && this.onHunters(msg.list); }
         else if (msg.t === 'pong') this.ping = performance.now() - msg.c;

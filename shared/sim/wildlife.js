@@ -3,7 +3,6 @@
 // (Birds are scenery each browser makes for itself.)
 import { PI, TAU, clamp, lerp, rand, randi, pick, chance } from '../util.js';
 import { marshE, outDist, STREAM, edgeAt, off } from '../world.js';
-import { WIND } from '../wind.js';
 import { CritterBody, CRITTER_SPEC } from './body.js';
 import { randomEdge, nearestEdge, edgeAwayFrom } from './places.js';
 
@@ -80,7 +79,7 @@ export class WildEvent {
       this.scentT = 1;
       for (const h of G.hunters.values()) {
         const d = L.distTo(h) || 1; const dx = (L.x - h.x) / d, dz = (L.z - h.z) / d;
-        if ((d < 300 && dx * WIND.tx + dz * WIND.tz > Math.cos(0.4) && chance(0.25)) || d < 35) { this.bolt(h); break; }
+        if ((d < 300 && dx * G.wind.tx + dz * G.wind.tz > Math.cos(0.4) && chance(0.25)) || d < 35) { this.bolt(h); break; }
       }
     }
     if (this.done) for (const c of this.members) c.remove();

@@ -25,7 +25,7 @@ function setLook(dx, dy) {
   V.pitch = clamp(V.pitch - dy * k, -1.25, 0.95);
 }
 document.addEventListener('mousemove', (e) => {
-  if (!V.started) return;
+  if (!V.started || (e.target && e.target.closest && e.target.closest('input,select,textarea'))) return;
   if (V.locked) setLook(e.movementX || 0, e.movementY || 0);
   else if (V.drag) {
     setLook(e.clientX - V.lx, e.clientY - V.ly);
@@ -34,7 +34,7 @@ document.addEventListener('mousemove', (e) => {
   }
 });
 canvas.addEventListener('mousedown', (e) => {
-  if (!V.started) return;
+  if (!V.started || (e.target && e.target.closest && e.target.closest('input,select,textarea'))) return;
   if (e.button === 2) {
     toggleBinos();
     return;
@@ -84,7 +84,7 @@ function toggleBinos() {
   } else V.fovT = V.prevFov > 20 ? V.prevFov : 62;
 }
 window.addEventListener('keydown', (e) => {
-  if (!V.started) return;
+  if (!V.started || (e.target && e.target.closest && e.target.closest('input,select,textarea'))) return;
   if (e.code === 'Space') {
     e.preventDefault();
     if (!e.repeat) startCall();

@@ -1,5 +1,5 @@
 # Fly.io: `fly launch --no-deploy` (pick your own app name), then `fly deploy`.
-# One always-on machine: the marsh lives in its memory, so it must not be scaled to several machines.
+# One always-on machine: the marshes live in its memory, so it must not be scaled to several machines.
 app = "marsh-rut"
 primary_region = "yyz"
 
@@ -8,6 +8,9 @@ primary_region = "yyz"
 [env]
   PORT = "8080"
   ALLOWED_ORIGINS = "https://my-git-007.github.io"
+  FIREBASE_PROJECT_ID = "REPLACE-WITH-FIREBASE-PROJECT-ID"   # player logins are checked against this project
+  MAX_MARSHES = "100"    # one private marsh per player online; each costs ~0.02% of a CPU core
+  KEEP_MINUTES = "5"     # a marsh waits this long for its player to come back (reload, dropped line)
 
 [http_service]
   internal_port = 8080

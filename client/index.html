@@ -28,7 +28,7 @@ canvas#c{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:cros
 #debug{position:absolute;right:12px;top:12px;white-space:pre;background:rgba(0,0,0,.5);padding:8px 10px;display:none;font-size:11px}
 #help{position:absolute;right:16px;bottom:16px;opacity:.55;text-align:right}
 #err{position:fixed;left:8px;top:8px;right:8px;white-space:pre-wrap;background:#300;color:#fcc;font:12px monospace;padding:8px;display:none;z-index:99}
-#start{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(8,9,7,.55);z-index:10;padding:16px;box-sizing:border-box}
+#start{position:fixed;inset:0;display:flex;align-items:safe center;justify-content:center;overflow-y:auto;background:rgba(8,9,7,.55);z-index:10;padding:16px;box-sizing:border-box}
 .card{max-width:600px;width:100%;padding:30px 34px;background:rgba(12,13,10,.82);border:1px solid var(--line);box-sizing:border-box}
 .card h1{font-weight:normal;letter-spacing:.18em;font-size:26px;margin:0 0 6px;text-transform:uppercase}
 .card .sub{color:var(--dim);font-style:italic;margin:0 0 20px}
@@ -36,7 +36,7 @@ canvas#c{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:cros
 .card td{padding:4px 0;vertical-align:top}
 .card td:first-child{color:#e8d9a6;white-space:nowrap;padding-right:18px}
 .card p{font-size:14px;line-height:1.55;color:var(--dim)}
-#go{margin-top:18px;font:14px Georgia,serif;letter-spacing:.14em;text-transform:uppercase;color:var(--bg);background:#e8d9a6;border:0;padding:12px 22px;cursor:pointer}
+#go{margin:8px 0 18px;font:14px Georgia,serif;letter-spacing:.14em;text-transform:uppercase;color:var(--bg);background:#e8d9a6;border:0;padding:12px 22px;cursor:pointer}
 #go[disabled]{opacity:.45;cursor:wait}
 #mixer{position:fixed;right:max(16px,env(safe-area-inset-right,0px));top:56px;z-index:20}
 #mixer[hidden]{display:none}
@@ -51,9 +51,22 @@ canvas#c{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:cros
 #mixopen{background:transparent;color:var(--ink);border:1px solid var(--line);margin-left:8px}
 #paused{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);display:none;font:13px ui-monospace,Consolas,monospace;letter-spacing:.1em;background:rgba(0,0,0,.45);padding:10px 16px;pointer-events:none}
 @media (max-width:520px){.card{padding:22px 18px}.card h1{font-size:20px}}
-#online{display:none;margin-top:16px;gap:8px;flex-wrap:wrap;align-items:center;font:13px ui-monospace,Consolas,monospace}
-#online input,#online select{font:13px ui-monospace,Consolas,monospace;background:rgba(0,0,0,.4);color:var(--ink);border:1px solid var(--line);padding:6px 8px}
-#online label{color:var(--dim)}
+#acct{margin:4px 0 6px;font:13px ui-monospace,Consolas,monospace}
+#acct[hidden],.af[hidden],#acct [hidden]{display:none!important}
+.af h2{font:normal 15px Georgia,serif;letter-spacing:.12em;text-transform:uppercase;margin:0 0 10px}
+.af label{display:block;color:var(--dim);margin:0 0 10px}
+.af label small{opacity:.7;margin-left:6px}
+.af input,.af select{display:block;width:100%;max-width:340px;box-sizing:border-box;margin-top:4px;font:14px ui-monospace,Consolas,monospace;background:rgba(0,0,0,.4);color:var(--ink);border:1px solid var(--line);padding:8px 9px}
+.af input:focus,.af select:focus{outline:1px solid #e8d9a6}
+.af label.row{display:flex;align-items:center;gap:10px}.af label.row select{display:inline-block;width:auto;margin:0}
+.af button{font:13px Georgia,serif;letter-spacing:.12em;text-transform:uppercase;color:var(--bg);background:#e8d9a6;border:0;padding:10px 18px;cursor:pointer}
+.af button[disabled]{opacity:.5;cursor:wait}
+.af p{font-size:13px;margin:0 0 10px}
+.alinks{display:flex;gap:18px;flex-wrap:wrap;margin-top:12px!important}
+#acct a{color:#e8d9a6}
+.who b{color:var(--ink);font-weight:normal}
+#acctmsg{min-height:1em;font-size:12px;margin-top:6px;max-width:460px}
+#acctmsg.err{color:#f0a890}#acctmsg.ok{color:#bfe0a0}
 #netmsg{color:#e8d9a6;font-size:12px;min-height:1em;margin-top:8px}
 #others{position:absolute;left:18px;top:14px;opacity:.7;white-space:pre}
 </style>
@@ -76,6 +89,38 @@ canvas#c{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:cros
 <div id="start"><div class="card">
   <h1>Marsh Rut</h1>
   <p class="sub">Late September. First light over a 500 × 800 yard beaver marsh. You are twenty feet up a spruce.</p>
+  <div id="acct" hidden>
+    <form id="f-login" class="af" novalidate>
+      <h2>Log in</h2>
+      <label>Email<input type="email" id="li-email" autocomplete="email" required></label>
+      <label class="fb-only">Password<input type="password" id="li-pass" autocomplete="current-password" required></label>
+      <button type="submit">Log in</button>
+      <p class="alinks"><a href="#" data-view="f-signup" class="fb-only">Create an account</a><a href="#" data-view="f-forgot" class="fb-only">Forgot your password?</a></p>
+    </form>
+    <form id="f-signup" class="af" hidden novalidate>
+      <h2>Create an account</h2>
+      <label>Hunter name <small>shown in the game</small><input id="su-name" maxlength="24" autocomplete="nickname" required></label>
+      <label>Email<input type="email" id="su-email" autocomplete="email" required></label>
+      <label>Password <small>at least 8 characters</small><input type="password" id="su-pass" autocomplete="new-password" minlength="8" required></label>
+      <label>Password again<input type="password" id="su-pass2" autocomplete="new-password" minlength="8" required></label>
+      <button type="submit">Create account</button>
+      <p class="alinks"><a href="#" data-view="f-login">I already have an account</a></p>
+    </form>
+    <form id="f-forgot" class="af" hidden novalidate>
+      <h2>Forgot your password?</h2>
+      <p>Enter the email you signed up with. We’ll send you a link to choose a new password.</p>
+      <label>Email<input type="email" id="fp-email" autocomplete="email" required></label>
+      <button type="submit">Send reset link</button>
+      <p class="alinks"><a href="#" data-view="f-login">Back to log in</a></p>
+    </form>
+    <div id="v-in" class="af" hidden>
+      <p class="who">Logged in as <b id="in-name"></b> <span id="in-email"></span> · <a href="#" id="logout">Log out</a></p>
+      <label class="row">Stand <select id="pstand"></select></label>
+    </div>
+    <div id="acctmsg" role="status" aria-live="polite"></div>
+  </div>
+  <div id="netmsg"></div>
+  <button id="go" disabled>Generating marsh…</button><button id="mixopen" type="button">Sound levels</button>
   <table>
     <tr><td>Mouse</td><td>Look around</td></tr>
     <tr><td>Wheel</td><td>Zoom; past ~3× you raise the binoculars</td></tr>
@@ -87,9 +132,6 @@ canvas#c{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:cros
     <tr><td>H / G</td><td>Toggle this help / spotter debug readout</td></tr>
   </table>
   <p>Reach a far bull with long calls. When he stops on his way in, a coaxing call gets him moving again. Call again within 30 seconds and you’re calling too often. Inside 75 yards, any call or pour gives you away. Keep the wind in your face: the dial is bottom left.</p>
-  <div id="online"><label for="pname">Name</label><input id="pname" maxlength="24" placeholder="Hunter"><label for="pstand">Stand</label><select id="pstand"></select><label><input type="checkbox" id="psolo"> play solo</label></div>
-  <div id="netmsg"></div>
-  <button id="go" disabled>Generating marsh…</button><button id="mixopen" type="button">Sound levels</button>
 </div></div>
 <div id="mixer" hidden><div class="mx-card"><h3>Sound levels</h3><div id="mixrows"></div><p class="mx-note">O opens and closes this panel · your levels are remembered</p><button id="mixclose" type="button">Done</button></div></div>
 <pre id="err"></pre>

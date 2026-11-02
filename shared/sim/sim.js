@@ -3,7 +3,7 @@
 // The same code runs in the multiplayer server and, for solo play, inside the browser tab.
 import { PI, rand, chance, newSeed } from '../util.js';
 import { buildWorld, STANDS, groundAt } from '../world.js';
-import { WIND, initWind, updateWind, windState } from '../wind.js';
+import { newWind, initWind, updateWind, windState } from '../wind.js';
 import { MODES } from './body.js';
 import { Bull, updateRivals } from './bull.js';
 import { CowGroup } from './cows.js';
@@ -13,7 +13,7 @@ const r1 = v => Math.round(v * 10) / 10, r2 = v => Math.round(v * 100) / 100, r3
 
 export class Sim {
   constructor(opt = {}) {
-    buildWorld(); initWind();
+    buildWorld(); this.wind = initWind(newWind());   // this marsh's own wind
     this.time = 0; this.ids = 0; this.events = []; this.timers = []; this.bodies = new Map(); this.hunters = new Map();
     this.bulls = []; this.cows = []; this.wild = []; this.stands = STANDS;
     this.nextBull = rand(8, 20); this.nextCow = rand(45, 110);
@@ -73,7 +73,7 @@ export class Sim {
   }
   // ---- the clock ----
   update(dt) {
-    this.time += dt; updateWind(dt);
+    this.time += dt; updateWind(this.wind, dt);
     for (let i = 0; i < this.timers.length; i++) { const t = this.timers[i]; if (t.at <= this.time) { this.timers.splice(i--, 1); t.fn(); } }
     if (this.frozen) { for (const b of this.bodies.values()) b.update(dt); return; }
     const hasHunters = this.hunters.size > 0;
@@ -113,11 +113,11 @@ export class Sim {
     for (const b of this.bodies.values()) {
       const L = b.look; rows.push([b.id, r2(b.x), r2(b.z), r3(b.h), r2(b.speed), MODES.indexOf(b.mode), b.flags(), L ? r1(L.x) : null, L ? r1(L.z) : null, r2(b.shuffle || 0)]);
     }
-    return { t: r3(this.time), wind: windState(), a: rows };
+    return { t: r3(this.time), wind: windState(this.wind), a: rows };
   }
   spawnList() { return [...this.bodies.values()].map(b => ({ id: b.id, kind: b.kind, vis: b.vis })); }
   debugText() {
-    const L = []; L.push(`t ${this.time.toFixed(0)}s · hunters ${this.hunters.size} · wind ${WIND.from.toFixed(0)}° ${WIND.speed.toFixed(1)} m/s${WIND.swirl > 0.1 ? ' (swirling)' : ''}`);
+    const L = []; L.push(`t ${this.time.toFixed(0)}s · hunters ${this.hunters.size} · wind ${this.wind.from.toFixed(0)}° ${this.wind.speed.toFixed(1)} m/s${this.wind.swirl > 0.1 ? ' (swirling)' : ''}`);
     for (const b of this.bulls) L.push(`bull #${b.id} ${b.p.cls.k}, ${b.p.style}, ${b.p.spreadIn}" ${b.p.points}pt — ${b.state} · ${Math.round(b.d())} m from ${b.hunter() ? b.hunter().name : '—'} · interest ${b.interest.toFixed(2)} susp ${b.susp.toFixed(2)}`);
     if (!this.bulls.length) L.push(`next bull in ${Math.max(0, this.nextBull).toFixed(0)}s`);
     for (const c of this.cows) L.push(`cow #${c.cow.id} +${c.calves.length} calf — ${c.state} · ${Math.round(c.cow.dist())} m`);

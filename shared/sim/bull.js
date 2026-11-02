@@ -3,7 +3,6 @@
 // Each bull keeps a "focus": the hunter whose calling is drawing him. Any hunter can still spook him.
 import { clamp, lerp, rand, randi, chance } from '../util.js';
 import { outDist, nearestPoint, SHRUB_PTS, off } from '../world.js';
-import { WIND } from '../wind.js';
 import { Body } from './body.js';
 import { makeBullParams, refBullAntlers, BULL_CLASSES } from './bullparams.js';
 import { SPOT_R, bullEdge, nearestEdge, edgeAwayFrom } from './places.js';
@@ -132,10 +131,10 @@ export class Bull {
     if (this.scentT <= 0 && !this.showcase && !['flee', 'retreat', 'fight'].includes(this.state)) {
       this.scentT = 1;
       if (this.state !== 'distant') {
-        const cone = Math.cos(0.35 + WIND.swirl * 0.9); let smelled = null, sd = 1e9, near = null, nd = 1e9;
+        const cone = Math.cos(0.35 + G.wind.swirl * 0.9); let smelled = null, sd = 1e9, near = null, nd = 1e9;
         for (const h of G.hunters.values()) {
           const hd = a.distTo(h) || 1; if (hd < nd) { nd = hd; near = h; }
-          const cosA = ((a.x - h.x) / hd) * WIND.tx + ((a.z - h.z) / hd) * WIND.tz;
+          const cosA = ((a.x - h.x) / hd) * G.wind.tx + ((a.z - h.z) / hd) * G.wind.tz;
           if (hd < 300 && cosA > cone && hd < sd) { sd = hd; smelled = h; }
         }
         if (smelled) this.scentAcc = (this.scentAcc || 0) + 1; else this.scentAcc = Math.max(0, (this.scentAcc || 0) - 1);
@@ -150,7 +149,7 @@ export class Bull {
     if (this.circling === undefined) { this.circling = chance(this.p.circle); this.circleD = rand(55, 140); }
     const H = this.hunter(); if (!H) { this.hold(); return; }
     let gx = H.x, gz = H.z + H.fz * 8; gx += H.fx * 8;   // a little in front of the stand
-    if (this.circling) { gx += WIND.tx * this.circleD; gz += WIND.tz * this.circleD; }
+    if (this.circling) { gx += this.sim.wind.tx * this.circleD; gz += this.sim.wind.tz * this.circleD; }
     const dx = gx - a.x, dz = gz - a.z, dd = Math.hypot(dx, dz) || 1; const s = this.p.style;
     const stopAt = s === 'charger' ? rand(22, 40) : rand(30, 58); const leg = s === 'cautious' ? rand(30, 70) : s === 'charger' ? rand(60, 140) : rand(40, 110);
     const curD = this.d(); const step = Math.min(leg, Math.max(8, dd - stopAt)); this.final = curD - step <= stopAt + 15 || dd - step < stopAt + 5;

@@ -1,27 +1,35 @@
-// Two browsers join a local marsh server through the real start screen; checks they share the animals.
+// Two players log in through the real start screen and each walks into their own marsh.
 //   node tools/mp-browser.mjs <gameUrl> <wsUrl> <outDir>
+// Against a local server started with MARSH_AUTH=off (the game then shows a name-only test login).
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
 let puppeteer; try { puppeteer = require('puppeteer'); } catch { puppeteer = require('C:/Users/16138/node_modules/puppeteer'); }
 const [game, wsUrl, out] = process.argv.slice(2);
-const browser = await puppeteer.launch({ headless: 'new', args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
-async function player(name, stand) {
-  const page = await browser.newPage(); await page.setViewport({ width: 960, height: 540 }); const errs = [];
+const launch = () => puppeteer.launch({ headless: 'new', protocolTimeout: 600000, args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
+const browsers = [];
+const visible = (sel) => `(() => { const e = document.querySelector('${sel}'); return e && e.offsetParent !== null; })()`;
+async function player(name, stand, shots) {
+  const browser = await launch(); browsers.push(browser);   // a browser each, like two different computers
+  const page = await browser.newPage(); await page.setViewport({ width: 800, height: 600 }); const errs = [];
   page.on('pageerror', (e) => errs.push(e.message)); page.on('console', (m) => { if (m.type() === 'error' && !/favicon/.test(m.text())) errs.push(m.text()); });
-  await page.goto(`${game}?server=${encodeURIComponent(wsUrl)}`, { waitUntil: 'load' });
-  await page.waitForFunction(() => document.getElementById('go').textContent === 'Join the marsh', { timeout: 120000 });
-  await page.$eval('#pname', (el) => { el.value = ''; }); await page.type('#pname', name); await page.select('#pstand', String(stand));
+  await page.goto(`${game}?server=${encodeURIComponent(wsUrl)}`, { waitUntil: 'load', timeout: 180000 });
+  await page.waitForFunction(visible('#f-login'), { timeout: 120000 });
+  if (shots) await page.screenshot({ path: `${out}/login.png` });
+  await page.type('#li-email', name); await page.$eval('#f-login button', (b) => b.click());
+  await page.waitForFunction(visible('#v-in') + ' && ' + visible('#go'), { timeout: 20000 });
+  await page.select('#pstand', String(stand));
+  if (shots) await page.screenshot({ path: `${out}/logged-in.png` });
   await page.$eval('#go', (el) => el.click());
-  await page.waitForFunction(() => document.getElementById('go').textContent === 'Climb into the stand', { timeout: 120000 });
+  await page.waitForFunction(() => document.getElementById('go').textContent === 'Climb into the stand', { timeout: 60000 });
+  const netmsg = await page.$eval('#netmsg', (e) => e.textContent);
   await page.$eval('#go', (el) => el.click());
-  return { page, errs, name };
+  return { page, errs, name, netmsg };
 }
-const a = await player('Alice', 0), b = await player('Bob', 2);
-await new Promise((r) => setTimeout(r, 15000));
+const a = await player('Alice', 0, true), b = await player('Bob', 0, false);
+await new Promise((r) => setTimeout(r, 12000));
 for (const p of [a, b]) {
-  await p.page.bringToFront(); await new Promise((r) => setTimeout(r, 4000));
-  const info = await p.page.evaluate(() => ({ others: document.getElementById('others').textContent, netmsg: document.getElementById('netmsg').textContent, me: [window.__marsh.PLAYER.name, window.__marsh.PLAYER.stand], animals: window.__marsh.ANIMALS.map((x) => `${x.kind}#${x.id}@${Math.round(x.x)},${Math.round(x.z)}`).sort() }));
-  console.log(p.name, JSON.stringify(info)); if (p.errs.length) console.log('  errors:', p.errs.slice(0, 5));
-  await p.page.screenshot({ path: `${out}/mp-${p.name}.png` });
+  const info = await p.page.evaluate(() => ({ others: document.getElementById('others').textContent, me: [window.__marsh.PLAYER.name, window.__marsh.PLAYER.stand], wind: document.getElementById('windtxt').textContent, animals: window.__marsh.ANIMALS.map((x) => `${x.kind}@${Math.round(x.x)},${Math.round(x.z)}`).sort() }));
+  console.log(p.name, JSON.stringify({ netmsg: p.netmsg, ...info })); if (p.errs.length) console.log('  errors:', p.errs.slice(0, 5));
+  await p.page.screenshot({ path: `${out}/marsh-${p.name}.png` });
 }
-await browser.close();
+for (const b of browsers) await b.close();

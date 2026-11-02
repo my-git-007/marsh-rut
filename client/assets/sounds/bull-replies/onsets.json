@@ -1,0 +1,43 @@
+{
+ "ubull_BullMooseReply1": {
+  "dur": 14.08,
+  "onsets": [
+   0.02,
+   3.94,
+   7.58,
+   9.18,
+   11.32,
+   12.36
+  ],
+  "src": "BullMooseReply1.m4a",
+  "trim": [
+   0.0,
+   14.08
+  ]
+ },
+ "ubull_BullMooseReply2": {
+  "dur": 8.34,
+  "onsets": [
+   0.72,
+   3.52,
+   5.98
+  ],
+  "src": "BullMooseReply2.m4a",
+  "trim": [
+   0.0,
+   8.34
+  ]
+ },
+ "ubull_BullMooseReply3": {
+  "dur": 5.63,
+  "onsets": [
+   0.36,
+   3.64
+  ],
+  "src": "BullMooseReply3.m4a",
+  "trim": [
+   0.0,
+   5.63
+  ]
+ }
+}

@@ -1,0 +1,8 @@
+{
+  "_note": "Where each sound folder came from. tools/check-sounds.js refuses a public build while any folder that is not \"public\": true still has audio in it. When you replace a folder's clips with ones you may publish, update its entry.",
+  "cow-calls":       { "source": "the game owner's own recordings", "public": true },
+  "bull-replies":    { "source": "provided by the game owner", "public": true },
+  "wild-recordings": { "source": "BBC Sound Effects archive (RemArc): moose grunts NHU05095061 and others, antler raking, willow brush", "license": "personal, educational or research use only", "public": false },
+  "ambient":         { "source": "BBC Sound Effects archive (RemArc), NHU… recordings (birds, loon, cranes, geese, wolves, coyotes, forest bed, wind)", "license": "personal, educational or research use only", "public": false },
+  "effects":         { "source": "BBC Sound Effects archive (RemArc), NHU… and 0700… recordings (antler fight, ducks, raven wings, wading, water pour)", "license": "personal, educational or research use only", "public": false }
+}

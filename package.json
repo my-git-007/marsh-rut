@@ -1,0 +1,29 @@
+{
+  "name": "marsh-rut",
+  "version": "0.2.0",
+  "private": true,
+  "description": "Marsh Rut — a moose-calling game from a tree stand over a beaver marsh, solo or multiplayer",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "server": "node server/server.js",
+    "check": "node tools/check-shared.js",
+    "check:sounds": "node tools/check-sounds.js",
+    "test:mp": "node tools/mp-test.mjs"
+  },
+  "dependencies": {
+    "three": "0.128.0",
+    "ws": "8.18.0"
+  },
+  "devDependencies": {
+    "acorn": "8.14.0",
+    "acorn-walk": "8.3.4",
+    "prettier": "3.3.3",
+    "vite": "5.4.10"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Marsh Rut</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22%3E%3Crect width=%2216%22 height=%2216%22 fill=%22%230b0c0a%22/%3E%3Cpath d=%22M3 12h10M5 12V7l3-3 3 3v5%22 stroke=%22%23e8d9a6%22 fill=%22none%22/%3E%3C/svg%3E">
+<style>
+:root{--ink:#ece6d6;--dim:rgba(236,230,214,.62);--line:rgba(236,230,214,.22);--bg:#0b0c0a}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--ink:#ece6d6;--bg:#0b0c0a}}
+:root[data-theme="dark"]{--ink:#ece6d6;--bg:#0b0c0a}
+html,body{margin:0;height:100%;background:var(--bg);overflow:hidden;color:var(--ink);font-family:Georgia,"Times New Roman",serif}
+canvas#c{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:crosshair}
+#binoc{position:fixed;inset:0;pointer-events:none;opacity:0}
+#binoc svg{width:100%;height:100%;display:block}
+#hud{position:fixed;inset:0;pointer-events:none;font:12px/1.45 ui-monospace,Consolas,Menlo,monospace;letter-spacing:.05em;text-shadow:0 1px 3px rgba(0,0,0,.7)}
+#compass{position:absolute;top:14px;left:50%;transform:translateX(-50%);opacity:.72}
+#wind{position:absolute;left:18px;bottom:18px;display:flex;gap:10px;align-items:center;opacity:.82}
+#wind svg{width:46px;height:46px}
+#calltype{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);white-space:nowrap;opacity:.8}
+#calltype b{display:inline-block;border:1px solid var(--line);padding:0 5px;margin-right:4px}
+#calltype span{opacity:.6}
+#breath{position:absolute;left:50%;bottom:44px;transform:translateX(-50%);width:240px;opacity:0;transition:opacity .35s;text-align:center}
+#breath .bar{height:3px;background:rgba(255,255,255,.14);margin-top:6px}
+#breath .bar i{display:block;height:100%;width:0;background:#e8d9a6}
+#range{position:absolute;left:50%;top:calc(50% + 46px);transform:translateX(-50%);opacity:0;color:#f3ead0}
+#msg{position:absolute;top:20%;left:0;right:0;text-align:center;font:17px/1.5 Georgia,serif;letter-spacing:.03em;opacity:0;transition:opacity 1.4s;padding:0 16px}
+#debug{position:absolute;right:12px;top:12px;white-space:pre;background:rgba(0,0,0,.5);padding:8px 10px;display:none;font-size:11px}
+#help{position:absolute;right:16px;bottom:16px;opacity:.55;text-align:right}
+#err{position:fixed;left:8px;top:8px;right:8px;white-space:pre-wrap;background:#300;color:#fcc;font:12px monospace;padding:8px;display:none;z-index:99}
+#start{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(8,9,7,.55);z-index:10;padding:16px;box-sizing:border-box}
+.card{max-width:600px;width:100%;padding:30px 34px;background:rgba(12,13,10,.82);border:1px solid var(--line);box-sizing:border-box}
+.card h1{font-weight:normal;letter-spacing:.18em;font-size:26px;margin:0 0 6px;text-transform:uppercase}
+.card .sub{color:var(--dim);font-style:italic;margin:0 0 20px}
+.card table{border-collapse:collapse;width:100%;font:13px/1.5 ui-monospace,Consolas,monospace}
+.card td{padding:4px 0;vertical-align:top}
+.card td:first-child{color:#e8d9a6;white-space:nowrap;padding-right:18px}
+.card p{font-size:14px;line-height:1.55;color:var(--dim)}
+#go{margin-top:18px;font:14px Georgia,serif;letter-spacing:.14em;text-transform:uppercase;color:var(--bg);background:#e8d9a6;border:0;padding:12px 22px;cursor:pointer}
+#go[disabled]{opacity:.45;cursor:wait}
+#mixer{position:fixed;right:max(16px,env(safe-area-inset-right,0px));top:56px;z-index:20}
+#mixer[hidden]{display:none}
+.mx-card{width:min(360px,calc(100vw - 32px));box-sizing:border-box;background:rgba(12,13,10,.9);border:1px solid var(--line);padding:16px 18px;font:13px/1.4 ui-monospace,Consolas,monospace;color:var(--ink)}
+.mx-card h3{margin:0 0 10px;font:normal 15px Georgia,serif;letter-spacing:.12em;text-transform:uppercase}
+.mx-row{display:grid;grid-template-columns:1fr 3.2em;gap:2px 10px;align-items:center;margin:8px 0}
+.mx-row label{grid-column:1/3;color:var(--dim)}
+.mx-row input{width:100%;accent-color:#e8d9a6}
+.mx-row output{text-align:right;font-variant-numeric:tabular-nums}
+.mx-note{color:var(--dim);font-size:11px;margin:10px 0}
+#mixclose,#mixopen{font:13px Georgia,serif;letter-spacing:.1em;text-transform:uppercase;background:#e8d9a6;color:var(--bg);border:0;padding:8px 16px;cursor:pointer}
+#mixopen{background:transparent;color:var(--ink);border:1px solid var(--line);margin-left:8px}
+#paused{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);display:none;font:13px ui-monospace,Consolas,monospace;letter-spacing:.1em;background:rgba(0,0,0,.45);padding:10px 16px;pointer-events:none}
+@media (max-width:520px){.card{padding:22px 18px}.card h1{font-size:20px}}
+#online{display:none;margin-top:16px;gap:8px;flex-wrap:wrap;align-items:center;font:13px ui-monospace,Consolas,monospace}
+#online input,#online select{font:13px ui-monospace,Consolas,monospace;background:rgba(0,0,0,.4);color:var(--ink);border:1px solid var(--line);padding:6px 8px}
+#online label{color:var(--dim)}
+#netmsg{color:#e8d9a6;font-size:12px;min-height:1em;margin-top:8px}
+#others{position:absolute;left:18px;top:14px;opacity:.7;white-space:pre}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="binoc"><svg id="binocsvg"></svg></div>
+<div id="hud">
+  <div id="compass">N 000°</div>
+  <div id="wind"><svg viewBox="-23 -23 46 46"><circle r="21" fill="none" stroke="rgba(236,230,214,.35)"/><g id="windarrow"><path d="M0,-15 L5,-5 L1.6,-5 L1.6,14 L-1.6,14 L-1.6,-5 L-5,-5 Z" fill="#ece6d6" opacity=".85"/></g></svg><div><div id="windtxt">wind</div><div id="windsub" style="opacity:.6"></div></div></div>
+  <div id="calltype"></div>
+  <div id="breath"><div id="calltxt">cow call</div><div class="bar"><i id="breathbar"></i></div></div>
+  <div id="range">— yds</div>
+  <div id="msg"></div>
+  <div id="debug"></div>
+  <div id="others"></div>
+  <div id="help">H · controls &nbsp; O · sound</div>
+</div>
+<div id="paused">CLICK TO RESUME</div>
+<div id="start"><div class="card">
+  <h1>Marsh Rut</h1>
+  <p class="sub">Late September. First light over a 500 × 800 yard beaver marsh. You are twenty feet up a spruce.</p>
+  <table>
+    <tr><td>Mouse</td><td>Look around</td></tr>
+    <tr><td>Wheel</td><td>Zoom; past ~3× you raise the binoculars</td></tr>
+    <tr><td>Right click / B</td><td>Snap binoculars up or down</td></tr>
+    <tr><td>1 / 2</td><td>Choose your call: 1 long cow call (carries far, for a bull you can’t see) · 2 short coaxing call (for a bull you can see)</td></tr>
+    <tr><td>Space</td><td>Make the call: one of your recordings of that type plays start to finish</td></tr>
+    <tr><td>O</td><td>Sound levels: your calls, moose, birds &amp; wildlife, wind, forest, effects</td></tr>
+    <tr><td>V</td><td>Water pour (a cow urinating, a classic close-in trick)</td></tr>
+    <tr><td>H / G</td><td>Toggle this help / spotter debug readout</td></tr>
+  </table>
+  <p>Reach a far bull with long calls. When he stops on his way in, a coaxing call gets him moving again. Call again within 30 seconds and you’re calling too often. Inside 75 yards, any call or pour gives you away. Keep the wind in your face: the dial is bottom left.</p>
+  <div id="online"><label for="pname">Name</label><input id="pname" maxlength="24" placeholder="Hunter"><label for="pstand">Stand</label><select id="pstand"></select><label><input type="checkbox" id="psolo"> play solo</label></div>
+  <div id="netmsg"></div>
+  <button id="go" disabled>Generating marsh…</button><button id="mixopen" type="button">Sound levels</button>
+</div></div>
+<div id="mixer" hidden><div class="mx-card"><h3>Sound levels</h3><div id="mixrows"></div><p class="mx-note">O opens and closes this panel · your levels are remembered</p><button id="mixclose" type="button">Done</button></div></div>
+<pre id="err"></pre>
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,11 @@
+# Render.com blueprint for the multiplayer server (New -> Blueprint, point it at this repo).
+# Note: Render's free plan sleeps after 15 minutes without traffic; a paid "starter" instance stays up.
+services:
+  - type: web
+    name: marsh-rut-server
+    runtime: docker
+    plan: starter
+    healthCheckPath: /health
+    envVars:
+      - key: ALLOWED_ORIGINS
+        value: ""

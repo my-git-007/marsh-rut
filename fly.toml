@@ -8,7 +8,7 @@ primary_region = "yyz"
 [env]
   PORT = "8080"
   ALLOWED_ORIGINS = "https://my-git-007.github.io"
-  FIREBASE_PROJECT_ID = "REPLACE-WITH-FIREBASE-PROJECT-ID"   # player logins are checked against this project
+  FIREBASE_PROJECT_ID = "marsh-rut"   # player logins are checked against this project
   MAX_MARSHES = "100"    # one private marsh per player online; each costs ~0.02% of a CPU core
   KEEP_MINUTES = "5"     # a marsh waits this long for its player to come back (reload, dropped line)
 

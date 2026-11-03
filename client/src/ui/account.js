@@ -147,7 +147,7 @@ export function initAccount(cb, opts = {}) {
   $('acct').hidden = false;
   if (!FIREBASE) {   // local testing without Firebase: a name is enough (server must run with MARSH_AUTH=off)
     for (const el of document.querySelectorAll('.fb-only')) el.hidden = true;
-    $('li-email-label').textContent = 'Name (test login)'; $('li-email').type = 'text'; $('li-email').autocomplete = 'off';
+    $('li-email-label').textContent = 'Name (test login)'; $('li-email').placeholder = 'Name (test login)'; $('li-email').type = 'text'; $('li-email').autocomplete = 'off';
   }
   passwordHelpers();
   for (const a of document.querySelectorAll('#acct [data-view]')) a.addEventListener('click', (e) => {

@@ -61,6 +61,7 @@ canvas#c{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:cros
   font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;margin:8px 0 4px}
 #acct[hidden],#acct [hidden],#menu[hidden],#menu [hidden]{display:none!important}
 .af{display:flex;flex-direction:column;gap:18px;max-width:380px}
+body[data-acct] .af,body[data-acct] #acctmsg{max-width:none}
 .af h2{font:normal 22px/1.25 Georgia,serif;letter-spacing:.04em;margin:0;color:var(--sand)}
 .af .lead{margin:-6px 0 0;font-size:15px;color:var(--dim)}
 .af .lead b,#vf-email{color:var(--ink);font-weight:600;word-break:break-all}
@@ -114,6 +115,56 @@ body[data-acct] .card{max-width:460px}
 body[data-acct] #howto,body[data-acct] #go,body[data-acct] #mixopen,body[data-acct] #netmsg:empty{display:none}
 body[data-acct] #hud,body[data-acct] #paused{visibility:hidden}
 @media (max-width:520px){.af{max-width:none}#acctmsg{max-width:none}}
+/* ---- account screens: a parchment panel under the badge, a wave between them (like the user's reference layout) ---- */
+body[data-acct] .card{border-radius:16px;padding-bottom:0}
+body[data-acct] .card h1.brand{margin-bottom:0}
+body[data-acct] .brand img{-webkit-mask-image:none;mask-image:none}
+body[data-acct] #acct{--ink:#2a1c10;--dim:#6e5a44;--sand:#8f5d2e;--sand-hi:#6b4220;--sand-lo:#5a371a;--edge:#cfb894;--field:transparent;--bad:#b3361b;--good:#3d7a2a;
+  position:relative;margin:0 -34px;padding:4px 34px 30px;background:#f6ecd9;color:var(--ink)}
+body[data-acct] #acct::before{content:"";position:absolute;left:0;right:0;top:-36px;height:38px;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 460 44' preserveAspectRatio='none'%3E%3Cpath fill='%23f6ecd9' d='M0 26C70 6 150 2 235 20s150 26 225-8v32H0z'/%3E%3C/svg%3E") no-repeat bottom/100% 100%;pointer-events:none}
+body[data-acct] #acct .af{gap:16px}
+body[data-acct] #acct .af h2{font:700 28px/1.15 Georgia,serif;letter-spacing:.01em;color:#2a1c10;margin:0 0 4px}
+body[data-acct] #acct .field{gap:5px}
+body[data-acct] #acct .field label{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+body[data-acct] #acct .field>input,body[data-acct] #acct .field>.pw{order:1}
+body[data-acct] #acct .field .hint{order:2;margin:0;font-size:12.5px}
+body[data-acct] #acct .field .caps{order:3}
+body[data-acct] #acct .field .ferr{order:4;font-size:13.5px}
+body[data-acct] #acct .field .lrow{order:5;justify-content:flex-end}
+body[data-acct] #acct .field input{min-height:46px;padding:12px 4px 9px 34px;color:var(--ink);background:transparent no-repeat 4px 52%/19px 19px;
+  border:0;border-bottom:1.5px solid var(--edge);border-radius:0;box-shadow:none}
+body[data-acct] #acct .field input::placeholder{color:#9a8468;opacity:1}
+body[data-acct] #acct .field input:hover{border-bottom-color:#b39469}
+body[data-acct] #acct .field input:focus{border-bottom-color:#8f5d2e;box-shadow:0 1.5px 0 0 #8f5d2e}
+body[data-acct] #acct .field input[aria-invalid="true"]{border-bottom-color:var(--bad)}
+body[data-acct] #acct .field input[aria-invalid="true"]:focus{box-shadow:0 1.5px 0 0 var(--bad)}
+body[data-acct] #acct .field input:-webkit-autofill{-webkit-text-fill-color:#2a1c10;transition:background-color 100000s 0s}
+#su-name{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238a6a48' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='8' r='4'/%3E%3Cpath d='M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6'/%3E%3C/svg%3E")!important}
+#li-email,#su-email,#fp-email{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238a6a48' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='5' width='18' height='14' rx='2'/%3E%3Cpath d='m3.5 6.5 8.5 6.5 8.5-6.5'/%3E%3C/svg%3E")!important}
+#li-pass,#su-pass,#su-pass2,#np-pass,#np-pass2{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238a6a48' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='5' y='10.5' width='14' height='10' rx='2'/%3E%3Cpath d='M8 10.5V7.5a4 4 0 0 1 8 0v3'/%3E%3C/svg%3E")!important}
+body[data-acct] #acct .pw input{padding-right:46px}
+body[data-acct] #acct .pw .reveal{right:0;width:40px;min-height:38px;padding:0;font-size:0;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238a6a48' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z'/%3E%3Ccircle cx='12' cy='12' r='3'/%3E%3C/svg%3E") no-repeat center/20px 20px;border-radius:8px}
+body[data-acct] #acct .pw .reveal[aria-pressed="true"]{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238a6a48' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 3l18 18M10.6 5.1A10.6 10.6 0 0 1 12 5c6.4 0 10 7 10 7a17 17 0 0 1-3.2 4.1M6.6 6.6C3.7 8.4 2 12 2 12s3.6 7 10 7a9.9 9.9 0 0 0 4.4-1M9.9 9.9a3 3 0 0 0 4.2 4.2'/%3E%3C/svg%3E")}
+body[data-acct] #acct .pw .reveal:hover{background-color:rgba(104,67,39,.08)}
+body[data-acct] #acct .pw .reveal:focus-visible{outline:2px solid #8f5d2e}
+body[data-acct] #acct .af .primary{min-height:50px;margin-top:6px;border-radius:12px;font-weight:700;letter-spacing:.03em;color:#f2cf9d;
+  background:linear-gradient(180deg,#4d3421,#2b1c10);border:1px solid #2b1c10;box-shadow:0 6px 16px rgba(43,28,16,.28);text-shadow:none}
+body[data-acct] #acct .af .primary:hover{background:linear-gradient(180deg,#5d4029,#352315)}
+body[data-acct] #acct .af .primary:active{background:#2b1c10}
+body[data-acct] #acct .af .primary:focus-visible,body[data-acct] #acct .af .secondary:focus-visible{outline:3px solid #c6905b}
+body[data-acct] #acct .af .secondary{min-height:48px;margin-top:0;border-radius:12px;color:#3b2716;background:transparent;border:1.5px solid #3b2716}
+body[data-acct] #acct .af .secondary:hover{background:rgba(104,67,39,.08);border-color:#3b2716}
+/* "or" and an outlined button to switch between log in and create account */
+body[data-acct] #acct .switch.or{display:flex;flex-direction:column;gap:12px}
+body[data-acct] #acct .switch.or::before{content:"or";font-size:14px;color:var(--dim);text-align:center;
+  background:linear-gradient(var(--edge),var(--edge)) left 50%/calc(50% - 22px) 1px no-repeat,linear-gradient(var(--edge),var(--edge)) right 50%/calc(50% - 22px) 1px no-repeat}
+body[data-acct] #acct .switch.or .pre{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+body[data-acct] #acct .switch.or a{display:flex;align-items:center;justify-content:center;min-height:48px;border:1.5px solid #3b2716;border-radius:12px;
+  color:#3b2716;font-weight:600;text-decoration:none}
+body[data-acct] #acct .switch.or a:hover{background:rgba(104,67,39,.08)}
+body[data-acct] #acctmsg.err{color:#7c2410;background:rgba(179,54,27,.08)}
+body[data-acct] #acctmsg.ok{color:#2c5a1c;background:rgba(61,122,42,.10)}
+body[data-acct] #netmsg:not(:empty){margin:0 -34px;padding:0 34px 24px;background:#f6ecd9;color:#7c2410}
 /* ---- pause menu (Esc) ---- */
 #menu{position:fixed;inset:0;z-index:30;display:flex;align-items:safe center;justify-content:center;overflow-y:auto;padding:16px;box-sizing:border-box;
   background:rgba(8,9,7,.62);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)}
@@ -185,53 +236,53 @@ body.menu-open #hud,body.menu-open #paused{visibility:hidden}
       <h2 id="h-login">Log in</h2>
       <div class="field">
         <label for="li-email" id="li-email-label">Email</label>
-        <input type="email" id="li-email" autocomplete="username" inputmode="email" autocapitalize="off" spellcheck="false" required>
+        <input type="email" id="li-email" placeholder="Email" autocomplete="username" inputmode="email" autocapitalize="off" spellcheck="false" required>
         <p class="ferr" id="li-email-err"></p>
       </div>
       <div class="field fb-only">
         <div class="lrow"><label for="li-pass">Password</label><a href="#" data-view="f-forgot">Forgot password?</a></div>
-        <div class="pw"><input type="password" id="li-pass" autocomplete="current-password" required><button type="button" class="reveal" aria-controls="li-pass" aria-pressed="false">Show</button></div>
+        <div class="pw"><input type="password" id="li-pass" placeholder="Password" autocomplete="current-password" required><button type="button" class="reveal" aria-controls="li-pass" aria-pressed="false">Show</button></div>
         <p class="caps" hidden>Caps Lock is on</p>
         <p class="ferr" id="li-pass-err"></p>
       </div>
       <button type="submit" class="primary" data-busy="Logging in…">Log in</button>
-      <p class="switch fb-only">New to Hunting LTD? <a href="#" data-view="f-signup">Create an account</a></p>
+      <p class="switch or fb-only"><span class="pre">New to Hunting LTD?</span> <a href="#" data-view="f-signup">Create an account</a></p>
     </form>
     <form id="f-signup" class="af" hidden novalidate aria-labelledby="h-signup">
       <h2 id="h-signup">Create an account</h2>
       <div class="field">
         <label for="su-name">Hunter name</label>
         <p class="hint" id="su-name-hint">Shown in the game. Up to 24 characters.</p>
-        <input id="su-name" maxlength="24" autocomplete="nickname" aria-describedby="su-name-hint" required>
+        <input id="su-name" placeholder="Hunter name" maxlength="24" autocomplete="nickname" aria-describedby="su-name-hint" required>
         <p class="ferr" id="su-name-err"></p>
       </div>
       <div class="field">
         <label for="su-email">Email</label>
         <p class="hint" id="su-email-hint">We’ll send a link to confirm it.</p>
-        <input type="email" id="su-email" autocomplete="email" inputmode="email" autocapitalize="off" spellcheck="false" aria-describedby="su-email-hint" required>
+        <input type="email" id="su-email" placeholder="Email" autocomplete="email" inputmode="email" autocapitalize="off" spellcheck="false" aria-describedby="su-email-hint" required>
         <p class="ferr" id="su-email-err"></p>
       </div>
       <div class="field">
         <label for="su-pass">Password</label>
         <p class="hint" id="su-pass-hint">At least 8 characters.</p>
-        <div class="pw"><input type="password" id="su-pass" autocomplete="new-password" minlength="8" aria-describedby="su-pass-hint" required><button type="button" class="reveal" aria-controls="su-pass" aria-pressed="false">Show</button></div>
+        <div class="pw"><input type="password" id="su-pass" placeholder="Password" autocomplete="new-password" minlength="8" aria-describedby="su-pass-hint" required><button type="button" class="reveal" aria-controls="su-pass" aria-pressed="false">Show</button></div>
         <p class="caps" hidden>Caps Lock is on</p>
         <p class="ferr" id="su-pass-err"></p>
       </div>
       <div class="field">
         <label for="su-pass2">Confirm password</label>
-        <div class="pw"><input type="password" id="su-pass2" autocomplete="new-password" minlength="8" required><button type="button" class="reveal" aria-controls="su-pass2" aria-pressed="false">Show</button></div>
+        <div class="pw"><input type="password" id="su-pass2" placeholder="Confirm password" autocomplete="new-password" minlength="8" required><button type="button" class="reveal" aria-controls="su-pass2" aria-pressed="false">Show</button></div>
         <p class="ferr" id="su-pass2-err"></p>
       </div>
       <button type="submit" class="primary" data-busy="Creating your account…">Create account</button>
-      <p class="switch">Already have an account? <a href="#" data-view="f-login">Log in</a></p>
+      <p class="switch or"><span class="pre">Already have an account?</span> <a href="#" data-view="f-login">Log in</a></p>
     </form>
     <form id="f-forgot" class="af" hidden novalidate aria-labelledby="h-forgot">
       <h2 id="h-forgot">Reset your password</h2>
       <p class="lead">Enter the email you signed up with and we’ll send you a link to choose a new password.</p>
       <div class="field">
         <label for="fp-email">Email</label>
-        <input type="email" id="fp-email" autocomplete="email" inputmode="email" autocapitalize="off" spellcheck="false" required>
+        <input type="email" id="fp-email" placeholder="Email" autocomplete="email" inputmode="email" autocapitalize="off" spellcheck="false" required>
         <p class="ferr" id="fp-email-err"></p>
       </div>
       <button type="submit" class="primary" data-busy="Sending…">Send reset link</button>
@@ -255,13 +306,13 @@ body.menu-open #hud,body.menu-open #paused{visibility:hidden}
       <div class="field">
         <label for="np-pass">New password</label>
         <p class="hint" id="np-pass-hint">At least 8 characters.</p>
-        <div class="pw"><input type="password" id="np-pass" autocomplete="new-password" minlength="8" aria-describedby="np-pass-hint" required><button type="button" class="reveal" aria-controls="np-pass" aria-pressed="false">Show</button></div>
+        <div class="pw"><input type="password" id="np-pass" placeholder="New password" autocomplete="new-password" minlength="8" aria-describedby="np-pass-hint" required><button type="button" class="reveal" aria-controls="np-pass" aria-pressed="false">Show</button></div>
         <p class="caps" hidden>Caps Lock is on</p>
         <p class="ferr" id="np-pass-err"></p>
       </div>
       <div class="field">
         <label for="np-pass2">Confirm new password</label>
-        <div class="pw"><input type="password" id="np-pass2" autocomplete="new-password" minlength="8" required><button type="button" class="reveal" aria-controls="np-pass2" aria-pressed="false">Show</button></div>
+        <div class="pw"><input type="password" id="np-pass2" placeholder="Confirm new password" autocomplete="new-password" minlength="8" required><button type="button" class="reveal" aria-controls="np-pass2" aria-pressed="false">Show</button></div>
         <p class="ferr" id="np-pass2-err"></p>
       </div>
       <button type="submit" class="primary" data-busy="Saving…">Save new password</button>

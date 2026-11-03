@@ -236,11 +236,33 @@ body.menu-open #hud,body.menu-open #paused{visibility:hidden}
     </form>
     <div id="v-verify" class="af" hidden>
       <h2>Confirm your email</h2>
-      <p class="lead">We sent a confirmation link to <b id="vf-email"></b>. Open it, then come back here and continue. If you can’t find it, check your spam folder.</p>
-      <button type="button" id="vf-done" class="primary" data-busy="Checking…">I’ve confirmed my email</button>
+      <p class="lead">We sent a link to <b id="vf-email"></b>. Open the email and click the link to confirm your address. Then you can sign in and play.</p>
+      <p class="lead">Can’t find it? Check your spam or junk folder.</p>
       <button type="button" id="vf-resend" class="secondary" data-busy="Sending…">Send the email again</button>
       <p class="switch"><a href="#" id="vf-logout">Log out</a></p>
     </div>
+    <div id="v-note" class="af" hidden role="status">
+      <h2 id="nt-title"></h2>
+      <p class="lead" id="nt-text"></p>
+      <button type="button" id="nt-go" class="primary"></button>
+    </div>
+    <form id="f-newpass" class="af" hidden novalidate aria-labelledby="h-newpass">
+      <h2 id="h-newpass">Choose a new password</h2>
+      <p class="lead">For <b id="np-email"></b></p>
+      <div class="field">
+        <label for="np-pass">New password</label>
+        <p class="hint" id="np-pass-hint">At least 8 characters.</p>
+        <div class="pw"><input type="password" id="np-pass" autocomplete="new-password" minlength="8" aria-describedby="np-pass-hint" required><button type="button" class="reveal" aria-controls="np-pass" aria-pressed="false">Show</button></div>
+        <p class="caps" hidden>Caps Lock is on</p>
+        <p class="ferr" id="np-pass-err"></p>
+      </div>
+      <div class="field">
+        <label for="np-pass2">Confirm new password</label>
+        <div class="pw"><input type="password" id="np-pass2" autocomplete="new-password" minlength="8" required><button type="button" class="reveal" aria-controls="np-pass2" aria-pressed="false">Show</button></div>
+        <p class="ferr" id="np-pass2-err"></p>
+      </div>
+      <button type="submit" class="primary" data-busy="Saving…">Save new password</button>
+    </form>
     <div id="v-in" class="af" hidden>
       <p class="who">Logged in as <b id="in-name"></b> <span id="in-email"></span> · <a href="#" id="logout">Log out</a></p>
       <div class="field inline"><label for="pstand">Stand</label><select id="pstand"></select></div>

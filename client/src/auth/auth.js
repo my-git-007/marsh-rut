@@ -39,6 +39,8 @@ const MESSAGES = {
   'auth/user-disabled': 'This account has been switched off.',
   'auth/unauthorized-continue-uri': 'Password reset isn’t set up for this web address yet.',
   'auth/operation-not-allowed': 'Email login isn’t switched on for this game yet.',
+  'auth/invalid-action-code': 'This link has expired or has already been used.',
+  'auth/expired-action-code': 'This link has expired.',
 };
 export const authMessage = (e) => MESSAGES[e && e.code] || 'Something went wrong' + (e && e.code ? ` (${e.code.replace('auth/', '')})` : '') + '. Try again.';
 
@@ -96,9 +98,39 @@ export const currentUser = () => (FIREBASE ? view(auth && auth.currentUser) : de
 export async function getToken() {
   if (!FIREBASE) { if (!devUser) throw new Error('Log in first.'); return devUser; }
   await load();
-  if (!auth.currentUser) throw new Error('Log in first.');
-  return auth.currentUser.getIdToken();
+  const u = auth.currentUser;
+  if (!u) throw new Error('Log in first.');
+  // A token made before the player confirmed their email still says "not confirmed" for up to an hour, and the
+  // server would turn them away. If Firebase now knows the email is confirmed, get a fresh token that says so.
+  const r = await u.getIdTokenResult();
+  if (u.emailVerified && !r.claims.email_verified) return u.getIdToken(true);
+  return r.token;
 }
+
+// ---- the links in Firebase's emails ----
+// In Firebase (Authentication -> Templates -> Customize action URL) the links point at the game itself:
+// https://hunting.ltd/?mode=verifyEmail|resetPassword|recoverEmail&oobCode=...  The start screen handles them
+// (ui/account.js) instead of Firebase's plain page.
+export function emailLink() {
+  const q = new URLSearchParams(location.search), mode = q.get('mode'), code = q.get('oobCode');
+  return FIREBASE && code && ['verifyEmail', 'resetPassword', 'recoverEmail'].includes(mode) ? { mode, code } : null;
+}
+export function forgetEmailLink() {   // so reloading the page doesn't use the link again
+  const u = new URL(location.href);
+  for (const k of ['mode', 'oobCode', 'apiKey', 'continueUrl', 'lang', 'tenantId']) u.searchParams.delete(k);
+  history.replaceState(null, '', u.pathname + (u.search || '') + u.hash);
+}
+// confirm the email (or undo an email change); returns the account's email. Logs this browser out afterwards,
+// so the player signs in fresh, with a login that knows the email is confirmed.
+export async function useEmailCode(code) {
+  await load();
+  const info = await fb.checkActionCode(auth, code);
+  await fb.applyActionCode(auth, code);
+  if (auth.currentUser) await fb.signOut(auth);
+  return (info.data && (info.data.email || info.data.previousEmail)) || '';
+}
+export async function checkResetCode(code) { await load(); return fb.verifyPasswordResetCode(auth, code); }   // -> email
+export async function setNewPassword(code, password) { await load(); await fb.confirmPasswordReset(auth, code, password); }
 function devLogIn(name) {
   devUser = String(name || '').trim().slice(0, 24) || 'Hunter';
   try { localStorage.setItem(DEV_KEY, devUser); } catch (e) {}

@@ -8,6 +8,10 @@ import { MODES } from './body.js';
 import { Bull, updateRivals } from './bull.js';
 import { CowGroup } from './cows.js';
 import { WildEvent, critter } from './wildlife.js';
+import { updateEcology } from './ecology.js';
+import { nearestEdge } from './places.js';
+import { off } from '../world.js';
+import { SPAWN, SPECIES, COW_SOCIAL, BULL_TIERS, BULL_TYPES, between } from './catalog.js';
 
 const r1 = v => Math.round(v * 10) / 10, r2 = v => Math.round(v * 100) / 100, r3 = v => Math.round(v * 1000) / 1000;
 
@@ -16,8 +20,10 @@ export class Sim {
     buildWorld(); this.wind = initWind(newWind());   // this marsh's own wind
     this.time = 0; this.ids = 0; this.events = []; this.timers = []; this.bodies = new Map(); this.hunters = new Map();
     this.bulls = []; this.cows = []; this.wild = []; this.stands = STANDS;
-    this.nextBull = rand(8, 20); this.nextCow = rand(45, 110);
-    this.wildNext = { bear: rand(240, 600), canid: rand(300, 650), raccoon: rand(150, 360) };
+    this.nextBull = between(SPAWN.bull.first); this.nextCow = between(SPAWN.cow.first);
+    // one timer per species (wolves and coyotes share one: see SPAWN.canid), from SPECIES[kind].spawn
+    this.wildNext = { canid: Math.min(between(SPECIES.wolf.spawn.first), between(SPECIES.coyote.spawn.first)) };
+    for (const k in SPECIES) if (k !== 'wolf' && k !== 'coyote') this.wildNext[k] = between(SPECIES[k].spawn.first);
     this.frozen = false; this.alwaysFight = false; this.forceTwo = false; this.log = opt.log ? [] : null;
   }
   // ---- plumbing used by the animals ----
@@ -87,30 +93,48 @@ export class Sim {
     // bulls: one per two hunters (max four), each drawn toward the hunter who has the fewest
     if (hasHunters && this.bulls.length < this.maxBulls()) {
       this.nextBull -= dt;
-      if (this.nextBull <= 0) { this.bulls.push(new Bull(this)); this.nextBull = rand(30, 75); for (const H of this.hunters.values()) H.secondTried = false; }
+      if (this.nextBull <= 0) { this.bulls.push(new Bull(this)); this.nextBull = between(SPAWN.bull.every); for (const H of this.hunters.values()) H.secondTried = false; }
     }
     for (const b of this.bulls) b.update(dt);
     for (let i = this.bulls.length - 1; i >= 0; i--) {
       const b = this.bulls[i];
-      if (b.done) { this.note(`DONE #${b.id} ${b.p.cls.k} (${b.p.style}) seen=${b.everSeen} reason=${b.reason || '?'} lastState=${b.state}`); b.dispose(); this.bulls.splice(i, 1); this.nextBull = Math.max(this.nextBull, rand(30, 75)); }
+      if (b.done) { this.note(`DONE #${b.id} ${b.p.typeName} [${b.p.cls.k}] (${b.p.style}) seen=${b.everSeen} reason=${b.reason || '?'} lastState=${b.state}`); b.dispose(); this.bulls.splice(i, 1); this.nextBull = Math.max(this.nextBull, between(SPAWN.bull.every)); }
     }
     updateRivals(this);
     for (const c of this.cows) c.update(dt);
     for (let i = this.cows.length - 1; i >= 0; i--) if (this.cows[i].done) { this.cows[i].dispose(); this.cows.splice(i, 1); }
-    if (hasHunters) { this.nextCow -= dt; if (this.nextCow <= 0) { this.nextCow = rand(60, 150); if (this.cows.length < this.maxCows() && chance(0.8)) this.cows.push(new CowGroup(this, false)); } }
+    if (hasHunters) { this.nextCow -= dt; if (this.nextCow <= 0) { this.nextCow = between(SPAWN.cow.every); if (this.cows.length < this.maxCows() && chance(SPAWN.cow.p)) this.cows.push(new CowGroup(this, false)); } }
     if (hasHunters) this.updateWildlife(dt); else for (const e of this.wild) e.update(dt);
     for (let i = this.wild.length - 1; i >= 0; i--) if (this.wild[i].done) this.wild.splice(i, 1);
-    if (this.log) for (const b of this.bulls) if (b.state !== b.__ls) { b.__ls = b.state; this.note(`#${b.id} ${b.p.cls.k}/${b.p.style} -> ${b.state} d=${Math.round(b.d())} int=${b.interest.toFixed(2)}${b.rival ? ' rival#' + b.rival.id : ''} ${b.reason || ''}`); }
+    updateEcology(this, dt);
+    if (this.log) for (const b of this.bulls) if (b.state !== b.__ls) { b.__ls = b.state; this.note(`#${b.id} ${b.p.typeName}/${b.p.style} -> ${b.state} d=${Math.round(b.d())} int=${b.interest.toFixed(2)}${b.rival ? ' rival#' + b.rival.id : ''} ${b.reason || ''}`); }
   }
   updateWildlife(dt) {
-    const W = this.wildNext, has = k => this.wild.some(e => k.includes(e.kind));
+    const W = this.wildNext, count = (k) => this.wild.filter((e) => e.kind === k && !e.done).length;
     for (const k in W) {
       W[k] -= dt; if (W[k] > 0) continue;
-      if (k === 'bear') { W[k] = rand(480, 900); if (!has(['bear']) && chance(0.55)) this.wild.push(new WildEvent(this, 'bear')); }
-      else if (k === 'canid') { W[k] = rand(420, 840); if (!has(['wolf', 'coyote']) && chance(0.55)) this.wild.push(new WildEvent(this, chance(0.6) ? 'coyote' : 'wolf')); }
-      else { W[k] = rand(300, 600); if (!has(['raccoon']) && chance(0.6)) this.wild.push(new WildEvent(this, 'raccoon')); }
+      if (k === 'canid') {
+        const kind = chance(SPAWN.canid.coyote) ? 'coyote' : 'wolf', sp = SPECIES[kind].spawn; W[k] = between(sp.every);
+        if (!count('wolf') && !count('coyote') && chance(SPECIES.wolf.spawn.p + SPECIES.coyote.spawn.p)) this.wild.push(new WildEvent(this, kind));
+      } else { const sp = SPECIES[k].spawn; W[k] = between(sp.every); if (count(k) < (sp.max || 1) && chance(sp.p)) this.wild.push(new WildEvent(this, k)); }
     }
     for (const e of this.wild) e.update(dt);
+  }
+  // a cow's bellow: other bulls within earshot may come to her; if none is around, one may come out of the timber
+  // (more often a bigger one than the bull she is fed up with)
+  bellow(cg, pest) {
+    const c = cg.cow;
+    for (const b of this.bulls) { if (b === pest || b.done) continue; const d = b.a.distTo(c); if (d < COW_SOCIAL.bellowRange) this.after(d / 343 + rand(1, 4), () => { if (this.bulls.includes(b)) b.heardBellow(cg, d); }); }
+    const others = this.bulls.filter((b) => b !== pest && !b.done).length;
+    if (this.hunters.size && !others && this.bulls.length < this.maxBulls() + 1 && chance(COW_SOCIAL.bellowNewBull)) {
+      const minTier = pest ? Math.min(BULL_TIERS.length - 1, pest.p.tier + 2) : 2;
+      this.after(rand(10, 35), () => {
+        if (cg.done || !this.hunters.size) return;
+        const b = new Bull(this, { minTier: chance(0.8) ? minTier : undefined, focus: this.nearestHunter(c.x, c.z).h }); this.bulls.push(b);
+        const e = nearestEdge(this, c.x, c.z), h = off(e, rand(50, 110)); b.edge = e; b.home = h; b.a.place(h.x, h.z, Math.atan2(e.nz, -e.nx));   // from the timber nearest her
+        b.courtCow(cg, 'heard a cow bellow'); this.note(`a ${b.p.typeName} comes in to the bellowing cow`);
+      });
+    }
   }
   note(s) { if (this.log) { this.log.push(Math.round(this.time) + 's ' + s); if (this.log.length > 400) this.log.shift(); } }
   // ---- what gets sent ----
@@ -125,10 +149,10 @@ export class Sim {
   spawnList() { return [...this.bodies.values()].map(b => ({ id: b.id, kind: b.kind, vis: b.vis })); }
   debugText() {
     const L = []; L.push(`t ${this.time.toFixed(0)}s · hunters ${this.hunters.size} · wind ${this.wind.from.toFixed(0)}° ${this.wind.speed.toFixed(1)} m/s${this.wind.swirl > 0.1 ? ' (swirling)' : ''}`);
-    for (const b of this.bulls) L.push(`bull #${b.id} ${b.p.cls.k}, ${b.p.style}, ${b.p.spreadIn}" ${b.p.points}pt — ${b.state} · ${Math.round(b.d())} m from ${b.hunter() ? b.hunter().name : '—'} · interest ${b.interest.toFixed(2)} susp ${b.susp.toFixed(2)}`);
+    for (const b of this.bulls) L.push(`bull #${b.id} ${b.p.typeName} [${b.p.cls.k}, ${b.p.coat.name}], ${b.p.style}, ${b.p.spreadIn}" ${b.p.points}pt — ${b.state} · ${Math.round(b.d())} m from ${b.hunter() ? b.hunter().name : '—'} · interest ${b.interest.toFixed(2)} susp ${b.susp.toFixed(2)}`);
     if (!this.bulls.length) L.push(`next bull in ${Math.max(0, this.nextBull).toFixed(0)}s`);
-    for (const c of this.cows) L.push(`cow #${c.cow.id} +${c.calves.length} calf — ${c.state} · ${Math.round(c.cow.dist())} m`);
-    for (const e of this.wild) L.push(`${e.kind} — ${e.state}`);
+    for (const c of this.cows) L.push(`cow #${c.cow.id} ${c.type.name} (${c.cow.vis.coat.name}) +${c.calves.length} calf — ${c.state} · ${Math.round(c.cow.dist())} m${c.suitors.length ? ' · bulls ' + c.suitors.map((b) => '#' + b.id).join(',') : ''}${c.annoy > 0.05 ? ' · annoyed ' + c.annoy.toFixed(2) : ''}`);
+    for (const e of this.wild) L.push(`${e.label()} — ${e.state}`);
     return L.join('\n');
   }
   // ---- test scenes and the showcase (q(name) reads a URL parameter) ----
@@ -144,11 +168,11 @@ export class Sim {
     } else if (name === 'bull') {
       clear(); const b = new Bull(this, { focus: H }); this.bulls = [b]; b.a.place(H.x + num('dx', 15), H.z - num('dist', 140), num('h', 2.6)); b.hold(1e9); b.dispT = 1e9; b.a.look = H;
     } else if (name === 'wild') {
-      clear(); this.frozen = true; const kinds = (q('kinds') || 'bear,wolf,coyote,raccoon').split(',');
+      clear(); this.frozen = true; const kinds = (q('kinds') || 'bear,wolf,coyote,raccoon,rabbit,porcupine').split(',');
       kinds.forEach((k, i) => { const c = critter(this, k); c.place(H.x - 9 + i * 6, H.z - num('dist', 30), num('h', 0)); if (q('walk') != null) c.goTo(c.x + 60, c.z, q('walk') === 'trot' ? 'trot' : 'walk'); else if (q('forage') != null) c.forageOn = true; });
     } else if (name === 'antlers') {
       clear(); this.frozen = true; const z = H.z - num('dist', 40);
-      for (let c = 0; c < 5; c++) { const b = new Bull(this, { cls: c, focus: H }); b.a.place(H.x - 12 + c * 6, z, num('h', -1.2)); b.hold(1e9); b.dispT = 1e9; b.a.look = null; this.bulls.push(b); }
+      for (let c = 0; c < BULL_TIERS.length; c++) { const b = new Bull(this, { tier: c, focus: H }); b.a.place(H.x - 18 + c * 6, z, num('h', -1.2)); b.hold(1e9); b.dispT = 1e9; b.a.look = null; this.bulls.push(b); }
     } else if (name === 'lineup') {
       clear(); this.frozen = true; const z = H.z - num('dist', 45), h = num('h', 0);
       const b = new Bull(this, { focus: H }); b.a.place(H.x - 7, z, h); b.hold(1e9); b.dispT = 1e9; this.bulls = [b];
@@ -160,6 +184,28 @@ export class Sim {
       A_.a.place(H.x - 6, H.z - 80, 0); B_.a.place(H.x + 6, H.z - 80, PI);
       for (const b of [A_, B_]) { b.everSeen = true; b.hold(1e9); }
       A_.rival = B_; B_.rival = A_; A_.setState('posture'); B_.setState('posture'); A_.postureEnd = B_.postureEnd = this.time + 1;
+    } else if (name === 'catalog') {   // every bull type, row by row (frozen): ?scenario=catalog&tier=6
+      clear(); this.frozen = true; const z0 = H.z - num('dist', 45); const only = q('tier');
+      const list = BULL_TYPES.filter((t) => only == null || t.tier === +only);
+      list.forEach((t, i) => { const b = new Bull(this, { type: t.id, focus: H }); b.a.place(H.x - 15 + (i % 6) * 6, z0 - Math.floor(i / 6) * 9, num('h', -1.2)); b.hold(1e9); b.dispT = 1e9; b.a.look = null; this.bulls.push(b); });
+    } else if (name === 'zoo') {   // every coat of every other species, frozen in rows
+      clear(); this.frozen = true; let row = 0;
+      for (const k in SPECIES) { SPECIES[k].coats.forEach((co, i) => { const c = critter(this, k, { coat: co.id }); c.place(H.x - 8 + i * 4.5, H.z - num('dist', 28) - row * 5, num('h', 0)); }); row++; }
+    } else if (name === 'court') {   // a young bull pesters a lone cow: she bellows, a big bull comes in
+      clear(); const cg = new CowGroup(this, true, { type: 'young-cow', calves: 0 }); this.cows = [cg]; cg.placeAt(H.x + 10, H.z - 250, 0); cg.setState('graze', 30);
+      const b = new Bull(this, { tier: num('tier', 0), focus: H }); this.bulls = [b]; b.a.place(H.x - 20, H.z - 300, 0); b.everSeen = true; b.courtCow(cg, 'test');
+    } else if (name === 'calfcow') {   // a cow with a calf and a bull: she keeps him at a distance
+      clear(); const cg = new CowGroup(this, true, { type: 'prime-cow', calves: 1 }); this.cows = [cg]; cg.placeAt(H.x, H.z - 150, 0); cg.setState('graze', 30);
+      const b = new Bull(this, { tier: num('tier', 4), focus: H }); this.bulls = [b]; b.a.place(H.x - 30, H.z - 230, 0); b.everSeen = true; b.courtCow(cg, 'test');
+    } else if (name === 'wolves') {   // wolves come across a cow and calf and a big bull
+      clear(); const cg = new CowGroup(this, true, { type: 'prime-cow', calves: 1 }); this.cows = [cg]; cg.placeAt(H.x + 40, H.z - 160, 0); cg.setState('graze', 60);
+      const b = new Bull(this, { tier: num('tier', 5), focus: H }); this.bulls = [b]; b.a.place(H.x - 120, H.z - 200, 0); b.everSeen = true; b.hold(1e9); b.p.traits.rut = 0;
+      const atBull = q('target') === 'bull', P = atBull ? b.a : cg.cow;   // ?target=bull: the wolves test the bull instead
+      const w = new WildEvent(this, q('kind') || 'wolf', { at: { x: P.x + 40, z: P.z - 170 }, n: 3 }); this.wild = [w];
+      w.prey = P; w.rule = { act: 'test', keep: [30, 50] }; w.chaseT = 15; w.testT = 40; w.retT = 0; w.setState('test');
+    } else if (name === 'hare') {   // a coyote and a hare
+      clear(); const r = new WildEvent(this, 'rabbit', { at: { x: H.x + 20, z: H.z - 90 } }); const c = new WildEvent(this, 'coyote', { at: { x: H.x - 40, z: H.z - 160 }, n: 1 }); this.wild = [r, c];
+      c.prey = r.lead; c.rule = { act: 'hunt' }; c.chaseT = 8; c.retT = 0; c.setState('stalk');
     } else if (name === 'cows') {
       if (!this.cows.length) this.cows.push(new CowGroup(this, true));
       const c = this.cows[0]; while (c.calves.length < 1) { const k = c.addCalf(0.6); k.offA = 2.5; k.offD = 4; k.playT = 99; }

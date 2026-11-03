@@ -2,8 +2,10 @@
 import * as THREE from 'three';
 import { hexLin, mix3, noise2, smoothstep } from '../../../shared/util.js';
 import { mooseField, sdPrim } from './moose.js';
+import { CRITTER_SPEC } from '../../../shared/sim/body.js';
 
-/* ================= other wildlife: bear, wolves, coyotes, raccoon (sculpted + skinned like the moose) ================= */
+/* ===== other wildlife: bear, wolves, coyotes, raccoon, snowshoe hare, porcupine (sculpted + skinned like the moose) =====
+   Each species is sculpted once; each coat (SPECIES[kind].coats in shared/sim/catalog.js) is a colouring of it. */
 const CR_BONES = ['body', 'neck', 'head', 'tail', 'fhL', 'fkL', 'fhR', 'fkR', 'hhL', 'hkL', 'hhR', 'hkR'];
 const CR_FUR = {
   body: 0.05,
@@ -17,8 +19,10 @@ const CR_FUR = {
   tail: 0.06,
   mask: 0.015,
   ruff: 0.07,
+  earTip: 0.004,
+  quill: 0.075,
 };
-function critterRig(kind) {
+function critterRig(kind, coat) {
   const P = [];
   const E = (tag, bone, c, r, k, ang, sym) => P.push({ t: 'e', tag, bone, c, r, k, a: ang || 0, sym: !!sym });
   const Cp = (tag, bone, p0, p1, r0, r1, k, sym) => P.push({ t: 'c', tag, bone, p0, p1, r0, r1, k, sym: !!sym });
@@ -117,6 +121,44 @@ function critterRig(kind) {
             ruff: '#9a8466',
           };
     bounds = [-0.95, 1.0, -0.02, 1.1, -0.3, 0.3];
+  } else if (kind === 'rabbit') {
+    // snowshoe hare: compact, long upright ears, short front legs, big hind feet
+    J = { neck: [0.12, 0.2, 0], head: [0.17, 0.24, 0], tail: [-0.16, 0.16, 0], fh: [0.1, 0.13, 0.04], fk: [0.11, 0.06, 0.04], hh: [-0.1, 0.16, 0.06], hk: [-0.08, 0.06, 0.06] };
+    E('body', 'body', [-0.02, 0.16, 0], [0.17, 0.1, 0.085], 0.05);
+    E('body', 'body', [-0.09, 0.14, 0.05], [0.08, 0.09, 0.05], 0.04, 0, true);
+    E('body', 'body', [0.08, 0.16, 0], [0.08, 0.08, 0.07], 0.04);
+    Cp('neck', 'neck', [0.1, 0.18, 0], [0.17, 0.23, 0], 0.055, 0.045, 0.03);
+    E('head', 'head', [0.19, 0.245, 0], [0.055, 0.045, 0.042], 0.025);
+    Cp('muzzle', 'head', [0.21, 0.24, 0], [0.25, 0.225, 0], 0.03, 0.018, 0.02);
+    Cp('ear', 'head', [0.17, 0.27, 0.022], [0.13, 0.37, 0.032], 0.018, 0.012, 0.012, true);
+    E('earTip', 'head', [0.128, 0.372, 0.032], [0.012, 0.014, 0.008], 0.008, 0, true);
+    E('tail', 'tail', [-0.19, 0.17, 0], [0.03, 0.03, 0.03], 0.02);
+    Cp('leg', 'fh', [0.1, 0.13, 0.04], [0.11, 0.06, 0.04], 0.022, 0.016, 0.012, true);
+    Cp('legLo', 'fk', [0.11, 0.06, 0.04], [0.12, 0.012, 0.04], 0.014, 0.012, 0.008, true);
+    Cp('leg', 'hh', [-0.1, 0.16, 0.06], [-0.07, 0.07, 0.06], 0.05, 0.03, 0.02, true);
+    Cp('legLo', 'hk', [-0.07, 0.07, 0.06], [-0.11, 0.016, 0.06], 0.02, 0.016, 0.01, true);
+    E('paw', 'hk', [-0.03, 0.012, 0.06], [0.07, 0.012, 0.022], 0.01, 0, true);
+    pal = { body: '#6a5640', belly: '#a89a86', head: '#6e5a44', muzzle: '#8a7864', ear: '#5a4836', earTip: '#1e1a16', leg: '#8a7a66', legLo: '#c8c0b2', paw: '#d8d2c6', tail: '#c8c0b2' };
+    bounds = [-0.28, 0.32, -0.02, 0.42, -0.14, 0.14];
+  } else if (kind === 'porcupine') {
+    // porcupine: low and humped, a coat of quills over the back and tail, short thick legs
+    J = { neck: [0.16, 0.2, 0], head: [0.22, 0.17, 0], tail: [-0.26, 0.17, 0], fh: [0.12, 0.13, 0.08], fk: [0.13, 0.06, 0.08], hh: [-0.14, 0.14, 0.08], hk: [-0.14, 0.06, 0.08] };
+    E('body', 'body', [-0.02, 0.19, 0], [0.24, 0.14, 0.15], 0.08);
+    E('quill', 'body', [-0.04, 0.25, 0], [0.22, 0.12, 0.15], 0.06);
+    E('quill', 'body', [-0.15, 0.22, 0], [0.12, 0.11, 0.12], 0.05);
+    Cp('neck', 'neck', [0.12, 0.2, 0], [0.22, 0.17, 0], 0.08, 0.06, 0.04);
+    E('head', 'head', [0.24, 0.16, 0], [0.07, 0.06, 0.06], 0.03);
+    Cp('muzzle', 'head', [0.27, 0.15, 0], [0.32, 0.13, 0], 0.035, 0.025, 0.02);
+    E('ear', 'head', [0.22, 0.21, 0.045], [0.012, 0.012, 0.008], 0.01, 0, true);
+    Cp('tail', 'tail', [-0.24, 0.17, 0], [-0.36, 0.1, 0], 0.06, 0.04, 0.03);
+    Cp('leg', 'fh', [0.12, 0.13, 0.08], [0.13, 0.06, 0.08], 0.035, 0.028, 0.015, true);
+    Cp('legLo', 'fk', [0.13, 0.06, 0.08], [0.14, 0.012, 0.08], 0.025, 0.022, 0.01, true);
+    E('paw', 'fk', [0.16, 0.012, 0.08], [0.035, 0.012, 0.025], 0.01, 0, true);
+    Cp('leg', 'hh', [-0.14, 0.14, 0.08], [-0.14, 0.06, 0.08], 0.04, 0.03, 0.015, true);
+    Cp('legLo', 'hk', [-0.14, 0.06, 0.08], [-0.13, 0.012, 0.08], 0.026, 0.022, 0.01, true);
+    E('paw', 'hk', [-0.11, 0.012, 0.08], [0.04, 0.012, 0.028], 0.01, 0, true);
+    pal = { body: '#2a231c', belly: '#1e1914', head: '#262019', muzzle: '#151210', ear: '#1e1914', leg: '#161310', legLo: '#121010', paw: '#0e0c0a', tail: '#2a231c', quill: '#8a8070' };
+    bounds = [-0.45, 0.4, -0.02, 0.42, -0.26, 0.26];
   } else {
     // raccoon: hunched, short-legged, black mask, ringed tail
     J = {
@@ -171,11 +213,12 @@ function critterRig(kind) {
     p.hi = hi.map((v) => v + k);
     if (p.sym) p.lo[2] = -p.hi[2];
   }
-  return { J, P, pal, bounds, h: kind === 'raccoon' ? 0.012 : kind === 'bear' ? 0.02 : 0.016 };
+  if (coat && coat.c) pal = { ...pal, ...coat.c };   // the host chose this animal's coat (catalog.js)
+  return { J, P, pal, bounds, h: kind === 'rabbit' ? 0.007 : kind === 'raccoon' || kind === 'porcupine' ? 0.011 : kind === 'bear' ? 0.02 : 0.016 };
 }
 const CRITTER_KINDS = {};
-function buildCritterKind(kind) {
-  const R = critterRig(kind),
+function buildCritterKind(kind, coat) {
+  const R = critterRig(kind, coat),
     P = R.P,
     h = R.h,
     [x0, x1, y0, y1, z0, z1] = R.bounds;
@@ -342,6 +385,7 @@ function buildCritterKind(kind) {
       const ring = Math.sin((x + 0.29) * 55) > 0.2;
       c = ring ? pal.mask : pal.tail;
     }
+    if (bt === 'quill') c = mix3(pal.body, pal.quill, smoothstep(0.1, 0.7, 0.5 + noise2(x * 70 + z * 31, y * 70 - z * 23)) * smoothstep(-0.2, 0.5, ny_));
     const nz_ = 0.9 + 0.2 * (0.5 + noise2(x * 9.1 + z * 4.3 + 3, y * 9.1 - z * 6.2));
     col[v * 3] = c[0] * nz_;
     col[v * 3 + 1] = c[1] * nz_;
@@ -358,15 +402,10 @@ function buildCritterKind(kind) {
   g.computeBoundingSphere();
   return { J: R.J, geo: g, verts: nv };
 }
-function getCritterKind(k) {
-  return CRITTER_KINDS[k] || (CRITTER_KINDS[k] = buildCritterKind(k));
+// one sculpt per species and coat, built the first time it is needed
+function getCritterKind(k, coat) {
+  const key = k + '|' + (coat && coat.id ? coat.id : 'base');
+  return CRITTER_KINDS[key] || (CRITTER_KINDS[key] = buildCritterKind(k, coat));
 }
 const CRITTERS = [];
-const CRITTER_SPEC = {
-  bear: { walk: 0.9, trot: 2.2, run: 8, stride: 1.1, scale: [0.95, 1.15], forage: true },
-  wolf: { walk: 1.3, trot: 3.2, run: 9, stride: 1.0, scale: [0.95, 1.08] },
-  coyote: { walk: 1.2, trot: 3.0, run: 8.5, stride: 0.85, scale: [0.72, 0.8] },
-  raccoon: { walk: 0.55, trot: 1.5, run: 3.5, stride: 0.32, scale: [0.95, 1.1], forage: true },
-};
-
 export { CRITTERS, CRITTER_KINDS, CRITTER_SPEC, CR_BONES, CR_FUR, buildCritterKind, critterRig, getCritterKind };

@@ -3,8 +3,9 @@
 // animal from the snapshot the host sends (x, z, heading, speed, gait, flags, where it is looking).
 import { clamp, wrapA } from '../util.js';
 import { outDist } from '../world.js';
+import { SPECIES } from './catalog.js';
 
-export const FLAG = { graze: 1, bed: 2, sway: 4, fight: 8, alert: 16, thrash: 32, forage: 64 };
+export const FLAG = { graze: 1, bed: 2, sway: 4, fight: 8, alert: 16, thrash: 32, forage: 64, quills: 128 };
 export const MODES = ['walk', 'trot', 'run'];
 
 export class Body {
@@ -52,19 +53,15 @@ export class Body {
   }
   flags() {
     return (this.grazeOn ? FLAG.graze : 0) | (this.bedOn ? FLAG.bed : 0) | (this.swayOn ? FLAG.sway : 0) | (this.fightOn ? FLAG.fight : 0) |
-      (this.alertT > 0 ? FLAG.alert : 0) | (this.thrashT > 0 ? FLAG.thrash : 0) | (this.forageOn ? FLAG.forage : 0);
+      (this.alertT > 0 ? FLAG.alert : 0) | (this.thrashT > 0 ? FLAG.thrash : 0) | (this.forageOn ? FLAG.forage : 0) | (this.quillsOn ? FLAG.quills : 0);
   }
   visible() { return outDist(this.x, this.z) < 230; }
   remove() { if (this.removed) return; this.removed = true; this.sim.removeBody(this); }
 }
 
-// Bears, wolves, coyotes and raccoons move a little differently (quicker turns, harder starts).
-export const CRITTER_SPEC = {
-  bear: { walk: 0.9, trot: 2.2, run: 8, stride: 1.1, scale: [0.95, 1.15], forage: true },
-  wolf: { walk: 1.3, trot: 3.2, run: 9, stride: 1.0, scale: [0.95, 1.08] },
-  coyote: { walk: 1.2, trot: 3.0, run: 8.5, stride: 0.85, scale: [0.72, 0.8] },
-  raccoon: { walk: 0.55, trot: 1.5, run: 3.5, stride: 0.32, scale: [0.95, 1.1], forage: true },
-};
+// Bears, wolves, coyotes, raccoons, hares and porcupines move a little differently (quicker turns, harder starts).
+// Speeds and strides come from SPECIES[kind].move in catalog.js.
+export const CRITTER_SPEC = Object.fromEntries(Object.entries(SPECIES).map(([k, S]) => [k, { ...S.move, forage: !!S.forage }]));
 export class CritterBody extends Body {
   constructor(sim, kind, vis) { super(sim, kind, vis); this.sp = CRITTER_SPEC[kind]; this.forage = 0; this.forageOn = false; }
   update(dt) {
@@ -72,10 +69,11 @@ export class CritterBody extends Body {
     if (this.target) {
       const dx = this.target.x - this.x, dz = this.target.z - this.z, d = Math.hypot(dx, dz);
       if (d < 1) { this.target = null; this.arrived = true; }
-      else { const des = Math.atan2(-dz, dx), diff = wrapA(des - this.h); this.h += clamp(diff, -1.4 * dt, 1.4 * dt); ts = (this.mode === 'run' ? sp.run : this.mode === 'trot' ? sp.trot : sp.walk) * clamp(Math.cos(diff) * 1.2, 0.2, 1); }
+      else { const des = Math.atan2(-dz, dx), diff = wrapA(des - this.h), tr = (sp.turn || 1.4) * (this.mode === 'run' ? 1.2 : 1) * dt; this.h += clamp(diff, -tr, tr); ts = (this.mode === 'run' ? sp.run : this.mode === 'trot' ? sp.trot : sp.walk) * clamp(Math.cos(diff) * 1.2, 0.2, 1); }
     }
     this.speed += clamp(ts - this.speed, -4 * dt, (this.mode === 'run' ? 5 : 1.5) * dt); if (this.speed < 0.01) this.speed = 0;
     this.x += Math.cos(this.h) * this.speed * dt; this.z -= Math.sin(this.h) * this.speed * dt;
     this.forage += ((this.forageOn && this.speed < 0.3 ? 1 : 0) - this.forage) * Math.min(1, dt * 1.5);
+    this.alertT -= dt;
   }
 }

@@ -10,7 +10,7 @@
     "preview": "vite preview",
     "server": "node server/server.js",
     "bench": "node tools/bench-marshes.mjs",
-    "check": "node tools/check-shared.js",
+    "check": "node tools/check-shared.js && node tools/check-animals.js",
     "check:sounds": "node tools/check-sounds.js",
     "test:mp": "node tools/mp-test.mjs"
   },

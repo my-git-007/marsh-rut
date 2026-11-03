@@ -490,44 +490,55 @@ function buildMooseKind(kind) {
   const variants = [],
     pals = [];
   for (const pd of MOOSE_PALS[kind]) {
-    const pl = {};
-    for (const k in pd) pl[k] = hexLin(pd[k]);
-    pals.push(pl);
-    const col = new Float32Array(nv * 3);
-    for (let v = 0; v < nv; v++) {
-      const x = pos[v * 3],
-        y = pos[v * 3 + 1],
-        z = pos[v * 3 + 2],
-        ny_ = nor[v * 3 + 1],
-        t = tagOf[v];
-      let c;
-      if (t === 'torso' || t === 'hump' || t === 'tail') {
-        c = mix3(pl.body, pl.back, smoothstep(0.25, 0.85, ny_) * smoothstep(1.55, 1.85, y));
-        c = mix3(c, pl.belly, smoothstep(-0.3, -0.8, ny_));
-      } else if (t === 'neck') c = mix3(pl.body, pl.belly, smoothstep(-0.2, -0.8, ny_));
-      else if (t === 'mane' || t === 'bell') c = pl.mane;
-      else if (t === 'head') c = mix3(pl.head, pl.belly, smoothstep(-0.3, -0.9, ny_) * 0.4);
-      else if (t === 'muzzle') c = pl.muzzle;
-      else if (t === 'jaw') c = mix3(pl.muzzle, pl.belly, 0.4);
-      else if (t === 'legUp') c = pl.legUp;
-      else if (t === 'legMid') {
-        const fr = x > 0;
-        c = mix3(pl.legUp, pl.leg, smoothstep(fr ? 0.85 : 0.95, fr ? 0.6 : 0.72, y / (kind === 'calf' ? 1.22 : 1)));
-      } else if (t === 'legLo') c = pl.leg;
-      else c = pl.hoof;
-      const nz_ = 0.9 + 0.2 * (0.5 + noise2(x * 7.1 + z * 3.3 + 11, y * 7.1 - z * 5.2));
-      col[v * 3] = c[0] * nz_;
-      col[v * 3 + 1] = c[1] * nz_;
-      col[v * 3 + 2] = c[2] * nz_;
-    }
-    const g = new THREE.BufferGeometry();
-    for (const k of ['position', 'normal', 'skinIndex', 'skinWeight', 'aFur']) g.setAttribute(k, base.getAttribute(k));
-    g.setIndex(base.getIndex());
-    g.setAttribute('color', new THREE.BufferAttribute(col, 3));
-    g.computeBoundingSphere();
-    variants.push(g);
+    const v = coatVariant(base, kind, pd, pos, nor, tagOf);
+    variants.push(v.geo);
+    pals.push(v.pal);
   }
-  return { J: R.J, Hl: R.Hl, nose: R.nose, variants, pals, verts: nv, pos, nor, tagOf };
+  return { J: R.J, Hl: R.Hl, nose: R.nose, variants, pals, verts: nv, pos, nor, tagOf, base, byCoat: {} };
+}
+// paint one coat (hex colours by part: body back belly legUp leg hoof head muzzle mane) onto the shared shape
+function coatVariant(base, kind, pd, pos, nor, tagOf) {
+  const nv = pos.length / 3;
+  const pl = {};
+  for (const k in pd) pl[k] = hexLin(pd[k]);
+  const col = new Float32Array(nv * 3);
+  for (let v = 0; v < nv; v++) {
+    const x = pos[v * 3],
+      y = pos[v * 3 + 1],
+      z = pos[v * 3 + 2],
+      ny_ = nor[v * 3 + 1],
+      t = tagOf[v];
+    let c;
+    if (t === 'torso' || t === 'hump' || t === 'tail') {
+      c = mix3(pl.body, pl.back, smoothstep(0.25, 0.85, ny_) * smoothstep(1.55, 1.85, y));
+      c = mix3(c, pl.belly, smoothstep(-0.3, -0.8, ny_));
+    } else if (t === 'neck') c = mix3(pl.body, pl.belly, smoothstep(-0.2, -0.8, ny_));
+    else if (t === 'mane' || t === 'bell') c = pl.mane;
+    else if (t === 'head') c = mix3(pl.head, pl.belly, smoothstep(-0.3, -0.9, ny_) * 0.4);
+    else if (t === 'muzzle') c = pl.muzzle;
+    else if (t === 'jaw') c = mix3(pl.muzzle, pl.belly, 0.4);
+    else if (t === 'legUp') c = pl.legUp;
+    else if (t === 'legMid') {
+      const fr = x > 0;
+      c = mix3(pl.legUp, pl.leg, smoothstep(fr ? 0.85 : 0.95, fr ? 0.6 : 0.72, y / (kind === 'calf' ? 1.22 : 1)));
+    } else if (t === 'legLo') c = pl.leg;
+    else c = pl.hoof;
+    const nz_ = 0.9 + 0.2 * (0.5 + noise2(x * 7.1 + z * 3.3 + 11, y * 7.1 - z * 5.2));
+    col[v * 3] = c[0] * nz_;
+    col[v * 3 + 1] = c[1] * nz_;
+    col[v * 3 + 2] = c[2] * nz_;
+  }
+  const g = new THREE.BufferGeometry();
+  for (const k of ['position', 'normal', 'skinIndex', 'skinWeight', 'aFur']) g.setAttribute(k, base.getAttribute(k));
+  g.setIndex(base.getIndex());
+  g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  g.computeBoundingSphere();
+  g.userData.shared = true;
+  return { geo: g, pal: pl };
+}
+// a coat from the animal catalogue (vis.coat = { id, c: { part: '#hex' } }), painted once per coat and kept
+function coatGeo(K, kind, coat) {
+  return K.byCoat[coat.id] || (K.byCoat[coat.id] = coatVariant(K.base, kind, coat.c, K.pos, K.nor, K.tagOf));
 }
 function getMooseKind(kind) {
   return MOOSE_KINDS[kind] || (MOOSE_KINDS[kind] = buildMooseKind(kind));
@@ -568,8 +579,9 @@ function buildMoose2(o) {
   mooseMats();
   const vi = o.variant != null ? o.variant % K.variants.length : randi(0, K.variants.length - 1);
   let geo = K.variants[vi],
-    baseMat = MOOSE_BASE_MAT;
-  const pal = K.pals[vi];
+    baseMat = MOOSE_BASE_MAT,
+    pal = K.pals[vi];
+  if (o.coat && o.coat.c) ({ geo, pal } = coatGeo(K, o.kind, o.coat));   // the host chose this animal's coat (catalog.js)
   const J = K.J;
   if (o.refBull && REF_GEO) {
     geo = REF_GEO;

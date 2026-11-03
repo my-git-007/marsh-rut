@@ -49,10 +49,12 @@ shared/            runs in the browser and on the server; no graphics or sound
   sim/               the animals' behaviour
     sim.js             the host: hunters, timers, spawning, calls and pours, snapshots, test scenes
     bull.js            a bull's state machine (distant → coming → timber → step out → hold → approach …)
-    cows.js            a cow and her calves
-    wildlife.js        bear, wolves, coyotes, raccoon
+    catalog.js         THE ANIMAL CATALOGUE: every species and type, sizes, coats, personalities, spawn rates, reactions
+    ecology.js         how animals notice each other (twice a second, using catalog.js REACT / PREY)
+    cows.js            a cow and her calves (calves play and explore; cows keep bulls off, bellow, defend calves)
+    wildlife.js        bear, wolves, coyotes, raccoon, snowshoe hare, porcupine (routines, hunting, escapes)
     body.js            movement and posture flags
-    bullparams.js      a bull's class, antlers, temperament and coat
+    bullparams.js      rolls a bull from the catalogue: tier, type, antlers, temperament, coat
 server/server.js   one private marsh per logged-in player, over WebSockets
 server/auth.js     checks the player's Firebase login token
 server/mail.js     account emails (confirm, reset) with links to the game's own pages, sent through Resend
@@ -80,6 +82,20 @@ client/            the browser game (Vite)
     calls.js           your calls and the water pour
 tools/             checks and one-off tools (split-client.mjs cut the original single file into these modules)
 ```
+
+**The animal engine.** Everything you might want to tune lives in `shared/sim/catalog.js`, as data:
+- 35 bull types in 7 size tiers (small 4, medium-small 4, medium 6, medium-large 6, large 6, very large 6,
+  extremely large 3), each with its own antler form, coat, build and personality nudges; plus 6 cow types,
+  3 calf types, and sizes × coats for bears, wolves, coyotes, raccoons, snowshoe hares and porcupines;
+- personality traits (bold, wary, curious, playful, aggressive, persistent, restless, lazy, rut) rolled per animal;
+- how often each species turns up (SPAWN, SPECIES[kind].spawn), and how it moves (SPECIES[kind].move);
+- how each animal reacts to each other one (REACT: watch, avoid, flee, stand, defend, freeze, quills…) and what
+  predators go after (PREY), with distances that stretch or shrink with the animal's personality.
+Every species, coat and bull type has an id, so real 3D models can later be matched to them; until then the
+browser sculpts each one. `npm run check` runs `tools/check-animals.js`, which plays out each behaviour many
+times (courtship and bellows, rivals, a cow keeping a bull off her calf, wolves, coyote and hare, porcupine) and
+fails if any stops happening. Test scenes: `hunting/?test=catalog&tier=6`, `?test=zoo`, `?test=court`,
+`?test=calfcow`, `?test=wolves&target=bull`, `?test=hare` (add `&debug` for the live state).
 
 **The host decides and the browser draws.** Whoever hosts the marsh runs `shared/sim`: the server when online,
 or the tab itself offline. A simulation can hold up to eight hunters (one per stand), which leaves room for hunting

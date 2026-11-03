@@ -20,4 +20,4 @@ console.log('events:', JSON.stringify(counts));
 console.log('max animals at once:', maxBodies, '· mean snapshot', Math.round(snapBytes / snaps), 'bytes');
 console.log('bull log (last 25):\n  ' + sim.log.slice(-25).join('\n  '));
 console.log('\n' + sim.debugText());
-for (const sc of ['showcase', 'bull', 'wild', 'antlers', 'lineup', 'fight', 'cows']) { const s = new Sim(); s.addHunter('x'); s.scenario(sc, () => null); for (let i = 0; i < 200; i++) s.update(0.05); s.takeEvents(); console.log('scenario', sc, 'ok,', s.bodies.size, 'animals'); }
+for (const sc of ['showcase', 'bull', 'wild', 'antlers', 'lineup', 'fight', 'cows', 'catalog', 'zoo', 'court', 'calfcow', 'wolves', 'hare']) { const s = new Sim(); s.addHunter('x'); s.scenario(sc, () => null); for (let i = 0; i < 200; i++) s.update(0.05); s.takeEvents(); console.log('scenario', sc, 'ok,', s.bodies.size, 'animals'); }

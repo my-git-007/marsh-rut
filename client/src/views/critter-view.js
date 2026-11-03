@@ -1,6 +1,7 @@
-// How a bear, wolf, coyote or raccoon looks and moves on screen (the host decides where it goes).
+// How a bear, wolf, coyote, raccoon, hare or porcupine looks and moves on screen (the host decides where it goes).
+// Its coat and size come from the host (vis.coat, vis.scale: rolled from shared/sim/catalog.js).
 import * as THREE from 'three';
-import { PI, TAU, clamp, rand, withSeed } from '../../../shared/util.js';
+import { PI, TAU, clamp, rand, wrapA, withSeed } from '../../../shared/util.js';
 import { WATER_Y, groundAt, marshE, outDist } from '../../../shared/world.js';
 import { FLAG } from '../../../shared/sim/body.js';
 import { camera, scene } from '../render/core.js';
@@ -12,7 +13,7 @@ import { G, PLAYER } from '../state.js';
 export class CritterView {
   constructor(id, vis) {
     this.id = id; this.kind = vis.kind; this.vis = vis; const kind = vis.kind; this.sp = CRITTER_SPEC[kind];
-    const K = getCritterKind(kind); mooseMats(); const J = K.J;
+    const K = getCritterKind(kind, vis.coat); mooseMats(); const J = K.J;
     const root = new THREE.Group(), b = {};
     const mk = (name, abs, parent, pabs) => { const bone = new THREE.Bone(); bone.position.set(abs[0] - (pabs ? pabs[0] : 0), abs[1] - (pabs ? pabs[1] : 0), abs[2] - (pabs ? pabs[2] : 0)); if (parent) parent.add(bone); b[name] = bone; };
     mk('body', [0, 0, 0]); mk('neck', J.neck, b.body, [0, 0, 0]); mk('head', J.head, b.neck, J.neck); mk('tail', J.tail, b.body, [0, 0, 0]);
@@ -23,17 +24,18 @@ export class CritterView {
     const mesh = new THREE.SkinnedMesh(K.geo, MOOSE_BASE_MAT); mesh.add(b.body); root.add(mesh); root.updateMatrixWorld(true);
     const skel = new THREE.Skeleton(CR_BONES.map((n) => b[n])); mesh.bind(skel); mesh.castShadow = true; mesh.frustumCulled = false;
     const shells = [];
-    if (kind !== 'raccoon') for (const m of SHELL_MATS.filter((_, i) => i % 2 === 1)) { const s = new THREE.SkinnedMesh(K.geo, m); s.bind(skel, mesh.bindMatrix); s.frustumCulled = false; root.add(s); shells.push(s); }
+    if (kind !== 'raccoon' && kind !== 'rabbit') for (const m of SHELL_MATS.filter((_, i) => i % 2 === 1)) { const s = new THREE.SkinnedMesh(K.geo, m); s.bind(skel, mesh.bindMatrix); s.frustumCulled = false; root.add(s); shells.push(s); }
     this.scale = vis.scale; root.scale.setScalar(this.scale); root.visible = false; scene.add(root);
     this.M = { root, b, shells, legs: [{ hip: b.fhL, knee: b.fkL, front: true, off: 0.25 }, { hip: b.fhR, knee: b.fkR, front: true, off: 0.75 }, { hip: b.hhL, knee: b.hkL, front: false, off: 0 }, { hip: b.hhR, knee: b.hkR, front: false, off: 0.5 }] };
     withSeed(vis.seed >>> 0, () => { this.phase = rand(0, 1); this.time = rand(0, 50); });
     this.x = 0; this.z = 0; this.h = 0; this.speed = 0; this.mode = 'walk'; this.forage = 0; this.forageOn = false; this.placed = false;
+    this.al = 0; this.qu = 0; this.look = null; this.alertOn = false; this.quillsOn = false; this.nY = 0;
     CRITTERS.push(this);
   }
   dist() { return Math.hypot(this.x - PLAYER.x, this.z - PLAYER.z); }
   update(dt, st) {
     if (st) {
-      this.x = st.x; this.z = st.z; this.h = st.h; this.speed = st.speed; this.mode = st.mode; this.forageOn = !!(st.flags & FLAG.forage);
+      this.x = st.x; this.z = st.z; this.h = st.h; this.speed = st.speed; this.mode = st.mode; this.forageOn = !!(st.flags & FLAG.forage); this.alertOn = !!(st.flags & FLAG.alert); this.quillsOn = !!(st.flags & FLAG.quills); this.look = st.look;
       if (!this.placed) { this.placed = true; this.trailX = this.x; this.trailZ = this.z; }
     }
     if (!this.placed) return;
@@ -42,22 +44,29 @@ export class CritterView {
     const s = this.speed / this.scale, fast = s > sp.walk * 1.8; this.phase = (this.phase + (s * dt) / (sp.stride * (fast ? 1.7 : 1))) % 1;
     const amp = clamp(s / sp.walk, 0, 1); const A = fast ? 0.55 : 0.4, stp = fast ? 0.42 : 0.6;
     for (const L of M.legs) {
-      const p = (this.phase + (fast ? (L.front ? (L.off < 0.5 ? 0 : 0.5) : L.off < 0.25 ? 0.5 : 0) : L.off)) % 1; let up, lo;
+      const hop = this.kind === 'rabbit';
+      const p = (this.phase + (hop ? (L.front ? (L.off < 0.5 ? 0 : 0.06) : L.off < 0.25 ? 0.5 : 0.56) : fast ? (L.front ? (L.off < 0.5 ? 0 : 0.5) : L.off < 0.25 ? 0.5 : 0) : L.off)) % 1; let up, lo;
       if (p < stp) { const u = p / stp; up = A * (1 - 2 * u); lo = 0; } else { const u = (p - stp) / (1 - stp); up = A * (-1 + 2 * (0.5 - 0.5 * Math.cos(PI * u))); lo = Math.sin(PI * u); }
       L.hip.rotation.z = up * amp; L.knee.rotation.z = lo * amp * (L.front ? -1.1 : 0.9);
     }
-    M.b.body.position.y = -0.015 * amp * Math.cos(this.phase * TAU * 2) * this.scale; M.b.body.rotation.z = (this.kind === 'bear' ? 0.03 : 0.01) * amp * Math.sin(this.phase * TAU * 2);
+    if (this.kind === 'rabbit') { M.b.body.position.y = 0.06 * amp * Math.max(0, Math.sin(this.phase * TAU)); M.b.body.rotation.z = 0.18 * amp * Math.sin(this.phase * TAU + 0.6); }   // bounding
+    else { M.b.body.position.y = -0.015 * amp * Math.cos(this.phase * TAU * 2) * this.scale; M.b.body.rotation.z = (this.kind === 'bear' ? 0.03 : 0.01) * amp * Math.sin(this.phase * TAU * 2); }
+    M.b.body.rotation.x = this.kind === 'porcupine' ? 0.06 * amp * Math.sin(this.phase * TAU * 2) : 0;   // a porcupine's waddle
+    this.al += ((this.alertOn ? 1 : 0) - this.al) * Math.min(1, dt * 3); this.qu += ((this.quillsOn ? 1 : 0) - this.qu) * Math.min(1, dt * 2.5);
+    if (this.kind === 'porcupine') { const q = 1 + 0.14 * this.qu; M.b.body.scale.set(1 + 0.04 * this.qu, q, q); }   // quills up: it puffs out
     this.forage += ((this.forageOn && this.speed < 0.3 ? 1 : 0) - this.forage) * Math.min(1, dt * 1.5);
     const sniff = (this.kind === 'wolf' || this.kind === 'coyote') && this.speed > 0.3 && this.speed < 2 ? 0.25 : 0;
-    M.b.neck.rotation.z = -0.75 * this.forage - sniff + Math.sin(this.time * 3) * 0.06 * this.forage; M.b.head.rotation.z = -0.35 * this.forage + Math.sin(this.phase * TAU * 2) * 0.04 * amp;
-    M.b.neck.rotation.y = Math.sin(this.time * 0.7) * 0.25 * (1 - this.forage) * (this.speed < 0.2 ? 1 : 0.2);
-    M.b.tail.rotation.y = Math.sin(this.time * (this.kind === 'raccoon' ? 2 : 3)) * 0.15; M.b.tail.rotation.z = this.kind === 'bear' ? 0 : this.mode === 'run' ? 0.3 : -0.1;
+    let lookY = 0; if (this.look && this.al > 0.05) { const des = Math.atan2(-(this.look.z - this.z), this.look.x - this.x); lookY = clamp(wrapA(des - this.h), -1.2, 1.2) * 0.7 * this.al; }
+    this.nY += (lookY - this.nY) * Math.min(1, dt * 3);
+    M.b.neck.rotation.z = -0.75 * this.forage - sniff + Math.sin(this.time * 3) * 0.06 * this.forage + (this.kind === 'rabbit' ? 0.45 : 0.25) * this.al * (1 - this.forage) - (this.kind === 'porcupine' ? 0.3 * this.qu : 0); M.b.head.rotation.z = -0.35 * this.forage + Math.sin(this.phase * TAU * 2) * 0.04 * amp;
+    M.b.neck.rotation.y = Math.sin(this.time * 0.7) * 0.25 * (1 - this.forage) * (this.speed < 0.2 ? 1 : 0.2) * (1 - this.al) + this.nY;
+    M.b.tail.rotation.y = Math.sin(this.time * (this.kind === 'raccoon' ? 2 : 3)) * 0.15; M.b.tail.rotation.z = this.kind === 'bear' ? 0 : this.kind === 'porcupine' ? 0.5 * this.qu - 0.1 : this.mode === 'run' ? 0.3 : -0.1;
     const vis = outDist(this.x, this.z) < 230; M.root.visible = vis;
     const szr = (this.scale * 1.5) / (Math.max(1, this.dist()) * 2 * Math.tan((camera.fov * PI) / 360)); const sv = vis && szr > 0.035;
     if (sv !== this.shellVis) { this.shellVis = sv; for (const sh of M.shells) sh.visible = sv; }
     if (gy < WATER_Y - 0.05 && this.speed > 0.3) { this.ripT = (this.ripT || 0) - dt; if (this.ripT < 0) { this.ripT = 0.6; addRipple(this.x, this.z, 0.06 * this.scale); } }
     if (this.kind === 'raccoon' && this.forage > 0.5 && Math.random() < dt * 0.8) addRipple(this.x + Math.cos(this.h) * 0.4, this.z - Math.sin(this.h) * 0.4, 0.03);   // dabbling
-    if (Math.hypot(this.x - this.trailX, this.z - this.trailZ) > 2.5) { this.trailX = this.x; this.trailZ = this.z; if (marshE(this.x, this.z) < 0.01 && this.kind !== 'raccoon') TRAILS.push({ x: this.x, z: this.z, r: 0.8 * this.scale, s: 0.5, t: G.time }); }
+    if (Math.hypot(this.x - this.trailX, this.z - this.trailZ) > 2.5) { this.trailX = this.x; this.trailZ = this.z; if (marshE(this.x, this.z) < 0.01 && this.kind !== 'raccoon' && this.kind !== 'rabbit' && this.kind !== 'porcupine') TRAILS.push({ x: this.x, z: this.z, r: 0.8 * this.scale, s: 0.5, t: G.time }); }
   }
   dispose() { scene.remove(this.M.root); const i = CRITTERS.indexOf(this); if (i >= 0) CRITTERS.splice(i, 1); }
 }

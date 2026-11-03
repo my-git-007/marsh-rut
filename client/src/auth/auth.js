@@ -66,7 +66,9 @@ async function gameMail(path, body, idToken) {   // -> true when the game's serv
   } catch (e) { return false; }
   if (r.status === 429) { const e = new Error('Too many emails'); e.code = 'auth/too-many-requests'; throw e; }
   if (r.status === 400) { const e = new Error('Bad email'); e.code = 'auth/invalid-email'; throw e; }
-  return r.ok;
+  // only a real 'sent' answer counts (an older server answers any address with a plain 200 page)
+  const j = r.ok ? await r.json().catch(() => null) : null;
+  return !!(j && j.ok === true);
 }
 
 export async function watchUser(cb) {

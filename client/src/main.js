@@ -1,4 +1,4 @@
-// Hunter LTD — start-up and the frame loop.
+// Hunting LTD — start-up and the frame loop.
 // Builds the marsh, seats this player at a stand through a host (the simulation in this tab for solo play,
 // or the marsh server for multiplayer), then every frame: take the host's snapshot and events, pose the
 // animals, play the sounds, render.

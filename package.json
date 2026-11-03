@@ -2,7 +2,7 @@
   "name": "marsh-rut",
   "version": "0.2.0",
   "private": true,
-  "description": "Hunter LTD — a hunting game; first up, moose calling from a tree stand over a beaver marsh, solo or multiplayer",
+  "description": "Hunting LTD — a hunting game; first up, moose calling from a tree stand over a beaver marsh, solo or multiplayer",
   "type": "module",
   "scripts": {
     "dev": "vite",

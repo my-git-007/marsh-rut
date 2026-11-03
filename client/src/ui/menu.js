@@ -89,7 +89,7 @@ async function moveTo(s) {
 // Shortcut" (.url, with our icon), a Mac .webloc or a Linux .desktop link. Double-clicking it opens the game in
 // the default browser, like a bookmark. Phones and tablets have no desktop: they get the Add to Home Screen steps
 // (the icon then comes from apple-touch-icon.png and manifest.webmanifest).
-const NAME = 'Hunter LTD';
+const NAME = 'Hunting LTD';
 const DEVICE = (() => {
   const ua = navigator.userAgent, touchMac = /Macintosh/.test(ua) && navigator.maxTouchPoints > 1;
   const os = /iPhone|iPad|iPod/.test(ua) || touchMac ? 'ios' : /Android/.test(ua) ? 'android' : /CrOS/.test(ua) ? 'chromeos'
@@ -102,7 +102,7 @@ export function shortcutFile(os = DEVICE.os, url = gameUrl()) {
     text: ['[InternetShortcut]', 'URL=' + url, 'IconFile=' + new URL('icon.ico', url).href, 'IconIndex=0', ''].join('\r\n') };
   if (os === 'mac') return { name: NAME + '.webloc', type: 'application/x-webloc',
     text: `<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n<plist version="1.0"><dict><key>URL</key><string>${url.replace(/&/g, '&amp;')}</string></dict></plist>\n` };
-  return { name: 'hunter-ltd.desktop', type: 'application/x-desktop',
+  return { name: 'hunting-ltd.desktop', type: 'application/x-desktop',
     text: ['[Desktop Entry]', 'Type=Link', 'Name=' + NAME, 'Comment=Open ' + NAME + ' in your web browser', 'URL=' + url, 'Icon=web-browser', ''].join('\n') };
 }
 const PHONE_STEPS = {

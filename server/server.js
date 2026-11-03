@@ -1,4 +1,4 @@
-// Hunter LTD server: every logged-in player gets their own private marsh.
+// Hunting LTD server: every logged-in player gets their own private marsh.
 // Each marsh runs the same simulation as offline play (shared/sim) and streams it to that player's browser
 // over a WebSocket: a snapshot of every animal 10 times a second, plus events (grunts, raking...) as they happen.
 //
@@ -76,7 +76,7 @@ const server = http.createServer((req, res) => {
     const out = [...marshes.values()].map((m) => `== ${m.uid.slice(0, 10)} ${m.conn ? '(playing)' : '(empty)'}\n${m.sim.debugText()}\n${(m.sim.log || []).slice(-12).join('\n')}`);
     res.writeHead(200, { ...cors, 'Content-Type': 'text/plain; charset=utf-8' }); res.end(out.join('\n\n') || 'no marshes'); return;
   }
-  res.writeHead(200, { 'Content-Type': 'text/plain' }); res.end('Hunter LTD server.\n');
+  res.writeHead(200, { 'Content-Type': 'text/plain' }); res.end('Hunting LTD server.\n');
 });
 const wss = new WebSocketServer({
   server, maxPayload: 8192,
@@ -169,4 +169,4 @@ setInterval(() => {
   for (const [ip, h] of httpByIp) if (now - h.start > 60000) httpByIp.delete(ip);
 }, 60000);
 
-server.listen(PORT, () => log(`Hunter LTD server on :${PORT} — private marshes, up to ${MAX_MARSHES}; login ${AUTH_OFF ? 'OFF (testing)' : 'Firebase'}; contact ${CONTACT_ON ? 'on' : 'off'}; ${MAX_CONN_PER_IP} conn/address${DEBUG ? '; debug on' : ''}`));
+server.listen(PORT, () => log(`Hunting LTD server on :${PORT} — private marshes, up to ${MAX_MARSHES}; login ${AUTH_OFF ? 'OFF (testing)' : 'Firebase'}; contact ${CONTACT_ON ? 'on' : 'off'}; ${MAX_CONN_PER_IP} conn/address${DEBUG ? '; debug on' : ''}`));

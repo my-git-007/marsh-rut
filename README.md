@@ -1,4 +1,4 @@
-# Hunter LTD
+# Hunting LTD
 
 A hunting game. The first hunt is moose calling at a beaver marsh. (The code and the web addresses still use the
 project's first name, `marsh-rut`.)

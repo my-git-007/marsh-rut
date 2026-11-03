@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Hunting LTD</title>
 <link rel="icon" href="./icon.ico" sizes="any">
-<link rel="icon" href="./icon.svg" type="image/svg+xml">
+<link rel="icon" href="./icon-32.png" type="image/png" sizes="32x32">
 <link rel="apple-touch-icon" href="./apple-touch-icon.png">
 <link rel="manifest" href="./manifest.webmanifest">
 <meta name="theme-color" content="#0b0c0a">
@@ -41,7 +41,7 @@ canvas#c{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:cros
 .card td{padding:4px 0;vertical-align:top}
 .card td:first-child{color:#e8d9a6;white-space:nowrap;padding-right:18px}
 .card p{font-size:14px;line-height:1.55;color:var(--dim)}
-#go{margin:8px 0 18px;font:14px Georgia,serif;letter-spacing:.14em;text-transform:uppercase;color:var(--bg);background:#e8d9a6;border:0;padding:12px 22px;cursor:pointer}
+#go{margin:8px 0 18px;font:14px Georgia,serif;letter-spacing:.14em;text-transform:uppercase;color:#1b130a;background:linear-gradient(180deg,#f4d6a8,#c6905b);border:0;padding:12px 22px;cursor:pointer}
 #go[disabled]{opacity:.45;cursor:wait}
 #mixer{position:fixed;right:max(16px,env(safe-area-inset-right,0px));top:56px;z-index:20}
 #mixer[hidden]{display:none}
@@ -57,11 +57,11 @@ canvas#c{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:cros
 #paused{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);display:none;font:13px ui-monospace,Consolas,monospace;letter-spacing:.1em;background:rgba(0,0,0,.45);padding:10px 16px;pointer-events:none}
 @media (max-width:520px){.card{padding:22px 18px}.card h1{font-size:20px}}
 /* ---- account screens (log in, create account, reset password, confirm email) ---- */
-#acct,#menu{--sand:#e8d9a6;--sand-hi:#f4e8bd;--sand-lo:#d6c58b;--bad:#f2a58e;--good:#b9dd9a;--field:rgba(0,0,0,.38);--edge:rgba(236,230,214,.30);
+#acct,#menu{--sand:#f2cf9d;--sand-hi:#f9e2bc;--sand-lo:#c6905b;--bronze:#c6905b;--brown:#684327;--bad:#f2a58e;--good:#b9dd9a;--field:rgba(8,6,3,.55);--edge:rgba(198,144,91,.40);
   font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;margin:8px 0 4px}
 #acct[hidden],#acct [hidden],#menu[hidden],#menu [hidden]{display:none!important}
 .af{display:flex;flex-direction:column;gap:18px;max-width:380px}
-.af h2{font:normal 22px/1.25 Georgia,serif;letter-spacing:.04em;margin:0}
+.af h2{font:normal 22px/1.25 Georgia,serif;letter-spacing:.04em;margin:0;color:var(--sand)}
 .af .lead{margin:-6px 0 0;font-size:15px;color:var(--dim)}
 .af .lead b,#vf-email{color:var(--ink);font-weight:600;word-break:break-all}
 .field{display:flex;flex-direction:column;gap:6px}
@@ -71,8 +71,8 @@ canvas#c{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:cros
 .field .hint{margin:-2px 0 0;font-size:13px;color:var(--dim)}
 .field input,.field select,.field textarea{width:100%;box-sizing:border-box;min-height:46px;padding:10px 12px;font:16px/1.3 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
   color:var(--ink);background:var(--field);border:1px solid var(--edge);border-radius:6px;transition:border-color .15s,box-shadow .15s}
-.field input:hover,.field select:hover,.field textarea:hover{border-color:rgba(236,230,214,.5)}
-.field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:var(--sand);box-shadow:0 0 0 3px rgba(232,217,166,.28)}
+.field input:hover,.field select:hover,.field textarea:hover{border-color:rgba(214,164,110,.7)}
+.field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:var(--sand);box-shadow:0 0 0 3px rgba(242,207,157,.28)}
 .field textarea{min-height:140px;resize:vertical;line-height:1.45}
 .field input[aria-invalid="true"],.field textarea[aria-invalid="true"]{border-color:var(--bad)}
 .field input[aria-invalid="true"]:focus{box-shadow:0 0 0 3px rgba(242,165,142,.28)}
@@ -84,15 +84,15 @@ canvas#c{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:cros
 .pw input{padding-right:72px}
 .pw .reveal{position:absolute;right:6px;top:50%;transform:translateY(-50%);min-height:34px;padding:0 10px;font:600 13px system-ui,-apple-system,"Segoe UI",sans-serif;
   color:var(--sand);background:transparent;border:0;border-radius:4px;cursor:pointer}
-.pw .reveal:hover{background:rgba(232,217,166,.12)}
+.pw .reveal:hover{background:rgba(242,207,157,.12)}
 .pw .reveal:focus-visible{outline:2px solid var(--sand);outline-offset:1px}
 .af .primary,.af .secondary{width:100%;min-height:48px;padding:12px 18px;border-radius:6px;font:600 16px system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
   letter-spacing:.01em;cursor:pointer;transition:background-color .15s,border-color .15s,transform .05s}
-.af .primary{color:#15140f;background:var(--sand);border:1px solid var(--sand)}
-.af .primary:hover{background:var(--sand-hi);border-color:var(--sand-hi)}
-.af .primary:active{background:var(--sand-lo);transform:translateY(1px)}
+.af .primary{color:#1b130a;background:linear-gradient(180deg,#f4d6a8,#c6905b);border:1px solid #b9834f;box-shadow:inset 0 1px 0 rgba(255,246,225,.45),0 2px 10px rgba(0,0,0,.35);text-shadow:0 1px 0 rgba(255,240,210,.35)}
+.af .primary:hover{background:linear-gradient(180deg,#f9e2bc,#d29d66);border-color:#c6905b}
+.af .primary:active{background:linear-gradient(180deg,#d9ad78,#a8743f);transform:translateY(1px)}
 .af .secondary{color:var(--ink);background:transparent;border:1px solid var(--edge);margin-top:-8px}
-.af .secondary:hover{border-color:var(--sand);background:rgba(232,217,166,.08)}
+.af .secondary:hover{border-color:var(--bronze);background:rgba(242,207,157,.08)}
 .af .secondary:active{transform:translateY(1px)}
 .af .primary:focus-visible,.af .secondary:focus-visible{outline:3px solid var(--sand);outline-offset:3px}
 .af button[disabled]{opacity:.65;cursor:progress;transform:none}
@@ -107,6 +107,10 @@ canvas#c{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:cros
 #acctmsg.ok{color:#dcefc9;background:rgba(185,221,154,.10);border-color:var(--good)}
 /* while an account screen is up, the start screen shows only that (no instructions or game buttons) */
 body[data-acct] .card{max-width:460px}
+/* the badge fills the top of the start card and fades into it */
+.card h1.brand{margin:-30px -34px 22px;letter-spacing:0;font-size:0;line-height:0}
+.brand img{display:block;width:100%;height:auto;-webkit-mask-image:linear-gradient(to bottom,#000 78%,transparent);mask-image:linear-gradient(to bottom,#000 78%,transparent)}
+.card{background:rgba(19,18,14,.94);border-color:rgba(198,144,91,.45);box-shadow:0 24px 70px rgba(0,0,0,.6);overflow:hidden}
 body[data-acct] #howto,body[data-acct] #go,body[data-acct] #mixopen,body[data-acct] #netmsg:empty{display:none}
 body[data-acct] #hud,body[data-acct] #paused{visibility:hidden}
 @media (max-width:520px){.af{max-width:none}#acctmsg{max-width:none}}
@@ -121,7 +125,7 @@ body[data-acct] #hud,body[data-acct] #paused{visibility:hidden}
   font:600 16px system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:var(--ink);background:rgba(255,255,255,.03);border:1px solid var(--edge);border-radius:6px;
   transition:background-color .15s,border-color .15s}
 .mitem span{font-weight:400;font-size:13px;color:var(--dim)}
-.mitem:hover{background:rgba(232,217,166,.09);border-color:var(--sand)}
+.mitem:hover{background:rgba(242,207,157,.09);border-color:var(--sand)}
 .mitem:active{transform:translateY(1px)}
 .mitem:focus-visible,.back:focus-visible{outline:3px solid var(--sand);outline-offset:2px}
 .mitem[aria-current="true"]{border-color:var(--good);cursor:default;background:rgba(185,221,154,.07)}
@@ -143,7 +147,7 @@ body[data-acct] #hud,body[data-acct] #paused{visibility:hidden}
 #ic-desk .secondary{margin-top:0}
 .steps{margin:0;padding-left:22px;font:15px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:var(--ink)}
 .steps li+li{margin-top:6px}
-.mmsg.info{border-color:var(--sand);color:var(--ink);background:rgba(232,217,166,.08)}
+.mmsg.info{border-color:var(--sand);color:var(--ink);background:rgba(242,207,157,.08)}
 .letter{border-left:3px solid var(--sand);padding-left:14px}.letter p{margin:0 0 8px}.letter p:last-child{margin:0}
 .srows{display:flex;flex-direction:column;gap:14px}
 .srow{display:grid;grid-template-columns:1fr 3.5em;gap:4px 12px;align-items:center}
@@ -175,8 +179,7 @@ body.menu-open #hud,body.menu-open #paused{visibility:hidden}
 </div>
 <div id="paused">CLICK TO RESUME</div>
 <div id="start"><div class="card">
-  <h1>Hunting LTD</h1>
-  <p class="sub">Late September. First light over a 500 × 800 yard beaver marsh. You are twenty feet up a spruce.</p>
+  <h1 class="brand"><picture><source srcset="./badge.webp" type="image/webp"><img src="./badge.jpg" alt="Hunting LTD" width="920" height="460"></picture></h1>
   <div id="acct">
     <form id="f-login" class="af" onsubmit="event.preventDefault()" novalidate aria-labelledby="h-login">
       <h2 id="h-login">Log in</h2>

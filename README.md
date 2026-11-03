@@ -1,4 +1,7 @@
-# Marsh Rut
+# Hunter LTD
+
+A hunting game. The first hunt is moose calling at a beaver marsh. (The code and the web addresses still use the
+project's first name, `marsh-rut`.)
 
 A moose-calling game. You sit in a tree stand over a 500 × 800 yard beaver marsh at first light and call with real
 cow-moose recordings. The aim is to bring a bull in without him winding you. Online, each player logs in to an

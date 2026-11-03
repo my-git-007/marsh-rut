@@ -4,10 +4,10 @@
 //
 //   RESEND_API_KEY   secret (fly secrets set ...)        without it the form says contact isn't set up yet
 //   CONTACT_TO       where messages go (secret too, so the address isn't in the public repository)
-//   CONTACT_FROM     sender (default "Marsh Rut <onboarding@resend.dev>", Resend's test sender, which may only
+//   CONTACT_FROM     sender (default "Hunter LTD <onboarding@resend.dev>", Resend's test sender, which may only
 //                    send to the Resend account's own address; use your own domain's address once it's verified)
 const KEY = process.env.RESEND_API_KEY || '', TO = process.env.CONTACT_TO || '';
-const FROM = process.env.CONTACT_FROM || 'Marsh Rut <onboarding@resend.dev>';
+const FROM = process.env.CONTACT_FROM || 'Hunter LTD <onboarding@resend.dev>';
 export const CONTACT_ON = !!(KEY && TO);
 
 const EMAIL_RE = /^[^\s@<>()",;:]+@[^\s@<>()",;:]+\.[^\s@<>()",;:]+$/;
@@ -36,12 +36,12 @@ export async function sendContact(who, ip, msg) {
   if (text.length < 2) return { ok: false, reason: 'invalid', field: 'message' };
   if (!allowed(who.uid, ip)) return { ok: false, reason: 'limit' };
   record(who.uid, ip);
-  const body = `${text}\n\n— \nFrom: ${name} <${email}>\nAccount: ${who.name} · ${who.email || 'no email'} · ${who.uid}\nSent from the Marsh Rut contact form, ${new Date().toISOString()}`;
+  const body = `${text}\n\n— \nFrom: ${name} <${email}>\nAccount: ${who.name} · ${who.email || 'no email'} · ${who.uid}\nSent from the Hunter LTD contact form, ${new Date().toISOString()}`;
   try {
     const r = await fetch(process.env.RESEND_URL || 'https://api.resend.com/emails', {   // RESEND_URL: tests only
       method: 'POST',
       headers: { Authorization: `Bearer ${KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ from: FROM, to: [TO], reply_to: email, subject: `Marsh Rut: message from ${name}`, text: body }),
+      body: JSON.stringify({ from: FROM, to: [TO], reply_to: email, subject: `Hunter LTD: message from ${name}`, text: body }),
       signal: AbortSignal.timeout(10000),
     });
     if (!r.ok) { console.error('contact: Resend said', r.status, (await r.text()).slice(0, 300)); return { ok: false, reason: 'failed' }; }

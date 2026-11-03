@@ -3,8 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Marsh Rut</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22%3E%3Crect width=%2216%22 height=%2216%22 fill=%22%230b0c0a%22/%3E%3Cpath d=%22M3 12h10M5 12V7l3-3 3 3v5%22 stroke=%22%23e8d9a6%22 fill=%22none%22/%3E%3C/svg%3E">
+<title>Hunter LTD</title>
+<link rel="icon" href="./icon.ico" sizes="any">
+<link rel="icon" href="./icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="./apple-touch-icon.png">
+<link rel="manifest" href="./manifest.webmanifest">
+<meta name="theme-color" content="#0b0c0a">
+<meta name="apple-mobile-web-app-title" content="Hunter LTD">
 <style>
 :root{--ink:#ece6d6;--dim:rgba(236,230,214,.62);--line:rgba(236,230,214,.22);--bg:#0b0c0a}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--ink:#ece6d6;--bg:#0b0c0a}}
@@ -131,6 +136,13 @@ body[data-acct] #hud,body[data-acct] #paused{visibility:hidden}
 .mmsg{margin:0;font-size:15px;line-height:1.45;border-radius:6px;padding:10px 12px;border-left:4px solid var(--bad);color:#fbd3c6;background:rgba(242,165,142,.12)}
 .mmsg:empty{display:none}
 .mmsg.ok{border-color:var(--good);color:#dcefc9;background:rgba(185,221,154,.10)}
+.ic-tile{display:flex;flex-direction:column;align-items:center;gap:6px;margin:4px auto 0;font:600 14px system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:var(--ink)}
+.ic-tile img{border-radius:14px;box-shadow:0 4px 14px rgba(0,0,0,.45)}
+#ic-desk:not([hidden]),#ic-phone:not([hidden]){display:flex;flex-direction:column;gap:14px}
+#ic-desk .lead,#ic-phone .lead{margin:0}
+#ic-where{margin:-6px 0 0;font:13px system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:var(--dim)}
+.steps{margin:0;padding-left:22px;font:15px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:var(--ink)}
+.steps li+li{margin-top:6px}
 .mmsg.info{border-color:var(--sand);color:var(--ink);background:rgba(232,217,166,.08)}
 .letter{border-left:3px solid var(--sand);padding-left:14px}.letter p{margin:0 0 8px}.letter p:last-child{margin:0}
 .srows{display:flex;flex-direction:column;gap:14px}
@@ -163,7 +175,7 @@ body.menu-open #hud,body.menu-open #paused{visibility:hidden}
 </div>
 <div id="paused">CLICK TO RESUME</div>
 <div id="start"><div class="card">
-  <h1>Marsh Rut</h1>
+  <h1>Hunter LTD</h1>
   <p class="sub">Late September. First light over a 500 × 800 yard beaver marsh. You are twenty feet up a spruce.</p>
   <div id="acct" hidden>
     <form id="f-login" class="af" novalidate aria-labelledby="h-login">
@@ -180,7 +192,7 @@ body.menu-open #hud,body.menu-open #paused{visibility:hidden}
         <p class="ferr" id="li-pass-err"></p>
       </div>
       <button type="submit" class="primary" data-busy="Logging in…">Log in</button>
-      <p class="switch fb-only">New to Marsh Rut? <a href="#" data-view="f-signup">Create an account</a></p>
+      <p class="switch fb-only">New to Hunter LTD? <a href="#" data-view="f-signup">Create an account</a></p>
     </form>
     <form id="f-signup" class="af" hidden novalidate aria-labelledby="h-signup">
       <h2 id="h-signup">Create an account</h2>
@@ -261,6 +273,7 @@ body.menu-open #hud,body.menu-open #paused{visibility:hidden}
         <button type="button" class="mitem" data-go="m-loc">Change location<span>Move to another stand</span></button>
         <button type="button" class="mitem" data-go="m-set">Settings<span>Sound levels, looking around</span></button>
         <button type="button" class="mitem" data-go="m-contact">Contact<span>Send Martin a message</span></button>
+        <button type="button" class="mitem" data-go="m-icon">Add game icon to your desktop<span>Open the game with a double-click</span></button>
         <button type="button" class="mitem danger" data-go="m-exit">Exit game<span>Leave the marsh and log out</span></button>
       </div>
       <p class="mfoot">Press Esc to go back to the marsh</p>
@@ -312,6 +325,21 @@ body.menu-open #hud,body.menu-open #paused{visibility:hidden}
         <p class="mmsg ok">Thanks! Your message is on its way. Martin will reply to <b id="ct-done-email"></b>.</p>
         <button type="button" class="secondary" id="ct-another">Write another message</button>
       </div>
+    </section>
+    <section id="m-icon" class="af mview" hidden>
+      <button type="button" class="back" data-go="m-main">← Back</button>
+      <h2 id="ic-title">Add game icon to your desktop</h2>
+      <div class="ic-tile" aria-hidden="true"><img src="./icon-192.png" alt="" width="64" height="64"><span>Hunter LTD</span></div>
+      <div id="ic-desk">
+        <p class="lead">Saves a Hunter LTD icon you can keep on your desktop. Double-click it and the game opens in your web browser, just like a bookmark.</p>
+        <button type="button" class="primary" id="ic-save">Save the icon</button>
+        <p class="hint" id="ic-where">If your browser asks where to save it, choose Desktop.</p>
+      </div>
+      <div id="ic-phone" hidden>
+        <p class="lead">Put a Hunter LTD icon on your home screen. Tapping it opens the game, just like a bookmark.</p>
+        <ol class="steps" id="ic-steps"></ol>
+      </div>
+      <p class="mmsg" id="ic-msg" role="status"></p>
     </section>
     <section id="m-exit" class="af mview" hidden>
       <button type="button" class="back" data-go="m-main">← Back</button>

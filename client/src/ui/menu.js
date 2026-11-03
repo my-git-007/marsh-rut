@@ -1,6 +1,6 @@
 // The pause menu (Esc). While it is open everything stops: the picture, every sound (the audio context is
 // suspended) and, online, the player's marsh on the server. Items: Resume, Change location, Settings, Contact,
-// Exit game.
+// Add game icon to your desktop, Exit game.
 //
 // Esc and the browser: while the mouse is captured for looking around, the browser keeps Esc for itself (it
 // releases the mouse). So the menu opens whenever the mouse is released while playing (Esc, switching windows),
@@ -12,7 +12,7 @@ import { NET, PLAYER, UI } from '../state.js';
 import { V } from './input.js';
 
 const $ = (id) => document.getElementById(id);
-const VIEWS = ['m-main', 'm-loc', 'm-set', 'm-contact', 'm-exit'];
+const VIEWS = ['m-main', 'm-loc', 'm-set', 'm-contact', 'm-icon', 'm-exit'];
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 let opts = { onMoved: async () => {}, onExit: async () => {}, user: () => null, online: false };
 let openedAt = 0, view = 'm-main';
@@ -30,7 +30,8 @@ function show(v) {
   if (v === 'm-loc') buildStands();
   if (v === 'm-set') buildSettings();
   if (v === 'm-contact') prepContact();
-  const first = $(v).querySelector(v === 'm-main' ? '#m-resume' : v === 'm-contact' ? 'input, textarea' : '.mlist button:not([disabled]), input, .primary, .back');
+  if (v === 'm-icon') prepIcon();
+  const first = $(v).querySelector(v === 'm-main' ? '#m-resume' : v === 'm-contact' ? 'input, textarea' : v === 'm-icon' ? (DEVICE.phone ? '.back' : '#ic-save') : '.mlist button:not([disabled]), input, .primary, .back');
   if (first) setTimeout(() => first.focus(), 0);
 }
 
@@ -81,6 +82,49 @@ async function moveTo(s) {
   } catch (e) {
     buildStands(); $('m-loc-msg').className = 'mmsg'; $('m-loc-msg').textContent = e.message || 'Couldn’t move. Try again.';
   }
+}
+
+// ---- add game icon to your desktop ----
+// A web page can't put things on the desktop itself, so this saves a small shortcut file: Windows' "Internet
+// Shortcut" (.url, with our icon), a Mac .webloc or a Linux .desktop link. Double-clicking it opens the game in
+// the default browser, like a bookmark. Phones and tablets have no desktop: they get the Add to Home Screen steps
+// (the icon then comes from apple-touch-icon.png and manifest.webmanifest).
+const NAME = 'Hunter LTD';
+const DEVICE = (() => {
+  const ua = navigator.userAgent, touchMac = /Macintosh/.test(ua) && navigator.maxTouchPoints > 1;
+  const os = /iPhone|iPad|iPod/.test(ua) || touchMac ? 'ios' : /Android/.test(ua) ? 'android' : /CrOS/.test(ua) ? 'chromeos'
+    : /Windows/.test(ua) ? 'windows' : /Mac/.test(ua) ? 'mac' : 'linux';
+  return { os, phone: os === 'ios' || os === 'android' || os === 'chromeos' };
+})();
+function gameUrl() { const u = new URL(location.href); u.search = ''; u.hash = ''; u.pathname = u.pathname.replace(/index\.html$/, ''); return u.href; }
+export function shortcutFile(os = DEVICE.os, url = gameUrl()) {
+  if (os === 'windows') return { name: NAME + '.url', type: 'application/internet-shortcut',
+    text: ['[InternetShortcut]', 'URL=' + url, 'IconFile=' + new URL('icon.ico', url).href, 'IconIndex=0', ''].join('\r\n') };
+  if (os === 'mac') return { name: NAME + '.webloc', type: 'application/x-webloc',
+    text: `<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n<plist version="1.0"><dict><key>URL</key><string>${url.replace(/&/g, '&amp;')}</string></dict></plist>\n` };
+  return { name: 'hunter-ltd.desktop', type: 'application/x-desktop',
+    text: ['[Desktop Entry]', 'Type=Link', 'Name=' + NAME, 'Comment=Open ' + NAME + ' in your web browser', 'URL=' + url, 'Icon=web-browser', ''].join('\n') };
+}
+const PHONE_STEPS = {
+  ios: ['Tap the Share button <b>⬆︎</b> (at the bottom of Safari, or at the top on an iPad).', 'Scroll down and tap <b>Add to Home Screen</b>.', 'Tap <b>Add</b>.'],
+  android: ['Tap the menu button <b>⋮</b> at the top right of Chrome.', 'Tap <b>Add to Home screen</b>.', 'Tap <b>Add</b>.'],
+  chromeos: ['Click the menu button <b>⋮</b> at the top right of Chrome.', 'Choose <b>Cast, save and share</b>, then <b>Create shortcut…</b>', 'Click <b>Create</b>. The icon goes to your shelf and app launcher.'],
+};
+function prepIcon() {
+  $('ic-msg').textContent = ''; $('ic-msg').className = 'mmsg';
+  $('ic-desk').hidden = DEVICE.phone; $('ic-phone').hidden = !DEVICE.phone;
+  if (DEVICE.phone) {
+    $('ic-title').textContent = DEVICE.os === 'chromeos' ? 'Add game icon to your shelf' : 'Add game icon to your home screen';
+    $('ic-steps').innerHTML = PHONE_STEPS[DEVICE.os].map((t) => `<li>${t}</li>`).join('');
+  }
+}
+function saveIcon() {
+  const f = shortcutFile(), href = URL.createObjectURL(new Blob([f.text], { type: f.type }));
+  const a = document.createElement('a'); a.href = href; a.download = f.name; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(href), 10000);
+  const keep = DEVICE.os === 'windows' ? ' If your browser asks whether to keep it, choose <b>Keep</b>: it only opens the game’s web page.' : '';
+  $('ic-msg').className = 'mmsg ok';
+  $('ic-msg').innerHTML = `Saved <b>${f.name}</b>. If it went to your Downloads folder, drag it from there onto your desktop.${keep} Then ${DEVICE.os === 'linux' ? 'open it (you may need to right-click it and choose Allow Launching)' : 'double-click it'} to play.`;
 }
 
 // ---- settings ----
@@ -147,6 +191,7 @@ export function initMenu(o = {}) {
   Object.assign(opts, o); loadLook(); UI.openMenu = openMenu;
   for (const b of document.querySelectorAll('#menu [data-go]')) b.addEventListener('click', () => show(b.dataset.go));
   $('m-resume').addEventListener('click', resumeGame);
+  $('ic-save').addEventListener('click', saveIcon);
   $('set-sens').addEventListener('input', (e) => { V.sens = e.target.value / 100; $('set-sens-out').textContent = e.target.value + '%'; saveLook(); });
   $('set-invert').addEventListener('change', (e) => { V.invert = e.target.checked; saveLook(); });
   $('f-contact').addEventListener('submit', sendContact);

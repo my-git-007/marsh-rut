@@ -2,9 +2,10 @@
   "name": "Hunting LTD",
   "short_name": "Hunting LTD",
   "description": "A hunting game. First up: calling moose at a beaver marsh.",
+  "id": "./",
   "start_url": "./",
   "scope": "./",
-  "display": "browser",
+  "display": "standalone",
   "background_color": "#0b0c0a",
   "theme_color": "#0b0c0a",
   "icons": [

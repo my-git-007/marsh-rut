@@ -140,7 +140,7 @@ body[data-acct] #hud,body[data-acct] #paused{visibility:hidden}
 .ic-tile img{border-radius:14px;box-shadow:0 4px 14px rgba(0,0,0,.45)}
 #ic-desk:not([hidden]),#ic-phone:not([hidden]){display:flex;flex-direction:column;gap:14px}
 #ic-desk .lead,#ic-phone .lead{margin:0}
-#ic-where{margin:-6px 0 0;font:13px system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:var(--dim)}
+#ic-desk .secondary{margin-top:0}
 .steps{margin:0;padding-left:22px;font:15px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:var(--ink)}
 .steps li+li{margin-top:6px}
 .mmsg.info{border-color:var(--sand);color:var(--ink);background:rgba(232,217,166,.08)}
@@ -331,9 +331,10 @@ body.menu-open #hud,body.menu-open #paused{visibility:hidden}
       <h2 id="ic-title">Add game icon to your desktop</h2>
       <div class="ic-tile" aria-hidden="true"><img src="./icon-192.png" alt="" width="64" height="64"><span>Hunting LTD</span></div>
       <div id="ic-desk">
-        <p class="lead">Saves a Hunting LTD icon you can keep on your desktop. Double-click it and the game opens in your web browser, just like a bookmark.</p>
-        <button type="button" class="primary" id="ic-save">Save the icon</button>
-        <p class="hint" id="ic-where">If your browser asks where to save it, choose Desktop.</p>
+        <p class="lead" id="ic-lead"></p>
+        <button type="button" class="primary" id="ic-save">Add icon to desktop</button>
+        <ol class="steps" id="ic-dsteps" hidden></ol>
+        <button type="button" class="secondary" id="ic-file" hidden>Save a shortcut file instead</button>
       </div>
       <div id="ic-phone" hidden>
         <p class="lead">Put a Hunting LTD icon on your home screen. Tapping it opens the game, just like a bookmark.</p>

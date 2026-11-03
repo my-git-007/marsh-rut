@@ -85,21 +85,28 @@ async function moveTo(s) {
 }
 
 // ---- add game icon to your desktop ----
-// A web page can't put things on the desktop itself, so this saves a small shortcut file: Windows' "Internet
-// Shortcut" (.url, with our icon), a Mac .webloc or a Linux .desktop link. Double-clicking it opens the game in
-// the default browser, like a bookmark. Phones and tablets have no desktop: they get the Add to Home Screen steps
-// (the icon then comes from apple-touch-icon.png and manifest.webmanifest).
+// A web page can't write to the desktop by itself. What browsers do allow is installing the site as an app: Chrome
+// and Edge show their own "Install Hunting LTD?" box (beforeinstallprompt), and one click adds an icon (ours, from
+// manifest.webmanifest) to the desktop and Start menu that opens the game in its own browser window. Browsers
+// without that (Firefox, Safari) get short steps, plus a shortcut file as a backup. Phones and tablets have no
+// desktop: they get the Add to Home Screen steps.
 const NAME = 'Hunting LTD';
 const DEVICE = (() => {
   const ua = navigator.userAgent, touchMac = /Macintosh/.test(ua) && navigator.maxTouchPoints > 1;
   const os = /iPhone|iPad|iPod/.test(ua) || touchMac ? 'ios' : /Android/.test(ua) ? 'android' : /CrOS/.test(ua) ? 'chromeos'
     : /Windows/.test(ua) ? 'windows' : /Mac/.test(ua) ? 'mac' : 'linux';
-  return { os, phone: os === 'ios' || os === 'android' || os === 'chromeos' };
+  const browser = /Edg\//.test(ua) ? 'edge' : /Firefox\//.test(ua) ? 'firefox' : /OPR\//.test(ua) ? 'other'
+    : /Chrome\//.test(ua) ? 'chrome' : /Safari\//.test(ua) ? 'safari' : 'other';
+  return { os, browser, phone: os === 'ios' || os === 'android' || os === 'chromeos' };
 })();
+let installEvt = null, installed = false;
+window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); installEvt = e; });
+window.addEventListener('appinstalled', () => { installed = true; installEvt = null; if (view === 'm-icon') prepIcon(); });
+const inApp = () => matchMedia('(display-mode: standalone)').matches || matchMedia('(display-mode: minimal-ui)').matches || navigator.standalone === true;
+
 function gameUrl() { const u = new URL(location.href); u.search = ''; u.hash = ''; u.pathname = u.pathname.replace(/index\.html$/, ''); return u.href; }
 export function shortcutFile(os = DEVICE.os, url = gameUrl()) {
-  if (os === 'windows') return { name: NAME + '.url', type: 'application/internet-shortcut',
-    text: ['[InternetShortcut]', 'URL=' + url, 'IconFile=' + new URL('icon.ico', url).href, 'IconIndex=0', ''].join('\r\n') };
+  if (os === 'windows') return { name: NAME + '.url', type: 'application/internet-shortcut', text: ['[InternetShortcut]', 'URL=' + url, ''].join('\r\n') };
   if (os === 'mac') return { name: NAME + '.webloc', type: 'application/x-webloc',
     text: `<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n<plist version="1.0"><dict><key>URL</key><string>${url.replace(/&/g, '&amp;')}</string></dict></plist>\n` };
   return { name: 'hunting-ltd.desktop', type: 'application/x-desktop',
@@ -107,24 +114,55 @@ export function shortcutFile(os = DEVICE.os, url = gameUrl()) {
 }
 const PHONE_STEPS = {
   ios: ['Tap the Share button <b>⬆︎</b> (at the bottom of Safari, or at the top on an iPad).', 'Scroll down and tap <b>Add to Home Screen</b>.', 'Tap <b>Add</b>.'],
-  android: ['Tap the menu button <b>⋮</b> at the top right of Chrome.', 'Tap <b>Add to Home screen</b>.', 'Tap <b>Add</b>.'],
-  chromeos: ['Click the menu button <b>⋮</b> at the top right of Chrome.', 'Choose <b>Cast, save and share</b>, then <b>Create shortcut…</b>', 'Click <b>Create</b>. The icon goes to your shelf and app launcher.'],
+  android: ['Tap the menu button <b>⋮</b> at the top right of Chrome.', 'Tap <b>Add to Home screen</b> (or <b>Install app</b>).', 'Tap <b>Add</b> or <b>Install</b>.'],
+  chromeos: ['Click the menu button <b>⋮</b> at the top right of Chrome.', 'Choose <b>Cast, save and share</b>, then <b>Install page as app…</b>', 'Click <b>Install</b>. The icon goes to your shelf and app launcher.'],
 };
+// computers where the browser can't show its install box right now
+const DESK_STEPS = {
+  chrome: ['Click the menu button <b>⋮</b> at the top right of Chrome.', 'Choose <b>Cast, save and share</b>, then <b>Install page as app…</b>', 'Click <b>Install</b>.'],
+  edge: ['Click the menu button <b>…</b> at the top right of Edge.', 'Choose <b>Apps</b>, then <b>Install this site as an app</b>.', 'Click <b>Install</b>, and tick <b>Create Desktop shortcut</b> if Edge asks.'],
+  safari: ['In the menu bar, choose <b>File</b>, then <b>Add to Dock…</b>', 'Click <b>Add</b>. Hunting LTD is now in your Dock and Applications folder.'],
+  firefox: ['Make the Firefox window smaller so you can see your desktop.', 'Drag the padlock <b>🔒</b> at the left of the address bar onto your desktop.'],
+};
+const okMsg = (html) => { $('ic-msg').className = 'mmsg ok'; $('ic-msg').innerHTML = html; };
+const where = () => (DEVICE.os === 'windows' ? 'on your desktop and in your Start menu' : DEVICE.os === 'mac' ? 'in your Applications folder and Launchpad' : 'in your apps');
 function prepIcon() {
   $('ic-msg').textContent = ''; $('ic-msg').className = 'mmsg';
   $('ic-desk').hidden = DEVICE.phone; $('ic-phone').hidden = !DEVICE.phone;
   if (DEVICE.phone) {
     $('ic-title').textContent = DEVICE.os === 'chromeos' ? 'Add game icon to your shelf' : 'Add game icon to your home screen';
     $('ic-steps').innerHTML = PHONE_STEPS[DEVICE.os].map((t) => `<li>${t}</li>`).join('');
+    return;
+  }
+  const steps = DESK_STEPS[DEVICE.browser], chromium = DEVICE.browser === 'chrome' || DEVICE.browser === 'edge';
+  $('ic-save').hidden = !installEvt; $('ic-dsteps').hidden = !!installEvt || !steps; $('ic-file').hidden = !!installEvt || chromium;
+  if (inApp() || installed) {
+    $('ic-lead').textContent = inApp() ? 'You’re already playing from the Hunting LTD icon.' : `Hunting LTD is installed. Look for its icon ${where()}.`;
+    $('ic-save').hidden = $('ic-dsteps').hidden = $('ic-file').hidden = true;
+  } else if (installEvt) {
+    $('ic-lead').textContent = `One click puts a Hunting LTD icon ${where()}. Double-click it and the game opens in its own window.`;
+  } else {
+    $('ic-lead').textContent = chromium ? 'If you’ve added Hunting LTD before, its icon is already on your desktop. Otherwise:'
+      : steps ? 'To put a Hunting LTD icon on your computer:' : 'Save a shortcut you can keep on your desktop. Double-click it to open the game in your browser.';
+    if (steps) $('ic-dsteps').innerHTML = steps.map((t) => `<li>${t}</li>`).join('');
   }
 }
-function saveIcon() {
+async function install() {
+  const e = installEvt; if (!e) { prepIcon(); return; }
+  installEvt = null;   // each install box can be shown only once
+  $('ic-msg').className = 'mmsg info'; $('ic-msg').textContent = 'Click Install in the box your browser shows.';
+  try {
+    await e.prompt();
+    const { outcome } = await e.userChoice;
+    if (outcome === 'accepted') { installed = true; prepIcon(); $('ic-desk').hidden = true; okMsg(`Done! The Hunting LTD icon is ${where()}. Next time, double-click it to play.`); }
+    else { prepIcon(); $('ic-msg').className = 'mmsg info'; $('ic-msg').textContent = 'No icon was added. You can add it any time from this menu.'; }
+  } catch (err) { prepIcon(); }
+}
+function saveFile() {
   const f = shortcutFile(), href = URL.createObjectURL(new Blob([f.text], { type: f.type }));
   const a = document.createElement('a'); a.href = href; a.download = f.name; document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(href), 10000);
-  const keep = DEVICE.os === 'windows' ? ' If your browser asks whether to keep it, choose <b>Keep</b>: it only opens the game’s web page.' : '';
-  $('ic-msg').className = 'mmsg ok';
-  $('ic-msg').innerHTML = `Saved <b>${f.name}</b>. If it went to your Downloads folder, drag it from there onto your desktop.${keep} Then ${DEVICE.os === 'linux' ? 'open it (you may need to right-click it and choose Allow Launching)' : 'double-click it'} to play.`;
+  okMsg(`Saved <b>${f.name}</b> to your Downloads folder. Drag it from there onto your desktop, then double-click it to play.`);
 }
 
 // ---- settings ----
@@ -191,7 +229,10 @@ export function initMenu(o = {}) {
   Object.assign(opts, o); loadLook(); UI.openMenu = openMenu;
   for (const b of document.querySelectorAll('#menu [data-go]')) b.addEventListener('click', () => show(b.dataset.go));
   $('m-resume').addEventListener('click', resumeGame);
-  $('ic-save').addEventListener('click', saveIcon);
+  $('ic-save').addEventListener('click', install);
+  $('ic-file').addEventListener('click', saveFile);
+  // straight from the menu: show the browser's install box at once (it needs this click)
+  document.querySelector('#menu [data-go="m-icon"]').addEventListener('click', () => { if (installEvt && !DEVICE.phone) install(); });
   $('set-sens').addEventListener('input', (e) => { V.sens = e.target.value / 100; $('set-sens-out').textContent = e.target.value + '%'; saveLook(); });
   $('set-invert').addEventListener('change', (e) => { V.invert = e.target.checked; saveLook(); });
   $('f-contact').addEventListener('submit', sendContact);

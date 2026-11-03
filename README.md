@@ -163,11 +163,11 @@ account, 6 an hour per internet address. To switch it on:
 
 ## Moving to your own domain
 
-Put the new address (e.g. `marshrut.com`) in all of these, keeping the old ones until the move is done:
+Put the new address (e.g. `hunting.ltd`) in all of these, keeping the old ones until the move is done:
 1. GitHub: Settings → Pages → Custom domain. Add the DNS records GitHub shows, then tick "Enforce HTTPS".
 2. Firebase: Authentication → Settings → Authorized domains.
-3. Google Cloud: the API key's website restrictions (`https://marshrut.com/*`).
-4. Server: `ALLOWED_ORIGINS` in `fly.toml`, comma-separated (`https://my-git-007.github.io,https://marshrut.com`).
+3. Google Cloud: the API key's website restrictions (`https://hunting.ltd/*`).
+4. Server: `ALLOWED_ORIGINS` in `fly.toml`, comma-separated (`https://my-git-007.github.io,https://hunting.ltd`).
    Then run `flyctl deploy`.
 The game uses relative paths, so it works at a domain's root without changes.
 

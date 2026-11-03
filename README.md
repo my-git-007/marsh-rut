@@ -110,13 +110,19 @@ Server settings (environment variables):
 - `MAX_MARSHES` (40; `fly.toml` sets 100): how many marshes can be open at once.
 - `KEEP_MINUTES` (5).
 - `MARSH_AUTH=off`: no login; for local testing only.
+- `MAX_CONN_PER_IP` (3): WebSocket connections at once per internet address.
+- `MAX_NEW_PER_IP` (5): new marshes per address per hour.
+- `HTTP_PER_MIN` (30): plain web requests per address per minute.
+- `IDLE_MINUTES` (10).
 - `MARSH_DEBUG=1`: adds a `/debug` readout. Keep it off in public.
 
 `GET /health` reports the number of marshes, players and animals.
 
 ## Accounts
 
-Players log in with an email and a password. [Firebase Authentication](https://firebase.google.com/docs/auth) (free)
+Players log in with an email and a password. They must confirm their email (a link Firebase sends when they sign
+up) before the server opens a marsh for them. After 10 minutes without touching mouse, keyboard or screen, they are
+logged out and their marsh is closed. A warning shows a minute before. [Firebase Authentication](https://firebase.google.com/docs/auth) (free)
 does the account work:
 - it stores the passwords;
 - it sends the password-reset emails;
@@ -134,7 +140,22 @@ Setting it up:
    `appId` into the repository variables `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`,
    `VITE_FIREBASE_PROJECT_ID` and `VITE_FIREBASE_APP_ID`. They identify the project and are not secret.
 5. Set `FIREBASE_PROJECT_ID` on the server (`fly.toml`).
-6. Optional: change the reset email's wording or sender name (Authentication → Templates).
+6. Optional: change the wording or sender name of the confirmation and reset emails (Authentication → Templates).
+7. Restrict the API key to the game's web addresses, in Google Cloud console → APIs & Services → Credentials →
+   "Browser key (auto created by Firebase)":
+   - Application restrictions: Websites, with `https://my-git-007.github.io/*`, `https://marsh-rut.firebaseapp.com/*`
+     (the pages the email links open) and `http://localhost:*/*` (development).
+   - API restrictions: Identity Toolkit API and Token Service API.
+
+## Moving to your own domain
+
+Put the new address (e.g. `marshrut.com`) in all of these, keeping the old ones until the move is done:
+1. GitHub: Settings → Pages → Custom domain. Add the DNS records GitHub shows, then tick "Enforce HTTPS".
+2. Firebase: Authentication → Settings → Authorized domains.
+3. Google Cloud: the API key's website restrictions (`https://marshrut.com/*`).
+4. Server: `ALLOWED_ORIGINS` in `fly.toml`, comma-separated (`https://my-git-007.github.io,https://marshrut.com`).
+   Then run `flyctl deploy`.
+The game uses relative paths, so it works at a domain's root without changes.
 
 ## Models
 

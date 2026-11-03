@@ -61,6 +61,9 @@ canvas#c{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:cros
 .af label.row{display:flex;align-items:center;gap:10px}.af label.row select{display:inline-block;width:auto;margin:0}
 .af button{font:13px Georgia,serif;letter-spacing:.12em;text-transform:uppercase;color:var(--bg);background:#e8d9a6;border:0;padding:10px 18px;cursor:pointer}
 .af button[disabled]{opacity:.5;cursor:wait}
+.af button.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+.af .btns{display:flex;gap:10px;flex-wrap:wrap}
+#vf-email{color:var(--ink);font-weight:normal}
 .af p{font-size:13px;margin:0 0 10px}
 .alinks{display:flex;gap:18px;flex-wrap:wrap;margin-top:12px!important}
 #acct a{color:#e8d9a6}
@@ -113,6 +116,12 @@ canvas#c{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:cros
       <button type="submit">Send reset link</button>
       <p class="alinks"><a href="#" data-view="f-login">Back to log in</a></p>
     </form>
+    <div id="v-verify" class="af" hidden>
+      <h2>Confirm your email</h2>
+      <p>We sent a confirmation link to <b id="vf-email"></b>. Click it, then come back here and press the button below. If it isn’t in your inbox, check your spam folder.</p>
+      <p class="btns"><button type="button" id="vf-done">I’ve clicked the link</button><button type="button" id="vf-resend" class="ghost">Send it again</button></p>
+      <p class="alinks"><a href="#" id="vf-logout">Log out</a></p>
+    </div>
     <div id="v-in" class="af" hidden>
       <p class="who">Logged in as <b id="in-name"></b> <span id="in-email"></span> · <a href="#" id="logout">Log out</a></p>
       <label class="row">Stand <select id="pstand"></select></label>

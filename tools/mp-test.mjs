@@ -12,7 +12,8 @@ function startServer(port, env) {
   srv.stdout.on('data', (d) => process.stdout.write(`  [${port}] ` + d));
   return srv;
 }
-const dev = startServer(8091, { MARSH_AUTH: 'off', MARSH_DEBUG: '1', MARSH_BULL_NOW: '1', KEEP_MINUTES: '5' });
+const dev = startServer(8091, { MARSH_AUTH: 'off', MARSH_DEBUG: '1', MARSH_BULL_NOW: '1', KEEP_MINUTES: '5', MAX_CONN_PER_IP: '3', MAX_NEW_PER_IP: '3' });
+const idle = startServer(8093, { MARSH_AUTH: 'off', IDLE_MINUTES: '0', IDLE_GRACE_S: '4' });
 const real = startServer(8092, { FIREBASE_PROJECT_ID: 'marsh-rut-test' });
 await wait(1200);
 
@@ -71,5 +72,31 @@ ok(bad.denied === 'login' && !bad.you, `a bad login token is refused (${bad.deni
 const old = await new Promise((resolve) => { const ws = new WebSocket('ws://localhost:8091'); ws.on('open', () => ws.send(JSON.stringify({ t: 'hello', v: 1, token: 'X' }))); ws.on('message', (d) => resolve(JSON.parse(d))); });
 ok(old.t === 'denied' && old.reason === 'version', 'an out-of-date game is told to reload');
 
-for (const h of [b, a3]) h.ws.close();
-dev.kill(); real.kill(); console.log(fail ? `${fail} check(s) failed` : 'all server checks passed'); process.exit(fail ? 1 : 0);
+const unconfirmed = await hunter(8091, 'Carl?', 0);
+ok(unconfirmed.denied === 'verify', `a player who hasn't confirmed their email is refused (${unconfirmed.denied})`);
+
+// 5. limits per internet address (this test runs everything from one address)
+for (const h of [b, a3]) h.ws.close(); await wait(500);
+const carol = await hunter(8091, 'Carol', 0);
+ok(!!carol.you, 'a third new marsh from this address is allowed (limit 3 per hour)');
+const dave = await hunter(8091, 'Dave', 0);
+ok(dave.denied === 'limit', `a fourth new marsh from the same address within the hour is refused (${dave.denied})`);
+const bobBack = await hunter(8091, 'Bob', 0);
+ok(!!bobBack.you, 'but a player whose marsh is still open can go back to it');
+const extra = await new Promise((resolve) => { const ws = new WebSocket('ws://localhost:8091'); ws.on('open', () => resolve('open')); ws.on('unexpected-response', (q, r) => resolve(r.statusCode)); ws.on('error', () => resolve('error')); });
+const third = await new Promise((resolve) => { const ws = new WebSocket('ws://localhost:8091'); ws.on('open', () => resolve('open')); ws.on('unexpected-response', (q, r) => resolve(r.statusCode)); ws.on('error', () => resolve('error')); });
+ok(extra === 'open' && third === 429, `a fourth connection at once from one address is refused (3rd: ${extra}, 4th: ${third})`);
+const leaver = carol; leaver.ws.send(JSON.stringify({ t: 'leave' })); await wait(500);
+ok(!(await debug()).includes('dev:Carol'), 'logging out closes the marsh right away');
+const codes = await Promise.all(Array.from({ length: 35 }, () => fetch('http://localhost:8091/health').then((r) => r.status)));
+ok(codes.includes(429), `flooding the status page gets "too many requests" (${codes.filter((c) => c === 429).length} of 35 refused)`);
+
+// 6. inactivity: a marsh that hears nothing is closed; one that is told "active" stays (server with a 4 s limit)
+const sleepy = await hunter(8093, 'Sleepy', 0), busy = await hunter(8093, 'Busy', 0);
+const keep = setInterval(() => busy.ws.send(JSON.stringify({ t: 'active' })), 1000);
+await wait(7000); clearInterval(keep);
+ok(sleepy.msgs.includes('idle') && sleepy.closed, 'an inactive player is told "idle" and disconnected');
+ok(!busy.closed, 'an active player stays connected');
+
+for (const h of [bobBack, busy]) h.ws.close();
+dev.kill(); real.kill(); idle.kill(); console.log(fail ? `${fail} check(s) failed` : 'all server checks passed'); process.exit(fail ? 1 : 0);

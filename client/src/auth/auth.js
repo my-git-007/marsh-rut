@@ -42,15 +42,18 @@ const MESSAGES = {
 };
 export const authMessage = (e) => MESSAGES[e && e.code] || 'Something went wrong' + (e && e.code ? ` (${e.code.replace('auth/', '')})` : '') + '. Try again.';
 
-// ---- the user, as the game sees it: { name, email } or null ----
+// ---- the user, as the game sees it: { name, email, verified } or null ----
+// verified = they clicked the link in the confirmation email; the server only opens a marsh for them then.
 const DEV_KEY = 'marshrut-devuser';
 let devUser = null;
-const view = (u) => (u ? { name: u.displayName || (u.email || '').split('@')[0], email: u.email } : null);
+const view = (u) => (u ? { name: u.displayName || (u.email || '').split('@')[0], email: u.email, verified: !!u.emailVerified } : null);
+const devView = () => (devUser ? { name: devUser, email: '', verified: true } : null);
+const BACK = () => ({ url: location.origin + location.pathname });   // the email's link page offers a way back to the game
 
 export async function watchUser(cb) {
   if (!FIREBASE) {
     try { devUser = localStorage.getItem(DEV_KEY); } catch (e) {}
-    cb(devUser ? { name: devUser, email: '' } : null); return;
+    cb(devView()); return;
   }
   await load();
   fb.onAuthStateChanged(auth, (u) => cb(view(u)));
@@ -64,19 +67,31 @@ export async function signUp(name, email, password) {
   await load();
   const cred = await fb.createUserWithEmailAndPassword(auth, email.trim(), password);
   await fb.updateProfile(cred.user, { displayName: name.trim().slice(0, 24) });
-  await cred.user.getIdToken(true);   // a fresh token that carries the name
+  await fb.sendEmailVerification(cred.user, BACK());   // they must click the link before they can play
+}
+// send the confirmation email again
+export async function resendConfirmation() {
+  if (!FIREBASE) return;
+  await load(); if (auth.currentUser) await fb.sendEmailVerification(auth.currentUser, BACK());
+}
+// after the player clicked the link (in another tab): ask Firebase again, and get a token that says so
+export async function recheckConfirmed() {
+  if (!FIREBASE) return devView();
+  await load(); const u = auth.currentUser; if (!u) return null;
+  await u.reload(); if (u.emailVerified) await u.getIdToken(true);
+  return view(u);
 }
 export async function resetPassword(email) {
   if (!FIREBASE) return;
   await load();
   // after choosing a new password, the reset page offers a link back to the game
-  await fb.sendPasswordResetEmail(auth, email.trim(), { url: location.origin + location.pathname });
+  await fb.sendPasswordResetEmail(auth, email.trim(), BACK());
 }
 export async function logOut() {
   if (!FIREBASE) { devUser = null; try { localStorage.removeItem(DEV_KEY); } catch (e) {} return; }
   await load(); await fb.signOut(auth);
 }
-export const currentUser = () => (FIREBASE ? view(auth && auth.currentUser) : devUser ? { name: devUser, email: '' } : null);
+export const currentUser = () => (FIREBASE ? view(auth && auth.currentUser) : devView());
 // what the marsh server checks: a short-lived Firebase ID token (refreshed automatically)
 export async function getToken() {
   if (!FIREBASE) { if (!devUser) throw new Error('Log in first.'); return devUser; }

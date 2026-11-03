@@ -20,7 +20,8 @@ import { V, showMsg } from './ui/input.js';
 import { layoutBinoc, updateHUD } from './ui/hud.js';
 import { updateCallLabel } from './calls.js';
 import { LocalHost, RemoteHost } from './net/hosts.js';
-import { initAccount, hideAccount } from './ui/account.js';
+import { initAccount, hideAccount, logOutNow, say } from './ui/account.js';
+import { watchIdle } from './ui/idle.js';
 import { getToken } from './auth/auth.js';
 import { handleEvent, updateViews } from './views/world-events.js';
 import { ANIMALS, G, NET, PLAYER, Q, TEST, UI, bearingOf } from './state.js';
@@ -49,7 +50,14 @@ async function init() {
   try { sel.value = localStorage.getItem('marshrut-stand') || '0'; } catch (e) {}
   if (SERVER && !TEST) {
     go.hidden = true; st('Into the marsh'); go.disabled = false;
-    initAccount((user) => { USER = user; go.hidden = !user; if (!user) netMsg(''); });
+    initAccount((user) => { USER = user; go.hidden = !user; if (!user) netMsg(''); }, { beforeLogout: async () => { if (NET.host) NET.host.leave(); } });
+    try { const m = sessionStorage.getItem('marshrut-msg'); if (m) { sessionStorage.removeItem('marshrut-msg'); say(m, 'ok'); } } catch (e) {}
+    watchIdle({
+      onWarn: (s) => { if (!USER) return; const t = `Still there? You’ll be logged out in ${s} seconds unless you move the mouse.`; showMsg(t, 60000); if (!NET.host) say(t); },
+      onBack: () => { showMsg('', 1); if (!NET.host) say(''); },
+      onIdle: () => { if (USER || NET.host) idleLogout(); },
+      tellServer: () => { if (NET.host) NET.host.active(); },
+    });
   } else {
     await seat(new LocalHost({ log: !!TEST }), 'You', Q.has('stand') ? +Q.get('stand') : 0);
     st('Climb into the stand'); go.disabled = false;
@@ -68,12 +76,21 @@ async function seat(host, name, stand) {
       const before = new Set(NET.hunters.map((h) => h.id)); NET.hunters = list;
       for (const h of list) if (!before.has(h.id)) showMsg(`${h.name} climbed into the ${STANDS[h.stand].name} stand`, 4000);
     };
-    host.onClose = (why) => showMsg((why || 'Lost the connection to the marsh server.') + ' Reload the page to go back in.', 600000);
+    host.onClose = (why) => { if (why === 'idle') idleLogout(); else showMsg((why || 'Lost the connection to the marsh server.') + ' Reload the page to go back in.', 600000); };
   }
   if (!grassBuilt) { grassBuilt = true; st('Growing grass…'); await tick(); buildGrass(); }
   if (TEST) setupTest();
   else if (SHOWCASE && host.local) { host.scenario('showcase', () => null); V.yaw = PLAYER.yaw; }
   renderer.shadowMap.needsUpdate = true;
+}
+
+// 10 minutes without touching mouse or keyboard: log out, close the marsh, and start over at the login screen
+let leaving = false;
+async function idleLogout() {
+  if (leaving) return; leaving = true;
+  try { sessionStorage.setItem('marshrut-msg', 'You were logged out after 10 minutes without activity. Log in to go back to the marsh.'); } catch (e) {}
+  try { await logOutNow(); } catch (e) {}
+  location.reload();
 }
 
 async function joinOnline() {

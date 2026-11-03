@@ -14,6 +14,8 @@ import { INTERP_DELAY, PROTOCOL_VERSION } from '../../../shared/protocol.js';
 
 const DENIED = {
   login: 'Your login has expired. Log in again.',
+  verify: 'Confirm your email address first: click the link in the email we sent you.',
+  limit: 'Too many marshes were opened from your internet connection in the last hour. Try again later.',
   busy: 'The marsh server is full right now. Try again in a few minutes.',
   version: 'The game has been updated. Reload the page.',
   full: 'Every stand is taken.',
@@ -66,6 +68,7 @@ export class RemoteHost {
         } else if (msg.t === 'denied') {
           this.why = DENIED[msg.reason] || 'The marsh server turned us away (' + msg.reason + ').';
         } else if (msg.t === 'replaced') this.why = 'You opened the marsh in another window, so this one stopped.';
+        else if (msg.t === 'idle') this.why = 'idle';
         else if (msg.t === 'tick') { this.addSnap(msg.snap); for (const ev of msg.ev || []) this.queue.push({ t: msg.snap.t, ev }); }
         else if (msg.t === 'hunters') { this.hunters = msg.list; this.onHunters && this.onHunters(msg.list); }
         else if (msg.t === 'pong') this.ping = performance.now() - msg.c;
@@ -98,6 +101,8 @@ export class RemoteHost {
   }
   call(type, dur, clip) { this.send({ t: 'call', type, dur, clip }); }
   pour() { this.send({ t: 'pour' }); }
+  active() { this.send({ t: 'active' }); }
+  leave() { this.send({ t: 'leave' }); }
   cmd() {}
   debugText() {
     return `online — ${this.url}\n${this.hunters.length} hunter(s): ${this.hunters.map((h) => h.name + ' @' + h.stand).join(', ')}\nping ${this.ping.toFixed(0)} ms · ${(this.stats.bytes / 1024).toFixed(0)} KB received\nwind ${WIND.from.toFixed(0)}° ${WIND.speed.toFixed(1)} m/s`;

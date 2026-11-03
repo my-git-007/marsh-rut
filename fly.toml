@@ -11,6 +11,10 @@ primary_region = "yyz"
   FIREBASE_PROJECT_ID = "marsh-rut"   # player logins are checked against this project
   MAX_MARSHES = "100"    # one private marsh per player online; each costs ~0.02% of a CPU core
   KEEP_MINUTES = "5"     # a marsh waits this long for its player to come back (reload, dropped line)
+  MAX_CONN_PER_IP = "3"  # connections at once from one internet address (homes, offices and phone carriers share addresses)
+  MAX_NEW_PER_IP = "5"   # new marshes per internet address per hour
+  HTTP_PER_MIN = "30"    # requests per address per minute to /health and the like
+  IDLE_MINUTES = "10"    # the game logs an inactive player out after this; the server closes the marsh a minute later as a backstop
 
 [http_service]
   internal_port = 8080

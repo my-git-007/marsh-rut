@@ -58,7 +58,9 @@ async function oobCode(requestType, email) {
     if (/^EMAIL_NOT_FOUND|^USER_NOT_FOUND/.test(why)) return null;
     throw new Error('Firebase: ' + why);
   }
-  const code = j.oobLink && new URL(j.oobLink).searchParams.get('oobCode');
+  // with email-enumeration protection on, an email with no account gets a normal answer but no link
+  if (!j.oobLink) return null;
+  const code = new URL(j.oobLink).searchParams.get('oobCode');
   if (!code) throw new Error('Firebase: no code in the link');
   return code;
 }

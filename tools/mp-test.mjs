@@ -24,6 +24,7 @@ const fakeResend = http.createServer((req, res) => { let b = ''; req.on('data', 
   if (req.url === '/token') { google.tokens.push(new URLSearchParams(b).get('assertion')); return json({ access_token: 'goog-test', expires_in: 3600 }); }
   if (req.url.startsWith('/idtk/')) { const q = JSON.parse(b); google.oob.push({ url: req.url, auth: req.headers.authorization, ...q });
     if (q.email === 'nobody@example.com') return json({ error: { code: 400, message: 'EMAIL_NOT_FOUND' } }, 400);
+    if (q.email === 'hidden@example.com') return json({ kind: 'identitytoolkit#GetOobConfirmationCodeResponse', email: q.email });   // enumeration protection
     return json({ email: q.email, oobLink: `https://marsh-rut.firebaseapp.com/__/auth/action?mode=x&oobCode=CODE${google.oob.length}&apiKey=k` }); }
   mails.push({ auth: req.headers.authorization, ...JSON.parse(b) }); json({ id: 'test' }); }); }).listen(8099);
 const mailer = startServer(8094, { MARSH_AUTH: 'off', RESEND_API_KEY: 're_test', CONTACT_TO: 'owner@example.com', RESEND_URL: 'http://localhost:8099/emails',
@@ -147,6 +148,8 @@ const tok = google.tokens[0] ? await jwtVerify(google.tokens[0], await importSPK
 ok(tok && /cloud-platform/.test(tok.payload.scope), 'the Google sign-in is signed with the service account key');
 const nb = await post(8094, '/email/reset', { email: 'nobody@example.com' });
 ok(nb.status === 200 && mails.length === 1, `an email with no account gets the same answer and no email (${nb.status}, ${mails.length} sent)`);
+const hid = await post(8094, '/email/reset', { email: 'hidden@example.com' });
+ok(hid.status === 200 && mails.length === 1, `with Firebase's enumeration protection (no link), the same quiet answer (${hid.status})`);
 const vf = await post(8094, '/email/verify', { name: 'Pat', email: 'pat@example.com' }, { Authorization: 'Bearer Pat?' }); const vm = mails[1] || {};
 ok(vf.status === 200 && vm.subject === 'Confirm your email for Hunting LTD' && vm.html.includes('https://hunting.ltd/?mode=verifyEmail&amp;oobCode=') && /Hi Pat,/.test(vm.text), `a confirmation email links to the game (${vf.status}, ${vm.subject})`);
 const done = await post(8094, '/email/verify', {}, { Authorization: 'Bearer Pat' });

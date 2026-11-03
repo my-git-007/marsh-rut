@@ -15,7 +15,7 @@ async function player(name, stand, shots) {
   await page.goto(`${game}?server=${encodeURIComponent(wsUrl)}`, { waitUntil: 'load', timeout: 180000 });
   await page.waitForFunction(visible('#f-login'), { timeout: 120000 });
   if (shots) await page.screenshot({ path: `${out}/login.png` });
-  await page.type('#li-email', name); await page.$eval('#f-login button', (b) => b.click());
+  await page.type('#li-email', name); await page.$eval('#f-login button.primary', (b) => b.click());
   await page.waitForFunction(visible('#v-in') + ' && ' + visible('#go'), { timeout: 20000 });
   await page.select('#pstand', String(stand));
   if (shots) await page.screenshot({ path: `${out}/logged-in.png` });

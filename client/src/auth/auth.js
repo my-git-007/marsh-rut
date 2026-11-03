@@ -50,10 +50,24 @@ const DEV_KEY = 'marshrut-devuser';
 let devUser = null;
 const view = (u) => (u ? { name: u.displayName || (u.email || '').split('@')[0], email: u.email, verified: !!u.emailVerified } : null);
 const devView = () => (devUser ? { name: devUser, email: '', verified: true } : null);
-// handleCodeInApp: Firebase's link page doesn't use the code itself; it forwards straight to the game with
-// ?mode=...&oobCode=..., and the start screen (ui/account.js) confirms the email or asks for the new password.
-// (Needed because the console's "Customize action URL" setting won't save for this project.)
-const BACK = () => ({ url: location.origin + location.pathname, handleCodeInApp: true });
+// Firebase's own emails link to its plain page on marsh-rut.firebaseapp.com (this project isn't allowed to point
+// them at the game), so the game's server sends these emails itself (server/mail.js), with links that open the
+// game's own screens. If the server can't (not set up yet, or unreachable), Firebase sends them as before.
+const BACK = () => ({ url: location.origin + location.pathname });
+const MAILER = (import.meta.env.VITE_SERVER_URL || '').replace(/^ws(s?):/, 'http$1:').replace(/\/+$/, '');
+async function gameMail(path, body, idToken) {   // -> true when the game's server sent it
+  if (!MAILER) return false;
+  let r;
+  try {
+    r = await fetch(MAILER + path, {
+      method: 'POST', body: JSON.stringify(body || {}), signal: AbortSignal.timeout(15000),
+      headers: { 'Content-Type': 'application/json', ...(idToken ? { Authorization: 'Bearer ' + idToken } : {}) },
+    });
+  } catch (e) { return false; }
+  if (r.status === 429) { const e = new Error('Too many emails'); e.code = 'auth/too-many-requests'; throw e; }
+  if (r.status === 400) { const e = new Error('Bad email'); e.code = 'auth/invalid-email'; throw e; }
+  return r.ok;
+}
 
 export async function watchUser(cb) {
   if (!FIREBASE) {
@@ -72,12 +86,14 @@ export async function signUp(name, email, password) {
   await load();
   const cred = await fb.createUserWithEmailAndPassword(auth, email.trim(), password);
   await fb.updateProfile(cred.user, { displayName: name.trim().slice(0, 24) });
-  await fb.sendEmailVerification(cred.user, BACK());   // they must click the link before they can play
+  // they must click the link before they can play
+  if (!(await gameMail('/email/verify', { name: name.trim().slice(0, 24) }, await cred.user.getIdToken()))) await fb.sendEmailVerification(cred.user, BACK());
 }
 // send the confirmation email again
 export async function resendConfirmation() {
   if (!FIREBASE) return;
-  await load(); if (auth.currentUser) await fb.sendEmailVerification(auth.currentUser, BACK());
+  await load(); const u = auth.currentUser; if (!u) return;
+  if (!(await gameMail('/email/verify', { name: u.displayName || '' }, await u.getIdToken()))) await fb.sendEmailVerification(u, BACK());
 }
 // after the player clicked the link (in another tab): ask Firebase again, and get a token that says so
 export async function recheckConfirmed() {
@@ -89,8 +105,7 @@ export async function recheckConfirmed() {
 export async function resetPassword(email) {
   if (!FIREBASE) return;
   await load();
-  // after choosing a new password, the reset page offers a link back to the game
-  await fb.sendPasswordResetEmail(auth, email.trim(), BACK());
+  if (!(await gameMail('/email/reset', { email: email.trim() }))) await fb.sendPasswordResetEmail(auth, email.trim(), BACK());
 }
 export async function logOut() {
   if (!FIREBASE) { devUser = null; try { localStorage.removeItem(DEV_KEY); } catch (e) {} return; }

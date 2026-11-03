@@ -23,6 +23,7 @@ import { STANDS } from '../shared/world.js';
 import { TICK_HZ, SEND_EVERY, PROTOCOL_VERSION } from '../shared/protocol.js';
 import { whoIs, AUTH_OFF } from './auth.js';
 import { sendContact, CONTACT_ON } from './contact.js';
+import { handleMail, MAIL_ON } from './mail.js';
 
 const env = process.env, num = (k, d) => (env[k] != null && env[k] !== '' && !isNaN(+env[k]) ? +env[k] : d);
 const PORT = num('PORT', 8080);
@@ -68,6 +69,7 @@ const server = http.createServer((req, res) => {
   if (!h || now - h.start > 60000) httpByIp.set(ip, (h = { start: now, n: 0 }));
   if (++h.n > HTTP_PER_MIN) { res.writeHead(429, { 'Content-Type': 'text/plain', 'Retry-After': '60' }); res.end('Too many requests\n'); return; }
   const cors = { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' };
+  if (req.url.startsWith('/email/')) { handleMail(req, res, ip, ORIGINS); return; }   // account emails (server/mail.js)
   if (req.url === '/health') {
     let animals = 0; for (const m of marshes.values()) animals += m.sim.bodies.size;
     res.writeHead(200, cors); res.end(JSON.stringify({ ok: true, marshes: marshes.size, players: players(), animals, max: MAX_MARSHES, auth: AUTH_OFF ? 'off' : 'firebase' })); return;
@@ -169,4 +171,4 @@ setInterval(() => {
   for (const [ip, h] of httpByIp) if (now - h.start > 60000) httpByIp.delete(ip);
 }, 60000);
 
-server.listen(PORT, () => log(`Hunting LTD server on :${PORT} — private marshes, up to ${MAX_MARSHES}; login ${AUTH_OFF ? 'OFF (testing)' : 'Firebase'}; contact ${CONTACT_ON ? 'on' : 'off'}; ${MAX_CONN_PER_IP} conn/address${DEBUG ? '; debug on' : ''}`));
+server.listen(PORT, () => log(`Hunting LTD server on :${PORT} — private marshes, up to ${MAX_MARSHES}; login ${AUTH_OFF ? 'OFF (testing)' : 'Firebase'}; contact ${CONTACT_ON ? 'on' : 'off'}; account emails ${MAIL_ON ? 'on' : 'off (Firebase sends them)'}; ${MAX_CONN_PER_IP} conn/address${DEBUG ? '; debug on' : ''}`));

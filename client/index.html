@@ -18,16 +18,16 @@
 // a player who is already logged in sees nothing until we know where to send them (src/pages/account-pages.js).
 (function () {
   var q = location.search, p = new URLSearchParams(q), m = p.get('mode');
-  if (/[?&](solo|test|showcase|server)\b/.test(q)) return location.replace('hunting.html' + q + location.hash);
-  if (p.get('oobCode') && m === 'resetPassword') return location.replace('reset-password.html' + q);
-  if (p.get('oobCode') && (m === 'verifyEmail' || m === 'recoverEmail')) return location.replace('confirm-email.html' + q);
+  if (/[?&](solo|test|showcase|server)\b/.test(q)) return location.replace('hunting/' + q + location.hash);
+  if (p.get('oobCode') && m === 'resetPassword') return location.replace('reset-password/' + q);
+  if (p.get('oobCode') && (m === 'verifyEmail' || m === 'recoverEmail')) return location.replace('confirm-email/' + q);
   try { if (localStorage.getItem('hl-in')) document.documentElement.className = 'checking'; } catch (e) {}
 })();
 </script>
 </head>
-<body data-acct data-page="login">
-<!-- One of the account pages (index, create-account, forgot-password, reset-password, confirm-email). They share
-     src/styles/{base,forms,account}.css and src/pages/account-pages.js; the game itself is hunting.html. -->
+<body data-root="./" data-acct data-page="login">
+<!-- One of the account pages (the root = log in, /create-account/, /forgot-password/, /reset-password/, /confirm-email/). They share
+     src/styles/{base,forms,account}.css and src/pages/account-pages.js; the game itself is /hunting/. -->
 <div id="start"><div class="card">
   <h1 class="brand"><picture><source srcset="./badge.webp" type="image/webp"><img src="./badge.jpg" alt="Hunting LTD" width="920" height="460"></picture></h1>
   <div id="acct">
@@ -39,13 +39,13 @@
         <p class="ferr" id="li-email-err"></p>
       </div>
       <div class="field fb-only">
-        <div class="lrow"><label for="li-pass">Password</label><a href="forgot-password.html" id="to-forgot">Forgot password?</a></div>
+        <div class="lrow"><label for="li-pass">Password</label><a href="forgot-password/" id="to-forgot">Forgot password?</a></div>
         <div class="pw"><input type="password" id="li-pass" placeholder="Password" autocomplete="current-password" required><button type="button" class="reveal" aria-controls="li-pass" aria-pressed="false">Show</button></div>
         <p class="caps" hidden>Caps Lock is on</p>
         <p class="ferr" id="li-pass-err"></p>
       </div>
       <button type="submit" class="primary" data-busy="Logging in…">Log in</button>
-      <p class="switch or fb-only"><span class="pre">New to Hunting LTD?</span> <a href="create-account.html">Create an account</a></p>
+      <p class="switch or fb-only"><span class="pre">New to Hunting LTD?</span> <a href="create-account/">Create an account</a></p>
     </form>
     <div id="acctmsg" role="alert" aria-live="assertive"></div>
   </div>

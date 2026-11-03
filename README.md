@@ -57,14 +57,16 @@ server/server.js   one private marsh per logged-in player, over WebSockets
 server/auth.js     checks the player's Firebase login token
 server/mail.js     account emails (confirm, reset) with links to the game's own pages, sent through Resend
 client/            the browser game (Vite)
-  index.html             log in (the front door; a logged-in player is sent on to the game)
-  create-account.html    create an account, then confirm-email.html
-  forgot-password.html   ask for a password reset link
-  reset-password.html    where the reset email's link lands: choose a new password
-  confirm-email.html     "check your email", and where the confirmation email's link lands
-  hunting.html           the game: the marsh, HUD, start card, Esc menu
+  index.html                   log in: hunting.ltd/ (the front door; a logged-in player is sent on to the game)
+  create-account/index.html    hunting.ltd/create-account/, then /confirm-email/
+  forgot-password/index.html   ask for a password reset link
+  reset-password/index.html    where the reset email's link lands: choose a new password
+  confirm-email/index.html     "check your email", and where the confirmation email's link lands
+  hunting/index.html           the game: the marsh, HUD, start card, Esc menu
+  public/*.html                the old page.html addresses, forwarding to the folders
   assets/            sounds/ and reference/ (served as separate files the browser can cache)
   src/
+    site.js            page addresses (site('create-account') -> .../create-account/)
     main.js            start-up and frame loop
     net/hosts.js       LocalHost (simulation in the tab) and RemoteHost (server + interpolation)
     auth/auth.js       accounts through Firebase: log in, create account, password reset, log out

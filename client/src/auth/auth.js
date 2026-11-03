@@ -53,7 +53,7 @@ const devView = () => (devUser ? { name: devUser, email: '', verified: true } : 
 // Firebase's own emails link to its plain page on marsh-rut.firebaseapp.com (this project isn't allowed to point
 // them at the game), so the game's server sends these emails itself (server/mail.js), with links that open the
 // game's own screens. If the server can't (not set up yet, or unreachable), Firebase sends them as before.
-const BACK = () => ({ url: new URL('./', location.href).href });   // Firebase's page offers a link back to the log-in page
+const BACK = () => ({ url: new URL((document.body.dataset.root || './'), location.href).href.split(/[?#]/)[0] });   // Firebase's page offers a link back to the log-in page
 const MAILER = (import.meta.env.VITE_SERVER_URL || '').replace(/^ws(s?):/, 'http$1:').replace(/\/+$/, '');
 async function gameMail(path, body, idToken) {   // -> true when the game's server sent it
   if (!MAILER) return false;
@@ -72,7 +72,7 @@ async function gameMail(path, body, idToken) {   // -> true when the game's serv
 }
 
 // A flag that this browser has someone logged in, readable before Firebase loads: the pages use it to avoid
-// showing the wrong screen for a moment (index.html, hunting.html).
+// showing the wrong screen for a moment (the log-in page and /hunting/).
 const flag = (on) => { try { if (on) localStorage.setItem('hl-in', '1'); else localStorage.removeItem('hl-in'); } catch (e) {} };
 export async function watchUser(cb) {
   if (!FIREBASE) {
@@ -133,8 +133,8 @@ export async function getToken() {
 
 // ---- the links in Firebase's emails ----
 // The game's server sends these emails (server/mail.js) with links to the game's own pages:
-// reset-password.html / confirm-email.html ?mode=resetPassword|verifyEmail|recoverEmail&oobCode=...
-// (src/pages/account-pages.js handles them; old links to the site's root are forwarded by index.html).
+// /reset-password/ and /confirm-email/ ?mode=resetPassword|verifyEmail|recoverEmail&oobCode=...
+// (src/pages/account-pages.js handles them; old links to the site's root are forwarded by client/index.html).
 export function emailLink() {
   const q = new URLSearchParams(location.search), mode = q.get('mode'), code = q.get('oobCode');
   return FIREBASE && code && ['verifyEmail', 'resetPassword', 'recoverEmail'].includes(mode) ? { mode, code } : null;

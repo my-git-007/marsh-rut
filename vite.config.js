@@ -11,8 +11,9 @@ export default defineConfig({
   server: { port: 5173, fs: { allow: ['..'] } },
   build: {
     outDir: '../dist', emptyOutDir: true, assetsInlineLimit: 0, chunkSizeWarningLimit: 2000,
-    // one HTML file per screen: the account pages (light, a still picture of the lake) and the game (hunting.html)
-    rollupOptions: { input: Object.fromEntries(['index', 'create-account', 'forgot-password', 'reset-password', 'confirm-email', 'hunting']
-      .map((n) => [n, resolve(__dirname, 'client', n + '.html')])) },
+    // one page per screen, each a folder with an index.html (hunting.ltd/create-account/ ...): the account pages
+    // (light, a still picture of the lake) and the game (/hunting/). The log-in page is the root.
+    rollupOptions: { input: Object.fromEntries([['login', 'index.html'], ...['create-account', 'forgot-password', 'reset-password', 'confirm-email', 'hunting']
+      .map((n) => [n, n + '/index.html'])].map(([k, f]) => [k, resolve(__dirname, 'client', f)])) },
   },
 });

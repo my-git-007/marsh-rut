@@ -142,7 +142,7 @@ mails.length = 0;
 const rs = await post(8094, '/email/reset', { email: 'Pat@Example.com' }); const rm = mails[0] || {};
 ok(rs.status === 200 && google.oob[0] && google.oob[0].requestType === 'PASSWORD_RESET' && google.oob[0].returnOobLink === true && google.oob[0].auth === 'Bearer goog-test' && google.oob[0].url === '/idtk/projects/marsh-rut-test/accounts:sendOobCode',
   `a reset asks Firebase for a code with the service account (${rs.status}, ${google.oob[0] && google.oob[0].requestType})`);
-ok(rm.to && rm.to[0] === 'pat@example.com' && rm.reply_to === 'support@hunting.ltd' && /Hunting LTD <support@hunting.ltd>/.test(rm.from) && rm.html.includes('https://hunting.ltd/reset-password.html?mode=resetPassword&amp;oobCode=CODE1') && rm.text.includes('https://hunting.ltd/reset-password.html?mode=resetPassword&oobCode=CODE1') && !/firebaseapp/.test(rm.html + rm.text),
+ok(rm.to && rm.to[0] === 'pat@example.com' && rm.reply_to === 'support@hunting.ltd' && /Hunting LTD <support@hunting.ltd>/.test(rm.from) && rm.html.includes('https://hunting.ltd/reset-password/?mode=resetPassword&amp;oobCode=CODE1') && rm.text.includes('https://hunting.ltd/reset-password/?mode=resetPassword&oobCode=CODE1') && !/firebaseapp/.test(rm.html + rm.text),
   `the reset email comes from support@hunting.ltd and links to the game (${rm.subject})`);
 const tok = google.tokens[0] ? await jwtVerify(google.tokens[0], await importSPKI(SAKEY.publicKey, 'RS256'), { issuer: 'mailer@marsh-rut-test.iam.gserviceaccount.com', audience: 'http://localhost:8099/token' }).catch(() => null) : null;
 ok(tok && /cloud-platform/.test(tok.payload.scope), 'the Google sign-in is signed with the service account key');
@@ -151,7 +151,7 @@ ok(nb.status === 200 && mails.length === 1, `an email with no account gets the s
 const hid = await post(8094, '/email/reset', { email: 'hidden@example.com' });
 ok(hid.status === 200 && mails.length === 1, `with Firebase's enumeration protection (no link), the same quiet answer (${hid.status})`);
 const vf = await post(8094, '/email/verify', { name: 'Pat', email: 'pat@example.com' }, { Authorization: 'Bearer Pat?' }); const vm = mails[1] || {};
-ok(vf.status === 200 && vm.subject === 'Confirm your email for Hunting LTD' && vm.html.includes('https://hunting.ltd/confirm-email.html?mode=verifyEmail&amp;oobCode=') && /Hi Pat,/.test(vm.text), `a confirmation email links to the game (${vf.status}, ${vm.subject})`);
+ok(vf.status === 200 && vm.subject === 'Confirm your email for Hunting LTD' && vm.html.includes('https://hunting.ltd/confirm-email/?mode=verifyEmail&amp;oobCode=') && /Hi Pat,/.test(vm.text), `a confirmation email links to the game (${vf.status}, ${vm.subject})`);
 const done = await post(8094, '/email/verify', {}, { Authorization: 'Bearer Pat' });
 ok(done.status === 200 && mails.length === 2, 'an already-confirmed player gets no email');
 await post(8094, '/email/reset', { email: 'pat@example.com' }); await post(8094, '/email/reset', { email: 'pat@example.com' });

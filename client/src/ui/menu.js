@@ -10,6 +10,7 @@ import { A, MIX, MIX_KEYS, setMix } from '../audio/audio.js';
 import { canvas } from '../render/core.js';
 import { NET, PLAYER, UI } from '../state.js';
 import { V } from './input.js';
+import { site } from '../site.js';
 
 const $ = (id) => document.getElementById(id);
 const VIEWS = ['m-main', 'm-loc', 'm-set', 'm-contact', 'm-icon', 'm-exit'];
@@ -105,7 +106,7 @@ window.addEventListener('appinstalled', () => { installed = true; installEvt = n
 const inApp = () => matchMedia('(display-mode: standalone)').matches || matchMedia('(display-mode: minimal-ui)').matches || navigator.standalone === true;
 
 // the site's front door (the log-in page sends logged-in players on to the game)
-function gameUrl() { const u = new URL(location.href); u.search = ''; u.hash = ''; u.pathname = u.pathname.replace(/[^/]*\.html$/, ''); return u.href; }
+function gameUrl() { return site(''); }
 export function shortcutFile(os = DEVICE.os, url = gameUrl()) {
   if (os === 'windows') return { name: NAME + '.url', type: 'application/internet-shortcut', text: ['[InternetShortcut]', 'URL=' + url, ''].join('\r\n') };
   if (os === 'mac') return { name: NAME + '.webloc', type: 'application/x-webloc',

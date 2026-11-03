@@ -1,9 +1,9 @@
-// The account pages, one HTML file each (the game itself is hunting.html):
-//   index.html             log in
-//   create-account.html    create an account, then confirm-email.html
-//   forgot-password.html   ask for a reset link
-//   reset-password.html    the reset email's link lands here: choose a new password
-//   confirm-email.html     "check your email" while waiting, and where the confirmation email's link lands
+// The account pages, one folder each with an index.html (the game itself is /hunting/):
+//   /                   log in (client/index.html)
+//   /create-account/    create an account, then /confirm-email/
+//   /forgot-password/   ask for a reset link
+//   /reset-password/    the reset email's link lands here: choose a new password
+//   /confirm-email/     "check your email" while waiting, and where the confirmation email's link lands
 // <body data-page="..."> says which page this is. A note can travel to the next page (sessionStorage): a message to
 // show, and the email to fill in.
 //
@@ -12,6 +12,7 @@
 // busy, an eye to show the password, a Caps Lock warning.
 import { FIREBASE, watchUser, logIn, signUp, resetPassword, logOut, currentUser, authMessage, resendConfirmation, recheckConfirmed,
   emailLink, forgetEmailLink, useEmailCode, checkResetCode, setNewPassword } from '../auth/auth.js';
+import { site } from '../site.js';
 
 const $ = (id) => document.getElementById(id);
 const PAGE = document.body.dataset.page;
@@ -100,7 +101,7 @@ function note(title, text, button, then) {
   $('nt-go').onclick = then; $('nt-go').hidden = false; show('v-note'); say('');
   setTimeout(() => $('nt-go').focus(), 0);
 }
-const toLogin = (email, msg) => () => go('index.html', { email, msg, kind: 'ok' });
+const toLogin = (email, msg) => () => go(site(''), { email, msg, kind: 'ok' });
 // the first answer from Firebase about who is logged in on this browser
 const firstUser = () => new Promise((resolve) => { let done = false; watchUser((u) => { if (!done) { done = true; resolve(u); } }).catch(() => resolve(null)); });
 
@@ -108,9 +109,9 @@ const firstUser = () => new Promise((resolve) => { let done = false; watchUser((
 function prefetchGame() {
   setTimeout(async () => {
     try {
-      const html = await (await fetch('hunting.html')).text();
-      for (const [, href] of html.matchAll(/(?:src|href)="(\.\/assets\/[^"]+\.(?:js|css))"/g)) {
-        const l = document.createElement('link'); l.rel = 'prefetch'; l.href = href; document.head.appendChild(l);
+      const game = site('hunting'), html = await (await fetch(game)).text();
+      for (const [, href] of html.matchAll(/(?:src|href)="((?:\.\.?\/)+assets\/[^"]+\.(?:js|css))"/g)) {
+        const l = document.createElement('link'); l.rel = 'prefetch'; l.href = new URL(href, game).href; document.head.appendChild(l);
       }
     } catch (e) {}
   }, 1500);
@@ -127,8 +128,8 @@ const PAGES = {
       $('li-email-label').textContent = 'Name (test login)'; $('li-email').placeholder = 'Name (test login)'; $('li-email').type = 'text'; $('li-email').autocomplete = 'off';
     }
     $('to-forgot').addEventListener('click', () => { try { sessionStorage.setItem(CARRY, JSON.stringify({ email: $('li-email').value.trim() })); } catch (e) {} });
-    const enter = (u) => location.replace(u.verified ? 'hunting.html' : 'confirm-email.html');
-    // already logged in on this browser: straight on (index.html hid the card while we find out)
+    const enter = (u) => location.replace(u.verified ? site('hunting') : site('confirm-email'));
+    // already logged in on this browser: straight on (the root page hid the card while we find out)
     const u = await firstUser();
     if (u) return enter(u);
     document.documentElement.classList.remove('checking');
@@ -139,8 +140,8 @@ const PAGES = {
       if (!ok) return;
       if (await act(submitBtn(form), () => logIn($('li-email').value, $('li-pass').value), 'f-login')) {
         $('li-pass').value = ''; const me = currentUser();
-        if (me && !me.verified) go('confirm-email.html', { msg: 'Your email isn’t confirmed yet. Open the link in the email we sent you, or send it again below.', kind: 'err' });
-        else location.replace('hunting.html');
+        if (me && !me.verified) go(site('confirm-email'), { msg: 'Your email isn’t confirmed yet. Open the link in the email we sent you, or send it again below.', kind: 'err' });
+        else location.replace(site('hunting'));
       }
     });
   },
@@ -153,7 +154,7 @@ const PAGES = {
         ['su-pass', (v) => v.length >= 8, 'Use at least 8 characters.'], ['su-pass2', (v) => v === p1, 'The passwords don’t match.']])) return;
       if (await act(submitBtn(form), () => signUp($('su-name').value, $('su-email').value, p1), 'f-signup')) {
         $('su-pass').value = $('su-pass2').value = '';
-        go('confirm-email.html', { msg: 'Account created. One more step: confirm your email.', kind: 'ok' });
+        go(site('confirm-email'), { msg: 'Account created. One more step: confirm your email.', kind: 'ok' });
       }
     });
   },
@@ -165,7 +166,7 @@ const PAGES = {
       if (!check(emailRules('fp-email'))) return;
       const email = $('fp-email').value.trim();
       if (await act(submitBtn(form), () => resetPassword(email), 'f-forgot')) {
-        go('index.html', { email, msg: `If there’s an account for ${email}, we’ve sent a link to choose a new password. Check your spam folder too.`, kind: 'ok' });
+        go(site(''), { email, msg: `If there’s an account for ${email}, we’ve sent a link to choose a new password. Check your spam folder too.`, kind: 'ok' });
       }
     });
   },
@@ -173,8 +174,8 @@ const PAGES = {
   async 'reset-password'() {
     const link = emailLink();
     if (!link || link.mode !== 'resetPassword') {
-      if (link) return location.replace('confirm-email.html' + location.search);
-      return note('Choose a new password', 'Open the link in the password reset email we sent you. No email? Ask for a new one.', 'Get a reset link', () => go('forgot-password.html'));
+      if (link) return location.replace(site('confirm-email') + location.search);
+      return note('Choose a new password', 'Open the link in the password reset email we sent you. No email? Ask for a new one.', 'Get a reset link', () => go(site('forgot-password')));
     }
     forgetEmailLink();
     try {
@@ -190,13 +191,13 @@ const PAGES = {
       });
     } catch (e) {
       const used = e && (e.code === 'auth/invalid-action-code' || e.code === 'auth/expired-action-code');
-      note('This link doesn’t work any more', used ? 'Password reset links work once and expire after an hour. Ask for a new one.' : authMessage(e), 'Get a new link', () => go('forgot-password.html'));
+      note('This link doesn’t work any more', used ? 'Password reset links work once and expire after an hour. Ask for a new one.' : authMessage(e), 'Get a new link', () => go(site('forgot-password')));
     }
   },
 
   async 'confirm-email'() {
     const link = emailLink();
-    if (link && link.mode === 'resetPassword') return location.replace('reset-password.html' + location.search);
+    if (link && link.mode === 'resetPassword') return location.replace(site('reset-password') + location.search);
     if (link) {   // the link in the confirmation email (or the "undo an email change" link)
       forgetEmailLink();
       try {
@@ -211,8 +212,8 @@ const PAGES = {
     }
     // waiting for the player to click the link (in this browser, on a phone, anywhere): check every few seconds
     const c = carried(), u = await firstUser();
-    if (!u) return location.replace('index.html');
-    if (u.verified) return location.replace('hunting.html');
+    if (!u) return location.replace(site(''));
+    if (u.verified) return location.replace(site('hunting'));
     $('vf-email').textContent = u.email; show('v-verify');
     if (c.msg) say(c.msg, c.kind || 'ok');
     let leaving = false;
@@ -222,11 +223,11 @@ const PAGES = {
       try { const me = await recheckConfirmed(); if (me && me.verified) done(me.email); } catch (e) {}
     }, 5000);
     // the link was opened in another tab of this browser: that tab logs out, so this one does too
-    watchUser((me) => { if (!me && !leaving) { leaving = true; clearInterval(poll); go('index.html', { email: u.email, msg: 'Email confirmed? Sign in to play the game.', kind: 'ok' }); } });
+    watchUser((me) => { if (!me && !leaving) { leaving = true; clearInterval(poll); go(site(''), { email: u.email, msg: 'Email confirmed? Sign in to play the game.', kind: 'ok' }); } });
     $('vf-resend').addEventListener('click', async (e) => {
       if (await act(e.target, resendConfirmation)) say('Sent again. It can take a minute or two to arrive; check your spam folder too.', 'ok');
     });
-    $('vf-logout').addEventListener('click', async (e) => { e.preventDefault(); leaving = true; clearInterval(poll); await logOut(); go('index.html'); });
+    $('vf-logout').addEventListener('click', async (e) => { e.preventDefault(); leaving = true; clearInterval(poll); await logOut(); go(site('')); });
   },
 };
 

@@ -23,6 +23,7 @@ import { LocalHost, RemoteHost } from './net/hosts.js';
 import { watchIdle } from './ui/idle.js';
 import { initMenu, note as menuNote } from './ui/menu.js';
 import { getToken, watchUser, logOut } from './auth/auth.js';
+import { site } from './site.js';
 import { handleEvent, updateViews } from './views/world-events.js';
 import { ANIMALS, G, NET, PLAYER, Q, TEST, UI, bearingOf } from './state.js';
 
@@ -76,8 +77,8 @@ async function changedStand(you) {
 // The game page needs a logged-in player with a confirmed email; anyone else goes to the account pages.
 function startSession() {
   watchUser((u) => {
-    if (!u) { if (!leaving) location.replace('index.html'); return; }
-    if (!u.verified) { location.replace('confirm-email.html'); return; }
+    if (!u) { if (!leaving) location.replace(site('')); return; }
+    if (!u.verified) { location.replace(site('confirm-email')); return; }
     USER = u;
     document.getElementById('in-name').textContent = u.name; document.getElementById('in-email').textContent = u.email ? `(${u.email})` : '';
     if (!NET.host) document.getElementById('acct').hidden = false;
@@ -90,7 +91,7 @@ async function leaveTo(msg) {
   try { if (NET.host && NET.host.leave) NET.host.leave(); } catch (e) {}
   try { if (msg) sessionStorage.setItem('hl-carry', JSON.stringify({ msg, kind: 'ok' })); } catch (e) {}
   try { await logOut(); } catch (e) {}
-  location.replace('index.html');
+  location.replace(site(''));
 }
 // Exit game (pause menu): online, leave the marsh and log out; offline, back to the start
 async function exitGame() {

@@ -339,6 +339,19 @@ body.menu-open #hud,body.menu-open #paused{visibility:hidden}
   <p>Reach a far bull with long calls. When he stops on his way in, a coaxing call gets him moving again. Call again within 30 seconds and you’re calling too often. Inside 75 yards, any call or pour gives you away. Keep the wind in your face: the dial is bottom left.</p>
   </div>
 </div></div>
+<script>
+// Opened from a link in one of our emails (?mode=...&oobCode=...): show "One moment…" straight away, not the
+// sign-in card, until the game's script handles the link (ui/account.js).
+(function () {
+  var q = new URLSearchParams(location.search);
+  if (!q.get('oobCode') || !/^(verifyEmail|resetPassword|recoverEmail)$/.test(q.get('mode') || '')) return;
+  document.getElementById('f-login').hidden = true;
+  document.getElementById('nt-title').textContent = 'One moment…';
+  document.getElementById('nt-go').hidden = true;
+  document.getElementById('v-note').hidden = false;
+  document.body.dataset.acct = 'v-note';
+})();
+</script>
 <div id="menu" hidden role="dialog" aria-modal="true" aria-labelledby="m-title">
   <div class="mcard">
     <section id="m-main" class="af mview">

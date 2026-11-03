@@ -42,6 +42,9 @@ const tick = () => new Promise((r) => setTimeout(r, 0));
 let sky = null, grassBuilt = false, USER = null;
 
 async function init() {
+  // the page starts on the sign-in card (index.html), so players never see the old start card while the marsh builds;
+  // solo and test runs have no accounts, so they hide it at once
+  if (!(SERVER && !TEST)) hideAccount();
   st('Painting textures…'); await tick(); makeTextures(); await loadRefAssets();
   st('Shaping the marsh…'); await tick(); buildWorld(); Object.assign(PLAYER, { x: STANDS[0].x, z: STANDS[0].z, y: STANDS[0].y, eye: STANDS[0].eye, yaw: STANDS[0].yaw }); buildTerrain(); await tick(); sky = buildSky(); buildRidges(); buildWater();
   st('Planting forest…'); await tick(); buildForest(); buildShrubs(); buildStand();

@@ -159,7 +159,7 @@ body.menu-open #hud,body.menu-open #paused{visibility:hidden}
 #others{position:absolute;left:18px;top:14px;opacity:.7;white-space:pre}
 </style>
 </head>
-<body>
+<body data-acct="f-login">
 <canvas id="c"></canvas>
 <div id="binoc"><svg id="binocsvg"></svg></div>
 <div id="hud">
@@ -177,8 +177,8 @@ body.menu-open #hud,body.menu-open #paused{visibility:hidden}
 <div id="start"><div class="card">
   <h1>Hunting LTD</h1>
   <p class="sub">Late September. First light over a 500 × 800 yard beaver marsh. You are twenty feet up a spruce.</p>
-  <div id="acct" hidden>
-    <form id="f-login" class="af" novalidate aria-labelledby="h-login">
+  <div id="acct">
+    <form id="f-login" class="af" onsubmit="event.preventDefault()" novalidate aria-labelledby="h-login">
       <h2 id="h-login">Log in</h2>
       <div class="field">
         <label for="li-email" id="li-email-label">Email</label>

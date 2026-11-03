@@ -3,15 +3,19 @@
 // login refused?     node tools/mp-test.mjs   (starts its own servers on ports 8091 and 8092)
 import { spawn } from 'child_process';
 import WebSocket from 'ws';
+import http from 'http';
 import { PROTOCOL_VERSION } from '../shared/protocol.js';
 
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-let fail = 0; const ok = (c, msg) => { console.log((c ? 'PASS ' : 'FAIL ') + msg); if (!c) fail++; };
+let fail = 0, b2; const ok = (c, msg) => { console.log((c ? 'PASS ' : 'FAIL ') + msg); if (!c) fail++; };
 function startServer(port, env) {
   const srv = spawn(process.execPath, ['server/server.js'], { env: { ...process.env, PORT: String(port), ...env }, stdio: ['ignore', 'pipe', 'inherit'] });
   srv.stdout.on('data', (d) => process.stdout.write(`  [${port}] ` + d));
   return srv;
 }
+const mails = [];
+const fakeResend = http.createServer((req, res) => { let b = ''; req.on('data', (d) => (b += d)); req.on('end', () => { mails.push({ auth: req.headers.authorization, ...JSON.parse(b) }); res.writeHead(200, { 'Content-Type': 'application/json' }); res.end('{"id":"test"}'); }); }).listen(8099);
+const mailer = startServer(8094, { MARSH_AUTH: 'off', RESEND_API_KEY: 're_test', CONTACT_TO: 'owner@example.com', RESEND_URL: 'http://localhost:8099/emails' });
 const dev = startServer(8091, { MARSH_AUTH: 'off', MARSH_DEBUG: '1', MARSH_BULL_NOW: '1', KEEP_MINUTES: '5', MAX_CONN_PER_IP: '3', MAX_NEW_PER_IP: '3' });
 const idle = startServer(8093, { MARSH_AUTH: 'off', IDLE_MINUTES: '0', IDLE_GRACE_S: '4' });
 const real = startServer(8092, { FIREBASE_PROJECT_ID: 'marsh-rut-test' });
@@ -91,6 +95,32 @@ ok(!(await debug()).includes('dev:Carol'), 'logging out closes the marsh right a
 const codes = await Promise.all(Array.from({ length: 35 }, () => fetch('http://localhost:8091/health').then((r) => r.status)));
 ok(codes.includes(429), `flooding the status page gets "too many requests" (${codes.filter((c) => c === 429).length} of 35 refused)`);
 
+// 7. pause menu: the marsh stops while paused; change location; contact form
+const p = await hunter(8094, 'Pat', 0);
+await wait(1500);
+p.ws.send(JSON.stringify({ t: 'pause' })); await wait(400);
+const tPaused = [...p.ticks.keys()].pop(); await wait(1500);
+ok([...p.ticks.keys()].pop() === tPaused, `while paused the marsh stands still (no new snapshots after t=${tPaused})`);
+p.ws.send(JSON.stringify({ t: 'resume' })); await wait(800);
+const tAfter = [...p.ticks.keys()].pop();
+ok(tAfter > tPaused && tAfter - tPaused < 1.2, `after resuming it carries on from where it stopped (t ${tPaused} -> ${tAfter})`);
+const answer = (h, type, msg) => new Promise((resolve) => { const t = setTimeout(() => resolve({ timeout: true }), 8000); const on = (d) => { const m = JSON.parse(d); if (m.t === type) { clearTimeout(t); h.ws.off('message', on); resolve(m); } }; h.ws.on('message', on); h.ws.send(JSON.stringify(msg)); });
+const mv = await answer(p, 'moved', { t: 'stand', stand: 5 });
+ok(mv.you && mv.you.stand === 5, `change location moves the hunter to stand 5 (${mv.you && mv.you.stand})`);
+const off = await answer(b2 = await hunter(8093, 'Quinn', 0), 'contact', { t: 'contact', name: 'Q', email: 'q@example.com', message: 'hello' });
+ok(off.ok === false && off.reason === 'off', `without an email key the contact form says it isn't set up (${off.reason})`);
+const badMail = await answer(p, 'contact', { t: 'contact', name: 'Pat', email: 'not-an-email', message: 'hello' });
+ok(badMail.ok === false && badMail.field === 'email', `a bad reply address is refused (${badMail.field})`);
+const sent = await answer(p, 'contact', { t: 'contact', name: 'Pat', email: 'pat@example.com', message: 'Love the game!\nOne question…' });
+const mail = mails[0] || {};
+ok(sent.ok === true && mail.to && mail.to[0] === 'owner@example.com' && mail.reply_to === 'pat@example.com' && /Love the game/.test(mail.text) && mail.auth === 'Bearer re_test',
+  `a message is emailed to the owner with the player as reply-to (${sent.ok}, to ${mail.to}, reply-to ${mail.reply_to})`);
+await answer(p, 'contact', { t: 'contact', name: 'Pat', email: 'pat@example.com', message: 'second' });
+await answer(p, 'contact', { t: 'contact', name: 'Pat', email: 'pat@example.com', message: 'third' });
+const fourth = await answer(p, 'contact', { t: 'contact', name: 'Pat', email: 'pat@example.com', message: 'fourth' });
+ok(fourth.ok === false && fourth.reason === 'limit' && mails.length === 3, `a 4th message within the hour is refused (${fourth.reason}, ${mails.length} emailed)`);
+p.ws.close(); b2.ws.close();
+
 // 6. inactivity: a marsh that hears nothing is closed; one that is told "active" stays (server with a 4 s limit)
 const sleepy = await hunter(8093, 'Sleepy', 0), busy = await hunter(8093, 'Busy', 0);
 const keep = setInterval(() => busy.ws.send(JSON.stringify({ t: 'active' })), 1000);
@@ -99,4 +129,4 @@ ok(sleepy.msgs.includes('idle') && sleepy.closed, 'an inactive player is told "i
 ok(!busy.closed, 'an active player stays connected');
 
 for (const h of [bobBack, busy]) h.ws.close();
-dev.kill(); real.kill(); idle.kill(); console.log(fail ? `${fail} check(s) failed` : 'all server checks passed'); process.exit(fail ? 1 : 0);
+dev.kill(); real.kill(); idle.kill(); mailer.kill(); fakeResend.close(); console.log(fail ? `${fail} check(s) failed` : 'all server checks passed'); process.exit(fail ? 1 : 0);

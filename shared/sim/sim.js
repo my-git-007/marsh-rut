@@ -40,6 +40,13 @@ export class Sim {
     return H;
   }
   removeHunter(id) { this.hunters.delete(id); }
+  // climb down and walk to another stand (the animals keep going; a bull working toward this hunter follows him)
+  moveHunter(id, want) {
+    const H = this.hunters.get(id), s = STANDS[want]; if (!H || !s) return null;
+    if ([...this.hunters.values()].some((h) => h !== H && h.stand === s.i)) return null;   // taken by someone else
+    Object.assign(H, { stand: s.i, x: s.x, z: s.z, y: s.y, eye: s.eye, yaw: s.yaw, fx: -Math.sin(s.yaw), fz: -Math.cos(s.yaw) });
+    return H;
+  }
   hunterList() { return [...this.hunters.values()].map(h => ({ id: h.id, name: h.name, stand: h.stand })); }
   nearestHunter(x, z) { let h = null, d = 1e9; for (const H of this.hunters.values()) { const dd = Math.hypot(H.x - x, H.z - z); if (dd < d) { d = dd; h = H; } } return { h, d }; }
   pickHunter() {   // the hunter with the fewest bulls already working toward them

@@ -18,14 +18,16 @@ const V = {
   ly: 0,
   prevFov: 62,
   started: false,
+  sens: 1,        // look sensitivity (Settings)
+  invert: false,  // invert up and down (Settings)
 };
 function setLook(dx, dy) {
-  const k = 0.0022 * (V.fov / 62);
+  const k = 0.0022 * V.sens * (V.fov / 62);
   V.yaw -= dx * k;
-  V.pitch = clamp(V.pitch - dy * k, -1.25, 0.95);
+  V.pitch = clamp(V.pitch - (V.invert ? -dy : dy) * k, -1.25, 0.95);
 }
 document.addEventListener('mousemove', (e) => {
-  if (!V.started || (e.target && e.target.closest && e.target.closest('input,select,textarea'))) return;
+  if (!V.started || UI.paused || (e.target && e.target.closest && e.target.closest('input,select,textarea'))) return;
   if (V.locked) setLook(e.movementX || 0, e.movementY || 0);
   else if (V.drag) {
     setLook(e.clientX - V.lx, e.clientY - V.ly);
@@ -43,10 +45,7 @@ canvas.addEventListener('mousedown', (e) => {
     if (!V.dragMode) {
       try {
         const r = canvas.requestPointerLock();
-        if (r && r.catch)
-          r.catch(() => {
-            V.dragMode = true;
-          });
+        if (r && r.catch) r.catch(() => {});   // e.g. too soon after Esc: dragging still looks around; the next click tries again
       } catch (err) {
         V.dragMode = true;
       }
@@ -60,18 +59,14 @@ document.addEventListener('mouseup', () => {
   V.drag = false;
 });
 document.addEventListener('pointerlockchange', () => {
-  V.locked = document.pointerLockElement === canvas;
-  document.getElementById('paused').style.display = !V.locked && V.started && !V.dragMode ? 'block' : 'none';
+  V.locked = document.pointerLockElement === canvas;   // losing it while playing opens the pause menu (ui/menu.js)
 });
-document.addEventListener('pointerlockerror', () => {
-  V.dragMode = true;
-  document.getElementById('paused').style.display = 'none';
-});
+document.addEventListener('pointerlockerror', () => {});   // not captured this time; dragging with the button held still looks around
 canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 window.addEventListener(
   'wheel',
   (e) => {
-    if (!V.started) return;
+    if (!V.started || UI.paused) return;
     e.preventDefault();
     V.fovT = clamp(V.fovT * Math.pow(1.0016, e.deltaY * (e.deltaMode === 1 ? 33 : 1)), 1.5, 70);
   },
@@ -84,13 +79,13 @@ function toggleBinos() {
   } else V.fovT = V.prevFov > 20 ? V.prevFov : 62;
 }
 window.addEventListener('keydown', (e) => {
-  if (!V.started || (e.target && e.target.closest && e.target.closest('input,select,textarea'))) return;
+  if (!V.started || UI.paused || (e.target && e.target.closest && e.target.closest('input,select,textarea'))) return;
   if (e.code === 'Space') {
     e.preventDefault();
     if (!e.repeat) startCall();
   } else if (e.code === 'Digit1' || e.code === 'Numpad1') setCallType('long');
   else if (e.code === 'Digit2' || e.code === 'Numpad2') setCallType('coax');
-  else if (e.code === 'KeyO' && !e.repeat) toggleMixer();
+  else if (e.code === 'KeyO' && !e.repeat) (UI.openMenu ? UI.openMenu('m-set') : toggleMixer());
   else if (e.code === 'KeyV' && !e.repeat) pour();
   else if (e.code === 'KeyB') toggleBinos();
   else if (e.code === 'KeyH') {

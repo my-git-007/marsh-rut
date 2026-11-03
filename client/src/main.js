@@ -22,13 +22,14 @@ import { updateCallLabel } from './calls.js';
 import { LocalHost, RemoteHost } from './net/hosts.js';
 import { initAccount, hideAccount, logOutNow, say } from './ui/account.js';
 import { watchIdle } from './ui/idle.js';
+import { initMenu, note as menuNote } from './ui/menu.js';
 import { getToken } from './auth/auth.js';
 import { handleEvent, updateViews } from './views/world-events.js';
 import { ANIMALS, G, NET, PLAYER, Q, TEST, UI, bearingOf } from './state.js';
 
 window.addEventListener('error', (e) => { const el = document.getElementById('err'); el.style.display = 'block'; el.textContent += (e.message || String(e)) + ' @' + (e.filename || '').split('/').pop() + ':' + (e.lineno || '?') + '\n'; });
 window.__log = [];
-window.__marsh = { NET, PLAYER, ANIMALS, G, V };   // for tests and the console
+window.__marsh = { NET, PLAYER, ANIMALS, G, V, UI, A };   // for tests and the console
 
 // Online when a server is configured (?server=wss://… or VITE_SERVER_URL at build time): players log in and
 // the server runs each player's own marsh. Otherwise (or with ?solo) the marsh runs in this tab, no account.
@@ -53,8 +54,8 @@ async function init() {
     initAccount((user) => { USER = user; go.hidden = !user; if (!user) netMsg(''); }, { beforeLogout: async () => { if (NET.host) NET.host.leave(); } });
     try { const m = sessionStorage.getItem('marshrut-msg'); if (m) { sessionStorage.removeItem('marshrut-msg'); say(m, 'ok'); } } catch (e) {}
     watchIdle({
-      onWarn: (s) => { if (!USER) return; const t = `Still there? You’ll be logged out in ${s} seconds unless you move the mouse.`; showMsg(t, 60000); if (!NET.host) say(t); },
-      onBack: () => { showMsg('', 1); if (!NET.host) say(''); },
+      onWarn: (s) => { if (!USER) return; const t = `Still there? You’ll be logged out in ${s} seconds unless you move the mouse.`; showMsg(t, 60000); if (!NET.host) say(t); if (UI.paused) menuNote(t); },
+      onBack: () => { showMsg('', 1); if (!NET.host) say(''); if (UI.paused) menuNote(''); },
       onIdle: () => { if (USER || NET.host) idleLogout(); },
       tellServer: () => { if (NET.host) NET.host.active(); },
     });
@@ -62,7 +63,25 @@ async function init() {
     await seat(new LocalHost({ log: !!TEST }), 'You', Q.has('stand') ? +Q.get('stand') : 0);
     st('Climb into the stand'); go.disabled = false;
   }
+  initMenu({ online: !!(SERVER && !TEST), user: () => USER, onMoved: changedStand, onExit: exitGame });
   requestAnimationFrame(loop);
+}
+
+// Change location (pause menu): the host has moved this hunter; move the camera and regrow the grass around the new stand
+async function changedStand(you) {
+  Object.assign(PLAYER, { stand: you.stand, x: you.x, z: you.z, y: you.y, eye: you.eye, yaw: you.yaw });
+  camera.position.set(PLAYER.x, PLAYER.eye, PLAYER.z); V.yaw = PLAYER.yaw; V.pitch = -0.035;
+  try { localStorage.setItem('marshrut-stand', String(you.stand)); } catch (e) {}
+  await tick(); buildGrass();
+  renderer.shadowMap.needsUpdate = true; UI.redraw = true;
+}
+// Exit game (pause menu): online, leave the marsh and log out; offline, back to the start
+async function exitGame() {
+  if (SERVER && !TEST) {
+    try { sessionStorage.setItem('marshrut-msg', 'You’ve left the marsh. Log in to go back.'); } catch (e) {}
+    try { await logOutNow(); } catch (e) {}
+  }
+  location.reload();
 }
 
 // put this player in a stand and finish the bits of the world that depend on where they sit
@@ -152,6 +171,11 @@ let last = performance.now(), frameN = 0, autoT = 20;
 const SPEED = TEST ? +(Q.get('speed') || 1) : 1;
 function loop(now) {
   requestAnimationFrame(loop);
+  if (UI.paused) {   // pause menu: nothing moves; draw again only if something changed (a new stand)
+    last = now;
+    if (UI.redraw) { UI.redraw = false; camera.rotation.set(V.pitch, V.yaw, 0); camera.updateMatrixWorld(); sky.position.copy(camera.position); renderReflection(); renderer.render(scene, camera); }
+    return;
+  }
   let dt = (now - last) / 1000; last = now; dt = clamp(dt, 0, 0.05) * SPEED; G.time += dt; frameN++;
   if (TEST && Q.has('autocall') && NET.host) { autoT -= dt; if (autoT < 0) { autoT = +Q.get('autocall') || 25; const nb = ANIMALS.find((a) => a.kind === 'bull'); NET.host.call(nb && nb.dist() < 350 ? 'coax' : 'long', 4, ''); } }
   U.time.value += dt; U.wind.value.set((WIND.tx * WIND.speed) / 9 * WIND.gust, WIND.gust, (WIND.tz * WIND.speed) / 9 * WIND.gust);

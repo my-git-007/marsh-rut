@@ -22,6 +22,7 @@ import { Sim } from '../shared/sim/sim.js';
 import { STANDS } from '../shared/world.js';
 import { TICK_HZ, SEND_EVERY, PROTOCOL_VERSION } from '../shared/protocol.js';
 import { whoIs, AUTH_OFF } from './auth.js';
+import { sendContact, CONTACT_ON } from './contact.js';
 
 const env = process.env, num = (k, d) => (env[k] != null && env[k] !== '' && !isNaN(+env[k]) ? +env[k] : d);
 const PORT = num('PORT', 8080);
@@ -111,7 +112,7 @@ async function hello(c, msg) {
   const hid = 'h' + who.uid.slice(-6);
   const H = m.sim.addHunter(hid, who.name, Number.isInteger(msg.stand) && msg.stand >= 0 && msg.stand < STANDS.length ? msg.stand : undefined);
   if (!H) return deny(c, 'full');
-  Object.assign(c, { uid: who.uid, hid, marsh: m, active: Date.now() }); m.conn = c;
+  Object.assign(c, { uid: who.uid, hid, who, marsh: m, active: Date.now() }); m.conn = c; m.paused = false;
   send(c.ws, { t: 'welcome', you: hunterOut(H), hunters: m.sim.hunterList(), spawns: m.sim.spawnList(), snap: m.sim.snapshot(), rate: TICK_HZ / SEND_EVERY });
   log(`+ ${who.name} (${who.uid.slice(0, 10)}) at ${STANDS[H.stand].name} — ${players()} playing, ${marshes.size} marsh(es)`);
 }
@@ -131,6 +132,15 @@ wss.on('connection', (ws, req) => {
     const m = c.marsh; if (!m || m.conn !== c) return;
     if (msg.t === 'active') c.active = Date.now();   // the player touched the mouse or keyboard recently
     else if (msg.t === 'leave') { leave(c, true); ws.close(); }
+    else if (msg.t === 'pause') m.paused = true;     // the player opened the menu: the marsh stands still
+    else if (msg.t === 'resume') m.paused = false;
+    else if (msg.t === 'stand') {   // change location
+      const H = Number.isInteger(msg.stand) ? m.sim.moveHunter(c.hid, msg.stand) : null;
+      send(ws, H ? { t: 'moved', you: hunterOut(H) } : { t: 'moved', error: 'taken' });
+    } else if (msg.t === 'contact') {
+      if (c.contactBusy) return; c.contactBusy = true;
+      sendContact(c.who, c.ip, msg).then((r) => send(ws, { t: 'contact', ...r })).finally(() => { c.contactBusy = false; });
+    }
     else if (msg.t === 'call') { c.active = Date.now(); m.sim.hunterCall(c.hid, msg.type === 'coax' ? 'coax' : 'long', +msg.dur || 3, CLIP.test(msg.clip) ? msg.clip : ''); }
     else if (msg.t === 'pour') { c.active = Date.now(); if (m.sim.time - c.lastPour > 5) { c.lastPour = m.sim.time; m.sim.hunterPour(c.hid); } }
   });
@@ -146,6 +156,7 @@ setInterval(() => {
   for (const m of marshes.values()) {
     if (!m.conn) { if (now - m.emptySince > KEEP_MS) marshes.delete(m.uid); continue; }
     if (now - m.conn.active > IDLE_MS) { const c = m.conn; send(c.ws, { t: 'idle' }); leave(c, true); c.ws.close(); continue; }
+    if (m.paused) continue;
     m.sim.update(1 / TICK_HZ); m.step++;
     if (m.step % SEND_EVERY) continue;
     send(m.conn.ws, { t: 'tick', snap: m.sim.snapshot(), ev: m.sim.takeEvents() });
@@ -158,4 +169,4 @@ setInterval(() => {
   for (const [ip, h] of httpByIp) if (now - h.start > 60000) httpByIp.delete(ip);
 }, 60000);
 
-server.listen(PORT, () => log(`Marsh Rut server on :${PORT} — private marshes, up to ${MAX_MARSHES}; login ${AUTH_OFF ? 'OFF (testing)' : 'Firebase'}; ${MAX_CONN_PER_IP} conn/address${DEBUG ? '; debug on' : ''}`));
+server.listen(PORT, () => log(`Marsh Rut server on :${PORT} — private marshes, up to ${MAX_MARSHES}; login ${AUTH_OFF ? 'OFF (testing)' : 'Firebase'}; contact ${CONTACT_ON ? 'on' : 'off'}; ${MAX_CONN_PER_IP} conn/address${DEBUG ? '; debug on' : ''}`));

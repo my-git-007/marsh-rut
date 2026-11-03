@@ -52,9 +52,9 @@ canvas#c{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:cros
 #paused{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);display:none;font:13px ui-monospace,Consolas,monospace;letter-spacing:.1em;background:rgba(0,0,0,.45);padding:10px 16px;pointer-events:none}
 @media (max-width:520px){.card{padding:22px 18px}.card h1{font-size:20px}}
 /* ---- account screens (log in, create account, reset password, confirm email) ---- */
-#acct{--sand:#e8d9a6;--sand-hi:#f4e8bd;--sand-lo:#d6c58b;--bad:#f2a58e;--good:#b9dd9a;--field:rgba(0,0,0,.38);--edge:rgba(236,230,214,.30);
+#acct,#menu{--sand:#e8d9a6;--sand-hi:#f4e8bd;--sand-lo:#d6c58b;--bad:#f2a58e;--good:#b9dd9a;--field:rgba(0,0,0,.38);--edge:rgba(236,230,214,.30);
   font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;margin:8px 0 4px}
-#acct[hidden],#acct [hidden]{display:none!important}
+#acct[hidden],#acct [hidden],#menu[hidden],#menu [hidden]{display:none!important}
 .af{display:flex;flex-direction:column;gap:18px;max-width:380px}
 .af h2{font:normal 22px/1.25 Georgia,serif;letter-spacing:.04em;margin:0}
 .af .lead{margin:-6px 0 0;font-size:15px;color:var(--dim)}
@@ -64,11 +64,12 @@ canvas#c{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:cros
 .field .lrow{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
 .field .lrow a{font-size:14px}
 .field .hint{margin:-2px 0 0;font-size:13px;color:var(--dim)}
-.field input,.field select{width:100%;box-sizing:border-box;min-height:46px;padding:10px 12px;font:16px/1.3 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+.field input,.field select,.field textarea{width:100%;box-sizing:border-box;min-height:46px;padding:10px 12px;font:16px/1.3 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
   color:var(--ink);background:var(--field);border:1px solid var(--edge);border-radius:6px;transition:border-color .15s,box-shadow .15s}
-.field input:hover,.field select:hover{border-color:rgba(236,230,214,.5)}
-.field input:focus,.field select:focus{outline:none;border-color:var(--sand);box-shadow:0 0 0 3px rgba(232,217,166,.28)}
-.field input[aria-invalid="true"]{border-color:var(--bad)}
+.field input:hover,.field select:hover,.field textarea:hover{border-color:rgba(236,230,214,.5)}
+.field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:var(--sand);box-shadow:0 0 0 3px rgba(232,217,166,.28)}
+.field textarea{min-height:140px;resize:vertical;line-height:1.45}
+.field input[aria-invalid="true"],.field textarea[aria-invalid="true"]{border-color:var(--bad)}
 .field input[aria-invalid="true"]:focus{box-shadow:0 0 0 3px rgba(242,165,142,.28)}
 .field .ferr{margin:0;font-size:14px;color:var(--bad)}
 .field .ferr:empty{display:none}
@@ -104,6 +105,44 @@ body[data-acct] .card{max-width:460px}
 body[data-acct] #howto,body[data-acct] #go,body[data-acct] #mixopen,body[data-acct] #netmsg:empty{display:none}
 body[data-acct] #hud,body[data-acct] #paused{visibility:hidden}
 @media (max-width:520px){.af{max-width:none}#acctmsg{max-width:none}}
+/* ---- pause menu (Esc) ---- */
+#menu{position:fixed;inset:0;z-index:30;display:flex;align-items:safe center;justify-content:center;overflow-y:auto;padding:16px;box-sizing:border-box;
+  background:rgba(8,9,7,.62);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)}
+.mcard{width:100%;max-width:440px;box-sizing:border-box;padding:28px 30px;background:rgba(14,15,12,.94);border:1px solid var(--line);border-radius:8px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+.mview{max-width:none}
+.mview h3{margin:6px 0 -6px;font-size:13px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--dim)}
+.mlist{display:flex;flex-direction:column;gap:8px}
+.mitem{display:flex;flex-direction:column;align-items:flex-start;gap:2px;width:100%;min-height:56px;padding:10px 14px;text-align:left;cursor:pointer;
+  font:600 16px system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:var(--ink);background:rgba(255,255,255,.03);border:1px solid var(--edge);border-radius:6px;
+  transition:background-color .15s,border-color .15s}
+.mitem span{font-weight:400;font-size:13px;color:var(--dim)}
+.mitem:hover{background:rgba(232,217,166,.09);border-color:var(--sand)}
+.mitem:active{transform:translateY(1px)}
+.mitem:focus-visible,.back:focus-visible{outline:3px solid var(--sand);outline-offset:2px}
+.mitem[aria-current="true"]{border-color:var(--good);cursor:default;background:rgba(185,221,154,.07)}
+.mitem[disabled]{opacity:.6;cursor:progress}
+.mitem.danger{color:var(--bad)}
+.af .primary.danger{background:var(--bad);border-color:var(--bad);color:#1a0f0b}
+.af .primary.danger:hover{background:#f7bba8;border-color:#f7bba8}
+.back{align-self:flex-start;margin:-6px 0 -6px -8px;padding:8px;min-height:40px;font:600 15px system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--sand);background:none;border:0;border-radius:4px;cursor:pointer}
+.back:hover{color:var(--sand-hi);text-decoration:underline;text-underline-offset:3px}
+.mnote{margin:-6px 0 0;font-size:15px;color:var(--good)}.mnote:empty{display:none}
+.mfoot{margin:0;font-size:13px;color:var(--dim);text-align:center}
+.mmsg{margin:0;font-size:15px;line-height:1.45;border-radius:6px;padding:10px 12px;border-left:4px solid var(--bad);color:#fbd3c6;background:rgba(242,165,142,.12)}
+.mmsg:empty{display:none}
+.mmsg.ok{border-color:var(--good);color:#dcefc9;background:rgba(185,221,154,.10)}
+.mmsg.info{border-color:var(--sand);color:var(--ink);background:rgba(232,217,166,.08)}
+.letter{border-left:3px solid var(--sand);padding-left:14px}.letter p{margin:0 0 8px}.letter p:last-child{margin:0}
+.srows{display:flex;flex-direction:column;gap:14px}
+.srow{display:grid;grid-template-columns:1fr 3.5em;gap:4px 12px;align-items:center}
+.srow label{grid-column:1/3;font-size:14px;font-weight:600}
+.srow input[type=range]{width:100%;min-height:28px;accent-color:#e8d9a6;cursor:pointer}
+.srow output{text-align:right;font-size:14px;font-variant-numeric:tabular-nums;color:var(--dim)}
+.check{display:flex;align-items:center;gap:10px;font-size:15px;min-height:40px;cursor:pointer}
+.check input{width:20px;height:20px;accent-color:#e8d9a6;cursor:pointer}
+#f-contact{gap:16px}
+body.menu-open #hud,body.menu-open #paused{visibility:hidden}
+@media (max-width:520px){.mcard{padding:22px 18px}}
 #netmsg{color:#e8d9a6;font-size:12px;min-height:1em;margin-top:8px}
 #others{position:absolute;left:18px;top:14px;opacity:.7;white-space:pre}
 </style>
@@ -212,6 +251,77 @@ body[data-acct] #hud,body[data-acct] #paused{visibility:hidden}
   <p>Reach a far bull with long calls. When he stops on his way in, a coaxing call gets him moving again. Call again within 30 seconds and you’re calling too often. Inside 75 yards, any call or pour gives you away. Keep the wind in your face: the dial is bottom left.</p>
   </div>
 </div></div>
+<div id="menu" hidden role="dialog" aria-modal="true" aria-labelledby="m-title">
+  <div class="mcard">
+    <section id="m-main" class="af mview">
+      <h2 id="m-title">Paused</h2>
+      <p class="mnote" id="m-note" role="status"></p>
+      <button type="button" class="primary" id="m-resume">Resume</button>
+      <div class="mlist">
+        <button type="button" class="mitem" data-go="m-loc">Change location<span>Move to another stand</span></button>
+        <button type="button" class="mitem" data-go="m-set">Settings<span>Sound levels, looking around</span></button>
+        <button type="button" class="mitem" data-go="m-contact">Contact<span>Send Martin a message</span></button>
+        <button type="button" class="mitem danger" data-go="m-exit">Exit game<span>Leave the marsh and log out</span></button>
+      </div>
+      <p class="mfoot">Press Esc to go back to the marsh</p>
+    </section>
+    <section id="m-loc" class="af mview" hidden>
+      <button type="button" class="back" data-go="m-main">← Back</button>
+      <h2>Change location</h2>
+      <p class="lead">Climb down and move to another stand. The animals carry on where they are.</p>
+      <div class="mlist" id="m-stands"></div>
+      <p class="mmsg" id="m-loc-msg" role="status"></p>
+    </section>
+    <section id="m-set" class="af mview" hidden>
+      <button type="button" class="back" data-go="m-main">← Back</button>
+      <h2>Settings</h2>
+      <h3>Sound levels</h3>
+      <div id="m-mix" class="srows"></div>
+      <h3>Looking around</h3>
+      <div class="srows">
+        <div class="srow"><label for="set-sens">Look sensitivity</label><input type="range" id="set-sens" min="25" max="250" step="5"><output for="set-sens" id="set-sens-out"></output></div>
+        <label class="check"><input type="checkbox" id="set-invert"> Invert up and down</label>
+      </div>
+      <p class="mfoot">Settings are saved on this device.</p>
+    </section>
+    <section id="m-contact" class="af mview" hidden>
+      <button type="button" class="back" data-go="m-main">← Back</button>
+      <h2>Contact</h2>
+      <div class="lead letter"><p>Hope you’re enjoying the game. If you have any questions or comments please use the form below to get in touch.</p><p>Thanks!<br>Martin</p></div>
+      <form id="f-contact" class="af" novalidate>
+        <div class="field">
+          <label for="ct-name">Name</label>
+          <input id="ct-name" maxlength="80" autocomplete="name" required>
+          <p class="ferr" id="ct-name-err"></p>
+        </div>
+        <div class="field">
+          <label for="ct-email">Email</label>
+          <p class="hint" id="ct-email-hint">So Martin can reply to you.</p>
+          <input type="email" id="ct-email" maxlength="200" autocomplete="email" inputmode="email" autocapitalize="off" spellcheck="false" aria-describedby="ct-email-hint" required>
+          <p class="ferr" id="ct-email-err"></p>
+        </div>
+        <div class="field">
+          <label for="ct-message">Message</label>
+          <textarea id="ct-message" rows="6" maxlength="4000" required></textarea>
+          <p class="ferr" id="ct-message-err"></p>
+        </div>
+        <p class="mmsg" id="ct-msg" role="alert"></p>
+        <button type="submit" class="primary" data-busy="Sending…">Send</button>
+      </form>
+      <div id="ct-done" hidden>
+        <p class="mmsg ok">Thanks! Your message is on its way. Martin will reply to <b id="ct-done-email"></b>.</p>
+        <button type="button" class="secondary" id="ct-another">Write another message</button>
+      </div>
+    </section>
+    <section id="m-exit" class="af mview" hidden>
+      <button type="button" class="back" data-go="m-main">← Back</button>
+      <h2>Exit game</h2>
+      <p class="lead" id="m-exit-text">Leave the marsh and log out? Your marsh closes, and next time you start a fresh one.</p>
+      <button type="button" class="primary danger" id="m-exit-yes">Exit game</button>
+      <button type="button" class="secondary" data-go="m-main">Cancel</button>
+    </section>
+  </div>
+</div>
 <div id="mixer" hidden><div class="mx-card"><h3>Sound levels</h3><div id="mixrows"></div><p class="mx-note">O opens and closes this panel · your levels are remembered</p><button id="mixclose" type="button">Done</button></div></div>
 <pre id="err"></pre>
 <script type="module" src="./src/main.js"></script>

@@ -8,7 +8,16 @@ import { C, SUN_DIR, scene } from './core.js';
 import { T } from './textures.js';
 
 /* ================= vegetation ================= */
+// The grass depends on where this player sits (it is densest in front of their stand), so changing location
+// grows it again: the old grass is removed first. The reeds along the water don't depend on the stand.
+let GRASS = null, reedsBuilt = false;
 function buildGrass() {
+  if (GRASS) {
+    scene.remove(GRASS);
+    GRASS.traverse((o) => { if (o.isMesh) o.geometry.dispose(); });
+    if (GRASS.children[0]) GRASS.children[0].material.dispose();
+    GRASS = null;
+  }
   const items = [];
   const pd = (x, z) => Math.hypot(x - PLAYER.x, z - PLAYER.z);
   const tryAdd = (x, z) => {
@@ -63,7 +72,9 @@ function buildGrass() {
   try {
     mat.alphaToCoverage = true;
   } catch (e) {}
-  buildInstanced(items, grassGeo(nrm), mat, { cell: 60, receive: true, layer: 1 });
+  GRASS = buildInstanced(items, grassGeo(nrm), mat, { cell: 60, receive: true, layer: 1 });
+  if (reedsBuilt) return;
+  reedsBuilt = true;
   // cattails & reeds at water edges
   const reeds = [];
   const addReed = (x, z) => {

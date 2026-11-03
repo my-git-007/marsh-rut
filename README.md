@@ -115,6 +115,9 @@ Server settings (environment variables):
 - `HTTP_PER_MIN` (30): plain web requests per address per minute.
 - `IDLE_MINUTES` (10).
 - `MARSH_DEBUG=1`: adds a `/debug` readout. Keep it off in public.
+- `RESEND_API_KEY` and `CONTACT_TO` (Fly secrets, not `fly.toml`): turn on the Contact form in the pause menu.
+  `CONTACT_FROM` (optional): the sender; until you verify your own domain with Resend, the default
+  `onboarding@resend.dev` can only send to the address your Resend account was created with.
 
 `GET /health` reports the number of marshes, players and animals.
 
@@ -146,6 +149,14 @@ Setting it up:
    - Application restrictions: Websites, with `https://my-git-007.github.io/*`, `https://marsh-rut.firebaseapp.com/*`
      (the pages the email links open) and `http://localhost:*/*` (development).
    - API restrictions: Identity Toolkit API and Token Service API.
+
+## Contact form
+
+The pause menu (Esc) has a Contact form. The server emails each message to you through [Resend](https://resend.com)
+(free up to 3,000 emails a month), with the player's address as Reply-To. Limits: 3 messages an hour and 10 a day per
+account, 6 an hour per internet address. To switch it on:
+1. Sign up at resend.com with the address that should receive the messages, and create an API key (Sending access).
+2. `flyctl secrets set RESEND_API_KEY=re_... CONTACT_TO=you@example.com`
 
 ## Moving to your own domain
 

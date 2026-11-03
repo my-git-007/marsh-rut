@@ -15,6 +15,7 @@ primary_region = "yyz"
   MAX_NEW_PER_IP = "5"   # new marshes per internet address per hour
   HTTP_PER_MIN = "30"    # requests per address per minute to /health and the like
   IDLE_MINUTES = "10"    # the game logs an inactive player out after this; the server closes the marsh a minute later as a backstop
+  # Contact form: RESEND_API_KEY and CONTACT_TO are Fly secrets (flyctl secrets set ...), not set here
 
 [http_service]
   internal_port = 8080

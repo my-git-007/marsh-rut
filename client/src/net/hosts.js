@@ -42,12 +42,18 @@ export class LocalHost {
     if (c === 'newBull') { for (const b of s.bulls) b.dispose(); s.bulls = [new Bull(s, { focus: H })]; }
     else if (c === 'secondBull' && s.bulls.length < 3) s.bulls.push(new Bull(s, { second: true, interest: 1, focus: H }));
   }
+  active() {}
+  leave() {}
+  pause() {}
+  resume() {}
+  async moveTo(stand) { const H = this.sim.moveHunter(this.me, stand); if (!H) throw new Error('That stand is taken.'); return H; }
+  async contact() { return { ok: false, reason: 'offline' }; }
   debugText() { return 'solo — the marsh runs in this tab\n' + this.sim.debugText(); }
   get hunters() { return this.sim.hunterList(); }
 }
 
 export class RemoteHost {
-  constructor(url, getToken) { this.local = false; this.url = url; this.getToken = getToken; this.snaps = []; this.queue = []; this.hunters = []; this.offset = null; this.ping = 0; this.onHunters = null; this.onClose = null; this.stats = { bytes: 0, msgs: 0 }; }
+  constructor(url, getToken) { this.local = false; this.url = url; this.getToken = getToken; this.snaps = []; this.queue = []; this.hunters = []; this.offset = null; this.ping = 0; this.onHunters = null; this.onClose = null; this.stats = { bytes: 0, msgs: 0 }; this.waiting = {}; }
   async join(name, stand) {
     const token = await this.getToken();   // proves who this player is; the server opens their marsh
     return new Promise((resolve, reject) => {
@@ -69,6 +75,7 @@ export class RemoteHost {
           this.why = DENIED[msg.reason] || 'The marsh server turned us away (' + msg.reason + ').';
         } else if (msg.t === 'replaced') this.why = 'You opened the marsh in another window, so this one stopped.';
         else if (msg.t === 'idle') this.why = 'idle';
+        else if (msg.t === 'moved' || msg.t === 'contact') { const w = this.waiting[msg.t]; this.waiting[msg.t] = null; if (w) w(msg); }
         else if (msg.t === 'tick') { this.addSnap(msg.snap); for (const ev of msg.ev || []) this.queue.push({ t: msg.snap.t, ev }); }
         else if (msg.t === 'hunters') { this.hunters = msg.list; this.onHunters && this.onHunters(msg.list); }
         else if (msg.t === 'pong') this.ping = performance.now() - msg.c;
@@ -86,6 +93,7 @@ export class RemoteHost {
   update() {
     const states = new Map(), events = [];
     if (!this.snaps.length) return { events, states };
+    if (this.offset == null) { for (const [id, r] of this.snaps[this.snaps.length - 1].rows) states.set(id, rowState(r)); return { events, states }; }
     const rt = performance.now() / 1000 + this.offset - INTERP_DELAY;   // the moment we draw (server time)
     while (this.queue.length && this.queue[0].t <= rt) events.push(this.queue.shift().ev);
     let i = this.snaps.length - 1; while (i > 0 && this.snaps[i - 1].t > rt) i--;
@@ -103,6 +111,20 @@ export class RemoteHost {
   pour() { this.send({ t: 'pour' }); }
   active() { this.send({ t: 'active' }); }
   leave() { this.send({ t: 'leave' }); }
+  // the menu: the server stops this marsh while it's open. Afterwards the server's clock carries on from where
+  // it stopped, so forget the old clock offset (keep the last snapshot to draw until new ones arrive).
+  pause() { this.send({ t: 'pause' }); }
+  resume() { this.send({ t: 'resume' }); this.offset = null; this.snaps = this.snaps.slice(-1); }
+  ask(type, msg, ms = 15000) {   // send and wait for the server's answer of the same type
+    return new Promise((resolve, reject) => {
+      if (this.closed) { reject(new Error('Not connected to the marsh server.')); return; }
+      const timer = setTimeout(() => { this.waiting[type] = null; reject(new Error('The marsh server didn’t answer. Try again.')); }, ms);
+      this.waiting[type] = (m) => { clearTimeout(timer); resolve(m); };
+      this.send(msg);
+    });
+  }
+  async moveTo(stand) { const m = await this.ask('moved', { t: 'stand', stand }); if (m.error) throw new Error('That stand is taken.'); return m.you; }
+  contact(data) { return this.ask('contact', { t: 'contact', ...data }, 20000); }
   cmd() {}
   debugText() {
     return `online — ${this.url}\n${this.hunters.length} hunter(s): ${this.hunters.map((h) => h.name + ' @' + h.stand).join(', ')}\nping ${this.ping.toFixed(0)} ms · ${(this.stats.bytes / 1024).toFixed(0)} KB received\nwind ${WIND.from.toFixed(0)}° ${WIND.speed.toFixed(1)} m/s`;

@@ -8,11 +8,16 @@
 //   { t: 'ping', c }                     latency check
 //   { t: 'active' }                      the player used mouse or keyboard lately (sent at most every 30 s)
 //   { t: 'leave' }                       logging out: close my marsh now
+//   { t: 'pause' } / { t: 'resume' }     the menu opened / closed: the marsh stands still meanwhile
+//   { t: 'stand', stand }                change location (climb into another stand)
+//   { t: 'contact', name, email, message }  the Contact form
 //
 // server -> browser
 //   { t: 'welcome', you, hunters, spawns, snap, rate }   you = your hunter record (stand, position)
 //   { t: 'denied', reason }                              'login' (token not accepted), 'verify' (email not confirmed),
 //                                                        'limit' (too many new marshes from this address), 'busy', 'version', 'full'
+//   { t: 'moved', you } | { t: 'moved', error }          after 'stand'
+//   { t: 'contact', ok, reason?, field? }                after 'contact'
 //   { t: 'idle' }                                        closed after IDLE_MINUTES without activity
 //   { t: 'replaced' }                                    the same account opened the marsh in another window
 //   { t: 'tick', snap, ev }                              snapshot (see Sim.snapshot) + events since the last tick

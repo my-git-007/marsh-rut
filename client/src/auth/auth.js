@@ -53,7 +53,7 @@ const devView = () => (devUser ? { name: devUser, email: '', verified: true } : 
 // Firebase's own emails link to its plain page on marsh-rut.firebaseapp.com (this project isn't allowed to point
 // them at the game), so the game's server sends these emails itself (server/mail.js), with links that open the
 // game's own screens. If the server can't (not set up yet, or unreachable), Firebase sends them as before.
-const BACK = () => ({ url: location.origin + location.pathname });
+const BACK = () => ({ url: new URL('./', location.href).href });   // Firebase's page offers a link back to the log-in page
 const MAILER = (import.meta.env.VITE_SERVER_URL || '').replace(/^ws(s?):/, 'http$1:').replace(/\/+$/, '');
 async function gameMail(path, body, idToken) {   // -> true when the game's server sent it
   if (!MAILER) return false;
@@ -71,13 +71,16 @@ async function gameMail(path, body, idToken) {   // -> true when the game's serv
   return !!(j && j.ok === true);
 }
 
+// A flag that this browser has someone logged in, readable before Firebase loads: the pages use it to avoid
+// showing the wrong screen for a moment (index.html, hunting.html).
+const flag = (on) => { try { if (on) localStorage.setItem('hl-in', '1'); else localStorage.removeItem('hl-in'); } catch (e) {} };
 export async function watchUser(cb) {
   if (!FIREBASE) {
     try { devUser = localStorage.getItem(DEV_KEY); } catch (e) {}
-    cb(devView()); return;
+    flag(!!devUser); cb(devView()); return;
   }
   await load();
-  fb.onAuthStateChanged(auth, (u) => cb(view(u)));
+  fb.onAuthStateChanged(auth, (u) => { flag(!!u); cb(view(u)); });
 }
 export async function logIn(email, password) {
   if (!FIREBASE) return devLogIn(email);
@@ -110,6 +113,7 @@ export async function resetPassword(email) {
   if (!(await gameMail('/email/reset', { email: email.trim() }))) await fb.sendPasswordResetEmail(auth, email.trim(), BACK());
 }
 export async function logOut() {
+  flag(false);
   if (!FIREBASE) { devUser = null; try { localStorage.removeItem(DEV_KEY); } catch (e) {} return; }
   await load(); await fb.signOut(auth);
 }
@@ -128,9 +132,9 @@ export async function getToken() {
 }
 
 // ---- the links in Firebase's emails ----
-// In Firebase (Authentication -> Templates -> Customize action URL) the links point at the game itself:
-// https://hunting.ltd/?mode=verifyEmail|resetPassword|recoverEmail&oobCode=...  The start screen handles them
-// (ui/account.js) instead of Firebase's plain page.
+// The game's server sends these emails (server/mail.js) with links to the game's own pages:
+// reset-password.html / confirm-email.html ?mode=resetPassword|verifyEmail|recoverEmail&oobCode=...
+// (src/pages/account-pages.js handles them; old links to the site's root are forwarded by index.html).
 export function emailLink() {
   const q = new URLSearchParams(location.search), mode = q.get('mode'), code = q.get('oobCode');
   return FIREBASE && code && ['verifyEmail', 'resetPassword', 'recoverEmail'].includes(mode) ? { mode, code } : null;
@@ -154,4 +158,5 @@ export async function setNewPassword(code, password) { await load(); await fb.co
 function devLogIn(name) {
   devUser = String(name || '').trim().slice(0, 24) || 'Hunter';
   try { localStorage.setItem(DEV_KEY, devUser); } catch (e) {}
+  flag(true);
 }

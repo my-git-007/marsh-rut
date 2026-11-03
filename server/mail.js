@@ -2,7 +2,7 @@
 // Firebase won't let this project point its own emails at the game (EMAIL_TEMPLATE_UPDATE_NOT_ALLOWED), so its
 // links open a plain page on marsh-rut.firebaseapp.com. Here the server asks Firebase for the one-time code
 // (Firebase still checks it and changes the password), puts it in a link to the game itself
-// (https://hunting.ltd/?mode=...&oobCode=..., handled by client/src/ui/account.js) and sends a branded email
+// (https://hunting.ltd/reset-password.html or confirm-email.html ?mode=...&oobCode=..., client/src/pages/account-pages.js) and sends a branded email
 // through Resend from support@hunting.ltd.
 //
 //   FIREBASE_SA_B64   secret: the Firebase service account key (the downloaded JSON file, base64-encoded).
@@ -152,14 +152,14 @@ export async function handleMail(req, res, ip, origins) {
       if (!allow([['v:' + who.uid, 3, 3600000], ['v:' + who.uid, 8, 86400000], ['vi:' + ip, 10, 3600000]])) return out(429, { ok: false, reason: 'limit' });
       const code = await oobCode('VERIFY_EMAIL', email);
       if (!code) return out(400, { ok: false, reason: 'invalid' });
-      await deliver(email, EMAILS.verifyEmail(cleanName(b.name || who.name), `${base}?mode=verifyEmail&oobCode=${encodeURIComponent(code)}`));
+      await deliver(email, EMAILS.verifyEmail(cleanName(b.name || who.name), `${base}confirm-email.html?mode=verifyEmail&oobCode=${encodeURIComponent(code)}`));
       console.log('mail: confirmation sent to account', who.uid.slice(0, 10));
     } else {
       const email = String(b.email || '').trim().toLowerCase().slice(0, 200);
       if (!EMAIL_RE.test(email)) return out(400, { ok: false, reason: 'invalid' });
       if (!allow([['r:' + email, 3, 3600000], ['ri:' + ip, 6, 3600000]])) return out(429, { ok: false, reason: 'limit' });
       const code = await oobCode('PASSWORD_RESET', email);
-      if (code) { await deliver(email, EMAILS.resetPassword(email, `${base}?mode=resetPassword&oobCode=${encodeURIComponent(code)}`)); console.log('mail: reset link sent'); }
+      if (code) { await deliver(email, EMAILS.resetPassword(email, `${base}reset-password.html?mode=resetPassword&oobCode=${encodeURIComponent(code)}`)); console.log('mail: reset link sent'); }
       // no account with that email: answer the same way, so the form doesn't reveal who has an account
     }
     return out(200, { ok: true });

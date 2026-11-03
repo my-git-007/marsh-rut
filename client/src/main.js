@@ -20,10 +20,9 @@ import { V, showMsg } from './ui/input.js';
 import { layoutBinoc, updateHUD } from './ui/hud.js';
 import { updateCallLabel } from './calls.js';
 import { LocalHost, RemoteHost } from './net/hosts.js';
-import { initAccount, hideAccount, logOutNow, say } from './ui/account.js';
 import { watchIdle } from './ui/idle.js';
 import { initMenu, note as menuNote } from './ui/menu.js';
-import { getToken } from './auth/auth.js';
+import { getToken, watchUser, logOut } from './auth/auth.js';
 import { handleEvent, updateViews } from './views/world-events.js';
 import { ANIMALS, G, NET, PLAYER, Q, TEST, UI, bearingOf } from './state.js';
 
@@ -39,12 +38,10 @@ const go = document.getElementById('go');
 const st = (t) => { go.textContent = t; };
 const netMsg = (t) => { document.getElementById('netmsg').textContent = t || ''; };
 const tick = () => new Promise((r) => setTimeout(r, 0));
-let sky = null, grassBuilt = false, USER = null;
+let sky = null, grassBuilt = false, USER = null, leaving = false;
 
 async function init() {
-  // the page starts on the sign-in card (index.html), so players never see the old start card while the marsh builds;
-  // solo and test runs have no accounts, so they hide it at once
-  if (!(SERVER && !TEST)) hideAccount();
+  if (SERVER && !TEST) startSession();   // online: who is playing (checked while the marsh builds)
   st('Painting textures…'); await tick(); makeTextures(); await loadRefAssets();
   st('Shaping the marsh…'); await tick(); buildWorld(); Object.assign(PLAYER, { x: STANDS[0].x, z: STANDS[0].z, y: STANDS[0].y, eye: STANDS[0].eye, yaw: STANDS[0].yaw }); buildTerrain(); await tick(); sky = buildSky(); buildRidges(); buildWater();
   st('Planting forest…'); await tick(); buildForest(); buildShrubs(); buildStand();
@@ -53,12 +50,10 @@ async function init() {
   sel.innerHTML = STANDS.map((s) => `<option value="${s.i}">${s.name}</option>`).join('');
   try { sel.value = localStorage.getItem('marshrut-stand') || '0'; } catch (e) {}
   if (SERVER && !TEST) {
-    go.hidden = true; st('Into the marsh'); go.disabled = false;
-    initAccount((user) => { USER = user; go.hidden = !user; if (!user) netMsg(''); }, { beforeLogout: async () => { if (NET.host) NET.host.leave(); } });
-    try { const m = sessionStorage.getItem('marshrut-msg'); if (m) { sessionStorage.removeItem('marshrut-msg'); say(m, 'ok'); } } catch (e) {}
+    st('Into the marsh'); go.disabled = false;
     watchIdle({
-      onWarn: (s) => { if (!USER) return; const t = `Still there? You’ll be logged out in ${s} seconds unless you move the mouse.`; showMsg(t, 60000); if (!NET.host) say(t); if (UI.paused) menuNote(t); },
-      onBack: () => { showMsg('', 1); if (!NET.host) say(''); if (UI.paused) menuNote(''); },
+      onWarn: (s) => { if (!USER) return; const t = `Still there? You’ll be logged out in ${s} seconds unless you move the mouse.`; showMsg(t, 60000); if (!NET.host) netMsg(t); if (UI.paused) menuNote(t); },
+      onBack: () => { showMsg('', 1); if (!NET.host) netMsg(''); if (UI.paused) menuNote(''); },
       onIdle: () => { if (USER || NET.host) idleLogout(); },
       tellServer: () => { if (NET.host) NET.host.active(); },
     });
@@ -78,12 +73,28 @@ async function changedStand(you) {
   await tick(); buildGrass();
   renderer.shadowMap.needsUpdate = true; UI.redraw = true;
 }
+// The game page needs a logged-in player with a confirmed email; anyone else goes to the account pages.
+function startSession() {
+  watchUser((u) => {
+    if (!u) { if (!leaving) location.replace('index.html'); return; }
+    if (!u.verified) { location.replace('confirm-email.html'); return; }
+    USER = u;
+    document.getElementById('in-name').textContent = u.name; document.getElementById('in-email').textContent = u.email ? `(${u.email})` : '';
+    if (!NET.host) document.getElementById('acct').hidden = false;
+  }).catch((e) => netMsg(e.message));
+  document.getElementById('logout').addEventListener('click', (e) => { e.preventDefault(); leaveTo(''); });
+}
+// leave the marsh, log out and go to the log-in page, with a message for it
+async function leaveTo(msg) {
+  leaving = true;
+  try { if (NET.host && NET.host.leave) NET.host.leave(); } catch (e) {}
+  try { if (msg) sessionStorage.setItem('hl-carry', JSON.stringify({ msg, kind: 'ok' })); } catch (e) {}
+  try { await logOut(); } catch (e) {}
+  location.replace('index.html');
+}
 // Exit game (pause menu): online, leave the marsh and log out; offline, back to the start
 async function exitGame() {
-  if (SERVER && !TEST) {
-    try { sessionStorage.setItem('marshrut-msg', 'You’ve left the marsh. Log in to go back.'); } catch (e) {}
-    try { await logOutNow(); } catch (e) {}
-  }
+  if (SERVER && !TEST) return leaveTo('You’ve left the marsh. Log in to go back.');
   location.reload();
 }
 
@@ -107,12 +118,9 @@ async function seat(host, name, stand) {
 }
 
 // 10 minutes without touching mouse or keyboard: log out, close the marsh, and start over at the login screen
-let leaving = false;
 async function idleLogout() {
-  if (leaving) return; leaving = true;
-  try { sessionStorage.setItem('marshrut-msg', 'You were logged out after 10 minutes without activity. Log in to go back to the marsh.'); } catch (e) {}
-  try { await logOutNow(); } catch (e) {}
-  location.reload();
+  if (leaving) return;
+  leaveTo('You were logged out after 10 minutes without activity. Log in to go back to the marsh.');
 }
 
 async function joinOnline() {
@@ -144,7 +152,7 @@ function setupTest() {
 }
 
 go.addEventListener('click', async () => {
-  if (!NET.host) { if (!(await joinOnline())) return; st('Climb into the stand'); go.disabled = false; hideAccount(); return; }
+  if (!NET.host) { if (!(await joinOnline())) return; st('Climb into the stand'); go.disabled = false; document.getElementById('acct').hidden = true; return; }
   audioInit(); if (A.ctx.state === 'suspended') A.ctx.resume();
   document.getElementById('start').style.display = 'none'; UI.helpOn = false;
   if (!V.started) { V.started = true; showMsg('Listen. Scan the timber edges. Hold Space to call.', 6500); }

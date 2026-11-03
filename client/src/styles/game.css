@@ -1,0 +1,82 @@
+/* The game page (hunting.html): the marsh view, HUD, binoculars, sound mixer, start card and Esc menu. */
+canvas#c{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:crosshair}
+#binoc{position:fixed;inset:0;pointer-events:none;opacity:0}
+#binoc svg{width:100%;height:100%;display:block}
+#hud{position:fixed;inset:0;pointer-events:none;font:12px/1.45 ui-monospace,Consolas,Menlo,monospace;letter-spacing:.05em;text-shadow:0 1px 3px rgba(0,0,0,.7)}
+#compass{position:absolute;top:14px;left:50%;transform:translateX(-50%);opacity:.72}
+#wind{position:absolute;left:18px;bottom:18px;display:flex;gap:10px;align-items:center;opacity:.82}
+#wind svg{width:46px;height:46px}
+#calltype{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);white-space:nowrap;opacity:.8}
+#calltype b{display:inline-block;border:1px solid var(--line);padding:0 5px;margin-right:4px}
+#calltype span{opacity:.6}
+#breath{position:absolute;left:50%;bottom:44px;transform:translateX(-50%);width:240px;opacity:0;transition:opacity .35s;text-align:center}
+#breath .bar{height:3px;background:rgba(255,255,255,.14);margin-top:6px}
+#breath .bar i{display:block;height:100%;width:0;background:#e8d9a6}
+#range{position:absolute;left:50%;top:calc(50% + 46px);transform:translateX(-50%);opacity:0;color:#f3ead0}
+#msg{position:absolute;top:20%;left:0;right:0;text-align:center;font:17px/1.5 Georgia,serif;letter-spacing:.03em;opacity:0;transition:opacity 1.4s;padding:0 16px}
+#debug{position:absolute;right:12px;top:12px;white-space:pre;background:rgba(0,0,0,.5);padding:8px 10px;display:none;font-size:11px}
+#help{position:absolute;right:16px;bottom:16px;opacity:.55;text-align:right}
+.card table{border-collapse:collapse;width:100%;font:13px/1.5 ui-monospace,Consolas,monospace}
+.card td{padding:4px 0;vertical-align:top}
+.card td:first-child{color:#e8d9a6;white-space:nowrap;padding-right:18px}
+#go{margin:8px 0 18px;font:14px Georgia,serif;letter-spacing:.14em;text-transform:uppercase;color:#1b130a;background:linear-gradient(180deg,#f4d6a8,#c6905b);border:0;padding:12px 22px;cursor:pointer}
+#go[disabled]{opacity:.45;cursor:wait}
+#mixer{position:fixed;right:max(16px,env(safe-area-inset-right,0px));top:56px;z-index:20}
+#mixer[hidden]{display:none}
+.mx-card{width:min(360px,calc(100vw - 32px));box-sizing:border-box;background:rgba(12,13,10,.9);border:1px solid var(--line);padding:16px 18px;font:13px/1.4 ui-monospace,Consolas,monospace;color:var(--ink)}
+.mx-card h3{margin:0 0 10px;font:normal 15px Georgia,serif;letter-spacing:.12em;text-transform:uppercase}
+.mx-row{display:grid;grid-template-columns:1fr 3.2em;gap:2px 10px;align-items:center;margin:8px 0}
+.mx-row label{grid-column:1/3;color:var(--dim)}
+.mx-row input{width:100%;accent-color:#e8d9a6}
+.mx-row output{text-align:right;font-variant-numeric:tabular-nums}
+.mx-note{color:var(--dim);font-size:11px;margin:10px 0}
+#mixclose,#mixopen{font:13px Georgia,serif;letter-spacing:.1em;text-transform:uppercase;background:#e8d9a6;color:var(--bg);border:0;padding:8px 16px;cursor:pointer}
+#mixopen{background:transparent;color:var(--ink);border:1px solid var(--line);margin-left:8px}
+#paused{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);display:none;font:13px ui-monospace,Consolas,monospace;letter-spacing:.1em;background:rgba(0,0,0,.45);padding:10px 16px;pointer-events:none}
+/* ---- pause menu (Esc) ---- */
+#menu{position:fixed;inset:0;z-index:30;display:flex;align-items:safe center;justify-content:center;overflow-y:auto;padding:16px;box-sizing:border-box;
+  background:rgba(8,9,7,.62);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)}
+.mcard{width:100%;max-width:440px;box-sizing:border-box;padding:28px 30px;background:rgba(14,15,12,.94);border:1px solid var(--line);border-radius:8px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+.mview{max-width:none}
+.mview h3{margin:6px 0 -6px;font-size:13px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--dim)}
+.mlist{display:flex;flex-direction:column;gap:8px}
+.mitem{display:flex;flex-direction:column;align-items:flex-start;gap:2px;width:100%;min-height:56px;padding:10px 14px;text-align:left;cursor:pointer;
+  font:600 16px system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:var(--ink);background:rgba(255,255,255,.03);border:1px solid var(--edge);border-radius:6px;
+  transition:background-color .15s,border-color .15s}
+.mitem span{font-weight:400;font-size:13px;color:var(--dim)}
+.mitem:hover{background:rgba(242,207,157,.09);border-color:var(--sand)}
+.mitem:active{transform:translateY(1px)}
+.mitem:focus-visible,.back:focus-visible{outline:3px solid var(--sand);outline-offset:2px}
+.mitem[aria-current="true"]{border-color:var(--good);cursor:default;background:rgba(185,221,154,.07)}
+.mitem[disabled]{opacity:.6;cursor:progress}
+.mitem.danger{color:var(--bad)}
+.af .primary.danger{background:var(--bad);border-color:var(--bad);color:#1a0f0b}
+.af .primary.danger:hover{background:#f7bba8;border-color:#f7bba8}
+.back{align-self:flex-start;margin:-6px 0 -6px -8px;padding:8px;min-height:40px;font:600 15px system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--sand);background:none;border:0;border-radius:4px;cursor:pointer}
+.back:hover{color:var(--sand-hi);text-decoration:underline;text-underline-offset:3px}
+.mnote{margin:-6px 0 0;font-size:15px;color:var(--good)}.mnote:empty{display:none}
+.mfoot{margin:0;font-size:13px;color:var(--dim);text-align:center}
+.mmsg{margin:0;font-size:15px;line-height:1.45;border-radius:6px;padding:10px 12px;border-left:4px solid var(--bad);color:#fbd3c6;background:rgba(242,165,142,.12)}
+.mmsg:empty{display:none}
+.mmsg.ok{border-color:var(--good);color:#dcefc9;background:rgba(185,221,154,.10)}
+.ic-tile{display:flex;flex-direction:column;align-items:center;gap:6px;margin:4px auto 0;font:600 14px system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:var(--ink)}
+.ic-tile img{border-radius:14px;box-shadow:0 4px 14px rgba(0,0,0,.45)}
+#ic-desk:not([hidden]),#ic-phone:not([hidden]){display:flex;flex-direction:column;gap:14px}
+#ic-desk .lead,#ic-phone .lead{margin:0}
+#ic-desk .secondary{margin-top:0}
+.steps{margin:0;padding-left:22px;font:15px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:var(--ink)}
+.steps li+li{margin-top:6px}
+.mmsg.info{border-color:var(--sand);color:var(--ink);background:rgba(242,207,157,.08)}
+.letter{border-left:3px solid var(--sand);padding-left:14px}.letter p{margin:0 0 8px}.letter p:last-child{margin:0}
+.srows{display:flex;flex-direction:column;gap:14px}
+.srow{display:grid;grid-template-columns:1fr 3.5em;gap:4px 12px;align-items:center}
+.srow label{grid-column:1/3;font-size:14px;font-weight:600}
+.srow input[type=range]{width:100%;min-height:28px;accent-color:#e8d9a6;cursor:pointer}
+.srow output{text-align:right;font-size:14px;font-variant-numeric:tabular-nums;color:var(--dim)}
+.check{display:flex;align-items:center;gap:10px;font-size:15px;min-height:40px;cursor:pointer}
+.check input{width:20px;height:20px;accent-color:#e8d9a6;cursor:pointer}
+#f-contact{gap:16px}
+body.menu-open #hud,body.menu-open #paused{visibility:hidden}
+@media (max-width:520px){.mcard{padding:22px 18px}}
+#netmsg{color:#e8d9a6;font-size:12px;min-height:1em;margin-top:8px}
+#others{position:absolute;left:18px;top:14px;opacity:.7;white-space:pre}

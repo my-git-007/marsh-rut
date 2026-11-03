@@ -10,229 +10,28 @@
 <link rel="manifest" href="./manifest.webmanifest">
 <meta name="theme-color" content="#0b0c0a">
 <meta name="apple-mobile-web-app-title" content="Hunting LTD">
-<style>
-:root{--ink:#ece6d6;--dim:rgba(236,230,214,.62);--line:rgba(236,230,214,.22);--bg:#0b0c0a}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--ink:#ece6d6;--bg:#0b0c0a}}
-:root[data-theme="dark"]{--ink:#ece6d6;--bg:#0b0c0a}
-html,body{margin:0;height:100%;background:var(--bg);overflow:hidden;color:var(--ink);font-family:Georgia,"Times New Roman",serif}
-canvas#c{position:fixed;inset:0;width:100%;height:100%;display:block;cursor:crosshair}
-#binoc{position:fixed;inset:0;pointer-events:none;opacity:0}
-#binoc svg{width:100%;height:100%;display:block}
-#hud{position:fixed;inset:0;pointer-events:none;font:12px/1.45 ui-monospace,Consolas,Menlo,monospace;letter-spacing:.05em;text-shadow:0 1px 3px rgba(0,0,0,.7)}
-#compass{position:absolute;top:14px;left:50%;transform:translateX(-50%);opacity:.72}
-#wind{position:absolute;left:18px;bottom:18px;display:flex;gap:10px;align-items:center;opacity:.82}
-#wind svg{width:46px;height:46px}
-#calltype{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);white-space:nowrap;opacity:.8}
-#calltype b{display:inline-block;border:1px solid var(--line);padding:0 5px;margin-right:4px}
-#calltype span{opacity:.6}
-#breath{position:absolute;left:50%;bottom:44px;transform:translateX(-50%);width:240px;opacity:0;transition:opacity .35s;text-align:center}
-#breath .bar{height:3px;background:rgba(255,255,255,.14);margin-top:6px}
-#breath .bar i{display:block;height:100%;width:0;background:#e8d9a6}
-#range{position:absolute;left:50%;top:calc(50% + 46px);transform:translateX(-50%);opacity:0;color:#f3ead0}
-#msg{position:absolute;top:20%;left:0;right:0;text-align:center;font:17px/1.5 Georgia,serif;letter-spacing:.03em;opacity:0;transition:opacity 1.4s;padding:0 16px}
-#debug{position:absolute;right:12px;top:12px;white-space:pre;background:rgba(0,0,0,.5);padding:8px 10px;display:none;font-size:11px}
-#help{position:absolute;right:16px;bottom:16px;opacity:.55;text-align:right}
-#err{position:fixed;left:8px;top:8px;right:8px;white-space:pre-wrap;background:#300;color:#fcc;font:12px monospace;padding:8px;display:none;z-index:99}
-#start{position:fixed;inset:0;display:flex;align-items:safe center;justify-content:center;overflow-y:auto;background:rgba(8,9,7,.55);z-index:10;padding:16px;box-sizing:border-box}
-.card{max-width:600px;width:100%;padding:30px 34px;background:rgba(12,13,10,.82);border:1px solid var(--line);box-sizing:border-box}
-.card h1{font-weight:normal;letter-spacing:.18em;font-size:26px;margin:0 0 6px;text-transform:uppercase}
-.card .sub{color:var(--dim);font-style:italic;margin:0 0 20px}
-.card table{border-collapse:collapse;width:100%;font:13px/1.5 ui-monospace,Consolas,monospace}
-.card td{padding:4px 0;vertical-align:top}
-.card td:first-child{color:#e8d9a6;white-space:nowrap;padding-right:18px}
-.card p{font-size:14px;line-height:1.55;color:var(--dim)}
-#go{margin:8px 0 18px;font:14px Georgia,serif;letter-spacing:.14em;text-transform:uppercase;color:#1b130a;background:linear-gradient(180deg,#f4d6a8,#c6905b);border:0;padding:12px 22px;cursor:pointer}
-#go[disabled]{opacity:.45;cursor:wait}
-#mixer{position:fixed;right:max(16px,env(safe-area-inset-right,0px));top:56px;z-index:20}
-#mixer[hidden]{display:none}
-.mx-card{width:min(360px,calc(100vw - 32px));box-sizing:border-box;background:rgba(12,13,10,.9);border:1px solid var(--line);padding:16px 18px;font:13px/1.4 ui-monospace,Consolas,monospace;color:var(--ink)}
-.mx-card h3{margin:0 0 10px;font:normal 15px Georgia,serif;letter-spacing:.12em;text-transform:uppercase}
-.mx-row{display:grid;grid-template-columns:1fr 3.2em;gap:2px 10px;align-items:center;margin:8px 0}
-.mx-row label{grid-column:1/3;color:var(--dim)}
-.mx-row input{width:100%;accent-color:#e8d9a6}
-.mx-row output{text-align:right;font-variant-numeric:tabular-nums}
-.mx-note{color:var(--dim);font-size:11px;margin:10px 0}
-#mixclose,#mixopen{font:13px Georgia,serif;letter-spacing:.1em;text-transform:uppercase;background:#e8d9a6;color:var(--bg);border:0;padding:8px 16px;cursor:pointer}
-#mixopen{background:transparent;color:var(--ink);border:1px solid var(--line);margin-left:8px}
-#paused{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);display:none;font:13px ui-monospace,Consolas,monospace;letter-spacing:.1em;background:rgba(0,0,0,.45);padding:10px 16px;pointer-events:none}
-@media (max-width:520px){.card{padding:22px 18px}.card h1{font-size:20px}}
-/* ---- account screens (log in, create account, reset password, confirm email) ---- */
-#acct,#menu{--sand:#f2cf9d;--sand-hi:#f9e2bc;--sand-lo:#c6905b;--bronze:#c6905b;--brown:#684327;--bad:#f2a58e;--good:#b9dd9a;--field:rgba(8,6,3,.55);--edge:rgba(198,144,91,.40);
-  font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;margin:8px 0 4px}
-#acct[hidden],#acct [hidden],#menu[hidden],#menu [hidden]{display:none!important}
-.af{display:flex;flex-direction:column;gap:18px;max-width:380px}
-body[data-acct] .af,body[data-acct] #acctmsg{max-width:none}
-.af h2{font:normal 22px/1.25 Georgia,serif;letter-spacing:.04em;margin:0;color:var(--sand)}
-.af .lead{margin:-6px 0 0;font-size:15px;color:var(--dim)}
-.af .lead b,#vf-email{color:var(--ink);font-weight:600;word-break:break-all}
-.field{display:flex;flex-direction:column;gap:6px}
-.field label{font-size:14px;font-weight:600;color:var(--ink)}
-.field .lrow{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
-.field .lrow a{font-size:14px}
-.field .hint{margin:-2px 0 0;font-size:13px;color:var(--dim)}
-.field input,.field select,.field textarea{width:100%;box-sizing:border-box;min-height:46px;padding:10px 12px;font:16px/1.3 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
-  color:var(--ink);background:var(--field);border:1px solid var(--edge);border-radius:6px;transition:border-color .15s,box-shadow .15s}
-.field input:hover,.field select:hover,.field textarea:hover{border-color:rgba(214,164,110,.7)}
-.field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:var(--sand);box-shadow:0 0 0 3px rgba(242,207,157,.28)}
-.field textarea{min-height:140px;resize:vertical;line-height:1.45}
-.field input[aria-invalid="true"],.field textarea[aria-invalid="true"]{border-color:var(--bad)}
-.field input[aria-invalid="true"]:focus{box-shadow:0 0 0 3px rgba(242,165,142,.28)}
-.field .ferr{margin:0;font-size:14px;color:var(--bad)}
-.field .ferr:empty{display:none}
-.field .caps{margin:0;font-size:13px;color:var(--sand)}
-.field.inline{flex-direction:row;align-items:center;gap:12px}.field.inline select{width:auto;min-width:180px}
-.pw{position:relative}
-.pw input{padding-right:72px}
-.pw .reveal{position:absolute;right:6px;top:50%;transform:translateY(-50%);min-height:34px;padding:0 10px;font:600 13px system-ui,-apple-system,"Segoe UI",sans-serif;
-  color:var(--sand);background:transparent;border:0;border-radius:4px;cursor:pointer}
-.pw .reveal:hover{background:rgba(242,207,157,.12)}
-.pw .reveal:focus-visible{outline:2px solid var(--sand);outline-offset:1px}
-.af .primary,.af .secondary{width:100%;min-height:48px;padding:12px 18px;border-radius:6px;font:600 16px system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
-  letter-spacing:.01em;cursor:pointer;transition:background-color .15s,border-color .15s,transform .05s}
-.af .primary{color:#1b130a;background:linear-gradient(180deg,#f4d6a8,#c6905b);border:1px solid #b9834f;box-shadow:inset 0 1px 0 rgba(255,246,225,.45),0 2px 10px rgba(0,0,0,.35);text-shadow:0 1px 0 rgba(255,240,210,.35)}
-.af .primary:hover{background:linear-gradient(180deg,#f9e2bc,#d29d66);border-color:#c6905b}
-.af .primary:active{background:linear-gradient(180deg,#d9ad78,#a8743f);transform:translateY(1px)}
-.af .secondary{color:var(--ink);background:transparent;border:1px solid var(--edge);margin-top:-8px}
-.af .secondary:hover{border-color:var(--bronze);background:rgba(242,207,157,.08)}
-.af .secondary:active{transform:translateY(1px)}
-.af .primary:focus-visible,.af .secondary:focus-visible{outline:3px solid var(--sand);outline-offset:3px}
-.af button[disabled]{opacity:.65;cursor:progress;transform:none}
-.af .switch{margin:0;font-size:15px;color:var(--dim);text-align:center}
-#acct a{color:var(--sand);text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px;border-radius:2px}
-#acct a:hover{color:var(--sand-hi);text-decoration-thickness:2px}
-#acct a:focus-visible{outline:2px solid var(--sand);outline-offset:2px}
-.who{margin:0;font-size:15px;color:var(--dim)}.who b{color:var(--ink);font-weight:600}
-#acctmsg{max-width:380px;box-sizing:border-box;font-size:15px;line-height:1.45;border-radius:6px;padding:10px 12px;margin:0;border-left:4px solid}
-#acctmsg:empty{display:none}
-#acctmsg.err{color:#fbd3c6;background:rgba(242,165,142,.12);border-color:var(--bad)}
-#acctmsg.ok{color:#dcefc9;background:rgba(185,221,154,.10);border-color:var(--good)}
-/* while an account screen is up, the start screen shows only that (no instructions or game buttons) */
-body[data-acct] .card{max-width:460px}
-/* the badge fills the top of the start card and fades into it */
-.card h1.brand{margin:-30px -34px 22px;letter-spacing:0;font-size:0;line-height:0}
-.brand img{display:block;width:100%;height:auto;-webkit-mask-image:linear-gradient(to bottom,#000 78%,transparent);mask-image:linear-gradient(to bottom,#000 78%,transparent)}
-.card{background:rgba(19,18,14,.94);border-color:rgba(198,144,91,.45);box-shadow:0 24px 70px rgba(0,0,0,.6);overflow:hidden}
-body[data-acct] #howto,body[data-acct] #go,body[data-acct] #mixopen,body[data-acct] #netmsg:empty{display:none}
-body[data-acct] #hud,body[data-acct] #paused{visibility:hidden}
-@media (max-width:520px){.af{max-width:none}#acctmsg{max-width:none}}
-/* ---- account screens: a parchment panel under the badge, a wave between them (like the user's reference layout) ---- */
-body[data-acct] .card{border-radius:16px;padding-bottom:0}
-body[data-acct] .card h1.brand{margin-bottom:0}
-body[data-acct] .brand img{-webkit-mask-image:none;mask-image:none}
-body[data-acct] #acct{--ink:#2a1c10;--dim:#6e5a44;--sand:#8f5d2e;--sand-hi:#6b4220;--sand-lo:#5a371a;--edge:#cfb894;--field:transparent;--bad:#b3361b;--good:#3d7a2a;
-  position:relative;margin:0 -34px;padding:4px 34px 30px;background:#f6ecd9;color:var(--ink)}
-body[data-acct] #acct::before{content:"";position:absolute;left:0;right:0;top:-36px;height:38px;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 460 44' preserveAspectRatio='none'%3E%3Cpath fill='%23f6ecd9' d='M0 26C70 6 150 2 235 20s150 26 225-8v32H0z'/%3E%3C/svg%3E") no-repeat bottom/100% 100%;pointer-events:none}
-body[data-acct] #acct .af{gap:16px}
-body[data-acct] #acct .af h2{font:700 28px/1.15 Georgia,serif;letter-spacing:.01em;color:#2a1c10;margin:0 0 4px}
-body[data-acct] #acct .field{gap:5px}
-body[data-acct] #acct .field label{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
-body[data-acct] #acct .field>input,body[data-acct] #acct .field>.pw{order:1}
-body[data-acct] #acct .field .hint{order:2;margin:0;font-size:12.5px}
-body[data-acct] #acct .field .caps{order:3}
-body[data-acct] #acct .field .ferr{order:4;font-size:13.5px}
-body[data-acct] #acct .field .lrow{order:5;justify-content:flex-end}
-body[data-acct] #acct .field input{min-height:46px;padding:12px 4px 9px 34px;color:var(--ink);background:transparent no-repeat 4px 52%/19px 19px;
-  border:0;border-bottom:1.5px solid var(--edge);border-radius:0;box-shadow:none}
-body[data-acct] #acct .field input::placeholder{color:#9a8468;opacity:1}
-body[data-acct] #acct .field input:hover{border-bottom-color:#b39469}
-body[data-acct] #acct .field input:focus{border-bottom-color:#8f5d2e;box-shadow:0 1.5px 0 0 #8f5d2e}
-body[data-acct] #acct .field input[aria-invalid="true"]{border-bottom-color:var(--bad)}
-body[data-acct] #acct .field input[aria-invalid="true"]:focus{box-shadow:0 1.5px 0 0 var(--bad)}
-body[data-acct] #acct .field input:-webkit-autofill{-webkit-text-fill-color:#2a1c10;transition:background-color 100000s 0s}
-#su-name{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238a6a48' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='8' r='4'/%3E%3Cpath d='M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6'/%3E%3C/svg%3E")!important}
-#li-email,#su-email,#fp-email{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238a6a48' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='5' width='18' height='14' rx='2'/%3E%3Cpath d='m3.5 6.5 8.5 6.5 8.5-6.5'/%3E%3C/svg%3E")!important}
-#li-pass,#su-pass,#su-pass2,#np-pass,#np-pass2{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238a6a48' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='5' y='10.5' width='14' height='10' rx='2'/%3E%3Cpath d='M8 10.5V7.5a4 4 0 0 1 8 0v3'/%3E%3C/svg%3E")!important}
-body[data-acct] #acct .pw input{padding-right:46px}
-body[data-acct] #acct .pw .reveal{right:0;width:40px;min-height:38px;padding:0;font-size:0;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238a6a48' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z'/%3E%3Ccircle cx='12' cy='12' r='3'/%3E%3C/svg%3E") no-repeat center/20px 20px;border-radius:8px}
-body[data-acct] #acct .pw .reveal[aria-pressed="true"]{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238a6a48' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 3l18 18M10.6 5.1A10.6 10.6 0 0 1 12 5c6.4 0 10 7 10 7a17 17 0 0 1-3.2 4.1M6.6 6.6C3.7 8.4 2 12 2 12s3.6 7 10 7a9.9 9.9 0 0 0 4.4-1M9.9 9.9a3 3 0 0 0 4.2 4.2'/%3E%3C/svg%3E")}
-body[data-acct] #acct .pw .reveal:hover{background-color:rgba(104,67,39,.08)}
-body[data-acct] #acct .pw .reveal:focus-visible{outline:2px solid #8f5d2e}
-body[data-acct] #acct .af .primary{min-height:50px;margin-top:6px;border-radius:12px;font-weight:700;letter-spacing:.03em;color:#f2cf9d;
-  background:linear-gradient(180deg,#4d3421,#2b1c10);border:1px solid #2b1c10;box-shadow:0 6px 16px rgba(43,28,16,.28);text-shadow:none}
-body[data-acct] #acct .af .primary:hover{background:linear-gradient(180deg,#5d4029,#352315)}
-body[data-acct] #acct .af .primary:active{background:#2b1c10}
-body[data-acct] #acct .af .primary:focus-visible,body[data-acct] #acct .af .secondary:focus-visible{outline:3px solid #c6905b}
-body[data-acct] #acct .af .secondary{min-height:48px;margin-top:0;border-radius:12px;color:#3b2716;background:transparent;border:1.5px solid #3b2716}
-body[data-acct] #acct .af .secondary:hover{background:rgba(104,67,39,.08);border-color:#3b2716}
-/* "or" and an outlined button to switch between log in and create account */
-body[data-acct] #acct .switch.or{display:flex;flex-direction:column;gap:12px}
-body[data-acct] #acct .switch.or::before{content:"or";font-size:14px;color:var(--dim);text-align:center;
-  background:linear-gradient(var(--edge),var(--edge)) left 50%/calc(50% - 22px) 1px no-repeat,linear-gradient(var(--edge),var(--edge)) right 50%/calc(50% - 22px) 1px no-repeat}
-body[data-acct] #acct .switch.or .pre{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
-body[data-acct] #acct .switch.or a{display:flex;align-items:center;justify-content:center;min-height:48px;border:1.5px solid #3b2716;border-radius:12px;
-  color:#3b2716;font-weight:600;text-decoration:none}
-body[data-acct] #acct .switch.or a:hover{background:rgba(104,67,39,.08)}
-body[data-acct] #acctmsg.err{color:#7c2410;background:rgba(179,54,27,.08)}
-body[data-acct] #acctmsg.ok{color:#2c5a1c;background:rgba(61,122,42,.10)}
-body[data-acct] #netmsg:not(:empty){margin:0 -34px;padding:0 34px 24px;background:#f6ecd9;color:#7c2410}
-/* ---- pause menu (Esc) ---- */
-#menu{position:fixed;inset:0;z-index:30;display:flex;align-items:safe center;justify-content:center;overflow-y:auto;padding:16px;box-sizing:border-box;
-  background:rgba(8,9,7,.62);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)}
-.mcard{width:100%;max-width:440px;box-sizing:border-box;padding:28px 30px;background:rgba(14,15,12,.94);border:1px solid var(--line);border-radius:8px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
-.mview{max-width:none}
-.mview h3{margin:6px 0 -6px;font-size:13px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--dim)}
-.mlist{display:flex;flex-direction:column;gap:8px}
-.mitem{display:flex;flex-direction:column;align-items:flex-start;gap:2px;width:100%;min-height:56px;padding:10px 14px;text-align:left;cursor:pointer;
-  font:600 16px system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:var(--ink);background:rgba(255,255,255,.03);border:1px solid var(--edge);border-radius:6px;
-  transition:background-color .15s,border-color .15s}
-.mitem span{font-weight:400;font-size:13px;color:var(--dim)}
-.mitem:hover{background:rgba(242,207,157,.09);border-color:var(--sand)}
-.mitem:active{transform:translateY(1px)}
-.mitem:focus-visible,.back:focus-visible{outline:3px solid var(--sand);outline-offset:2px}
-.mitem[aria-current="true"]{border-color:var(--good);cursor:default;background:rgba(185,221,154,.07)}
-.mitem[disabled]{opacity:.6;cursor:progress}
-.mitem.danger{color:var(--bad)}
-.af .primary.danger{background:var(--bad);border-color:var(--bad);color:#1a0f0b}
-.af .primary.danger:hover{background:#f7bba8;border-color:#f7bba8}
-.back{align-self:flex-start;margin:-6px 0 -6px -8px;padding:8px;min-height:40px;font:600 15px system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--sand);background:none;border:0;border-radius:4px;cursor:pointer}
-.back:hover{color:var(--sand-hi);text-decoration:underline;text-underline-offset:3px}
-.mnote{margin:-6px 0 0;font-size:15px;color:var(--good)}.mnote:empty{display:none}
-.mfoot{margin:0;font-size:13px;color:var(--dim);text-align:center}
-.mmsg{margin:0;font-size:15px;line-height:1.45;border-radius:6px;padding:10px 12px;border-left:4px solid var(--bad);color:#fbd3c6;background:rgba(242,165,142,.12)}
-.mmsg:empty{display:none}
-.mmsg.ok{border-color:var(--good);color:#dcefc9;background:rgba(185,221,154,.10)}
-.ic-tile{display:flex;flex-direction:column;align-items:center;gap:6px;margin:4px auto 0;font:600 14px system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:var(--ink)}
-.ic-tile img{border-radius:14px;box-shadow:0 4px 14px rgba(0,0,0,.45)}
-#ic-desk:not([hidden]),#ic-phone:not([hidden]){display:flex;flex-direction:column;gap:14px}
-#ic-desk .lead,#ic-phone .lead{margin:0}
-#ic-desk .secondary{margin-top:0}
-.steps{margin:0;padding-left:22px;font:15px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:var(--ink)}
-.steps li+li{margin-top:6px}
-.mmsg.info{border-color:var(--sand);color:var(--ink);background:rgba(242,207,157,.08)}
-.letter{border-left:3px solid var(--sand);padding-left:14px}.letter p{margin:0 0 8px}.letter p:last-child{margin:0}
-.srows{display:flex;flex-direction:column;gap:14px}
-.srow{display:grid;grid-template-columns:1fr 3.5em;gap:4px 12px;align-items:center}
-.srow label{grid-column:1/3;font-size:14px;font-weight:600}
-.srow input[type=range]{width:100%;min-height:28px;accent-color:#e8d9a6;cursor:pointer}
-.srow output{text-align:right;font-size:14px;font-variant-numeric:tabular-nums;color:var(--dim)}
-.check{display:flex;align-items:center;gap:10px;font-size:15px;min-height:40px;cursor:pointer}
-.check input{width:20px;height:20px;accent-color:#e8d9a6;cursor:pointer}
-#f-contact{gap:16px}
-body.menu-open #hud,body.menu-open #paused{visibility:hidden}
-@media (max-width:520px){.mcard{padding:22px 18px}}
-#netmsg{color:#e8d9a6;font-size:12px;min-height:1em;margin-top:8px}
-#others{position:absolute;left:18px;top:14px;opacity:.7;white-space:pre}
-</style>
+<link rel="stylesheet" href="./src/styles/base.css">
+<link rel="stylesheet" href="./src/styles/forms.css">
+<link rel="stylesheet" href="./src/styles/account.css">
+<script>
+// Before anything is drawn: old email links (?mode=...&oobCode=...) and test/solo links go to their own pages, and
+// a player who is already logged in sees nothing until we know where to send them (src/pages/account-pages.js).
+(function () {
+  var q = location.search, p = new URLSearchParams(q), m = p.get('mode');
+  if (/[?&](solo|test|showcase|server)\b/.test(q)) return location.replace('hunting.html' + q + location.hash);
+  if (p.get('oobCode') && m === 'resetPassword') return location.replace('reset-password.html' + q);
+  if (p.get('oobCode') && (m === 'verifyEmail' || m === 'recoverEmail')) return location.replace('confirm-email.html' + q);
+  try { if (localStorage.getItem('hl-in')) document.documentElement.className = 'checking'; } catch (e) {}
+})();
+</script>
 </head>
-<body data-acct="f-login">
-<canvas id="c"></canvas>
-<div id="binoc"><svg id="binocsvg"></svg></div>
-<div id="hud">
-  <div id="compass">N 000°</div>
-  <div id="wind"><svg viewBox="-23 -23 46 46"><circle r="21" fill="none" stroke="rgba(236,230,214,.35)"/><g id="windarrow"><path d="M0,-15 L5,-5 L1.6,-5 L1.6,14 L-1.6,14 L-1.6,-5 L-5,-5 Z" fill="#ece6d6" opacity=".85"/></g></svg><div><div id="windtxt">wind</div><div id="windsub" style="opacity:.6"></div></div></div>
-  <div id="calltype"></div>
-  <div id="breath"><div id="calltxt">cow call</div><div class="bar"><i id="breathbar"></i></div></div>
-  <div id="range">— yds</div>
-  <div id="msg"></div>
-  <div id="debug"></div>
-  <div id="others"></div>
-  <div id="help">H · controls &nbsp; O · sound</div>
-</div>
-<div id="paused">CLICK TO RESUME</div>
+<body data-acct data-page="login">
+<!-- One of the account pages (index, create-account, forgot-password, reset-password, confirm-email). They share
+     src/styles/{base,forms,account}.css and src/pages/account-pages.js; the game itself is hunting.html. -->
 <div id="start"><div class="card">
   <h1 class="brand"><picture><source srcset="./badge.webp" type="image/webp"><img src="./badge.jpg" alt="Hunting LTD" width="920" height="460"></picture></h1>
   <div id="acct">
-    <form id="f-login" class="af" onsubmit="event.preventDefault()" novalidate aria-labelledby="h-login">
+    <form id="f-login" class="af" novalidate aria-labelledby="h-login">
       <h2 id="h-login">Log in</h2>
       <div class="field">
         <label for="li-email" id="li-email-label">Email</label>
@@ -240,208 +39,17 @@ body.menu-open #hud,body.menu-open #paused{visibility:hidden}
         <p class="ferr" id="li-email-err"></p>
       </div>
       <div class="field fb-only">
-        <div class="lrow"><label for="li-pass">Password</label><a href="#" data-view="f-forgot">Forgot password?</a></div>
+        <div class="lrow"><label for="li-pass">Password</label><a href="forgot-password.html" id="to-forgot">Forgot password?</a></div>
         <div class="pw"><input type="password" id="li-pass" placeholder="Password" autocomplete="current-password" required><button type="button" class="reveal" aria-controls="li-pass" aria-pressed="false">Show</button></div>
         <p class="caps" hidden>Caps Lock is on</p>
         <p class="ferr" id="li-pass-err"></p>
       </div>
       <button type="submit" class="primary" data-busy="Logging in…">Log in</button>
-      <p class="switch or fb-only"><span class="pre">New to Hunting LTD?</span> <a href="#" data-view="f-signup">Create an account</a></p>
+      <p class="switch or fb-only"><span class="pre">New to Hunting LTD?</span> <a href="create-account.html">Create an account</a></p>
     </form>
-    <form id="f-signup" class="af" hidden novalidate aria-labelledby="h-signup">
-      <h2 id="h-signup">Create an account</h2>
-      <div class="field">
-        <label for="su-name">Hunter name</label>
-        <p class="hint" id="su-name-hint">Shown in the game. Up to 24 characters.</p>
-        <input id="su-name" placeholder="Hunter name" maxlength="24" autocomplete="nickname" aria-describedby="su-name-hint" required>
-        <p class="ferr" id="su-name-err"></p>
-      </div>
-      <div class="field">
-        <label for="su-email">Email</label>
-        <p class="hint" id="su-email-hint">We’ll send a link to confirm it.</p>
-        <input type="email" id="su-email" placeholder="Email" autocomplete="email" inputmode="email" autocapitalize="off" spellcheck="false" aria-describedby="su-email-hint" required>
-        <p class="ferr" id="su-email-err"></p>
-      </div>
-      <div class="field">
-        <label for="su-pass">Password</label>
-        <p class="hint" id="su-pass-hint">At least 8 characters.</p>
-        <div class="pw"><input type="password" id="su-pass" placeholder="Password" autocomplete="new-password" minlength="8" aria-describedby="su-pass-hint" required><button type="button" class="reveal" aria-controls="su-pass" aria-pressed="false">Show</button></div>
-        <p class="caps" hidden>Caps Lock is on</p>
-        <p class="ferr" id="su-pass-err"></p>
-      </div>
-      <div class="field">
-        <label for="su-pass2">Confirm password</label>
-        <div class="pw"><input type="password" id="su-pass2" placeholder="Confirm password" autocomplete="new-password" minlength="8" required><button type="button" class="reveal" aria-controls="su-pass2" aria-pressed="false">Show</button></div>
-        <p class="ferr" id="su-pass2-err"></p>
-      </div>
-      <button type="submit" class="primary" data-busy="Creating your account…">Create account</button>
-      <p class="switch or"><span class="pre">Already have an account?</span> <a href="#" data-view="f-login">Log in</a></p>
-    </form>
-    <form id="f-forgot" class="af" hidden novalidate aria-labelledby="h-forgot">
-      <h2 id="h-forgot">Reset your password</h2>
-      <p class="lead">Enter the email you signed up with and we’ll send you a link to choose a new password.</p>
-      <div class="field">
-        <label for="fp-email">Email</label>
-        <input type="email" id="fp-email" placeholder="Email" autocomplete="email" inputmode="email" autocapitalize="off" spellcheck="false" required>
-        <p class="ferr" id="fp-email-err"></p>
-      </div>
-      <button type="submit" class="primary" data-busy="Sending…">Send reset link</button>
-      <p class="switch"><a href="#" data-view="f-login">Back to log in</a></p>
-    </form>
-    <div id="v-verify" class="af" hidden>
-      <h2>Confirm your email</h2>
-      <p class="lead">We sent a link to <b id="vf-email"></b>. Open the email and click the link to confirm your address. Then you can sign in and play.</p>
-      <p class="lead">Can’t find it? Check your spam or junk folder.</p>
-      <button type="button" id="vf-resend" class="secondary" data-busy="Sending…">Send the email again</button>
-      <p class="switch"><a href="#" id="vf-logout">Log out</a></p>
-    </div>
-    <div id="v-note" class="af" hidden role="status">
-      <h2 id="nt-title"></h2>
-      <p class="lead" id="nt-text"></p>
-      <button type="button" id="nt-go" class="primary"></button>
-    </div>
-    <form id="f-newpass" class="af" hidden novalidate aria-labelledby="h-newpass">
-      <h2 id="h-newpass">Choose a new password</h2>
-      <p class="lead">For <b id="np-email"></b></p>
-      <div class="field">
-        <label for="np-pass">New password</label>
-        <p class="hint" id="np-pass-hint">At least 8 characters.</p>
-        <div class="pw"><input type="password" id="np-pass" placeholder="New password" autocomplete="new-password" minlength="8" aria-describedby="np-pass-hint" required><button type="button" class="reveal" aria-controls="np-pass" aria-pressed="false">Show</button></div>
-        <p class="caps" hidden>Caps Lock is on</p>
-        <p class="ferr" id="np-pass-err"></p>
-      </div>
-      <div class="field">
-        <label for="np-pass2">Confirm new password</label>
-        <div class="pw"><input type="password" id="np-pass2" placeholder="Confirm new password" autocomplete="new-password" minlength="8" required><button type="button" class="reveal" aria-controls="np-pass2" aria-pressed="false">Show</button></div>
-        <p class="ferr" id="np-pass2-err"></p>
-      </div>
-      <button type="submit" class="primary" data-busy="Saving…">Save new password</button>
-    </form>
-    <div id="v-in" class="af" hidden>
-      <p class="who">Logged in as <b id="in-name"></b> <span id="in-email"></span> · <a href="#" id="logout">Log out</a></p>
-      <div class="field inline"><label for="pstand">Stand</label><select id="pstand"></select></div>
-    </div>
     <div id="acctmsg" role="alert" aria-live="assertive"></div>
   </div>
-  <div id="netmsg"></div>
-  <button id="go" disabled>Generating marsh…</button><button id="mixopen" type="button">Sound levels</button>
-  <div id="howto">
-  <table>
-    <tr><td>Mouse</td><td>Look around</td></tr>
-    <tr><td>Wheel</td><td>Zoom; past ~3× you raise the binoculars</td></tr>
-    <tr><td>Right click / B</td><td>Snap binoculars up or down</td></tr>
-    <tr><td>1 / 2</td><td>Choose your call: 1 long cow call (carries far, for a bull you can’t see) · 2 short coaxing call (for a bull you can see)</td></tr>
-    <tr><td>Space</td><td>Make the call: one of your recordings of that type plays start to finish</td></tr>
-    <tr><td>O</td><td>Sound levels: your calls, moose, birds &amp; wildlife, wind, forest, effects</td></tr>
-    <tr><td>V</td><td>Water pour (a cow urinating, a classic close-in trick)</td></tr>
-    <tr><td>H / G</td><td>Toggle this help / spotter debug readout</td></tr>
-  </table>
-  <p>Reach a far bull with long calls. When he stops on his way in, a coaxing call gets him moving again. Call again within 30 seconds and you’re calling too often. Inside 75 yards, any call or pour gives you away. Keep the wind in your face: the dial is bottom left.</p>
-  </div>
 </div></div>
-<script>
-// Opened from a link in one of our emails (?mode=...&oobCode=...): show "One moment…" straight away, not the
-// sign-in card, until the game's script handles the link (ui/account.js).
-(function () {
-  var q = new URLSearchParams(location.search);
-  if (!q.get('oobCode') || !/^(verifyEmail|resetPassword|recoverEmail)$/.test(q.get('mode') || '')) return;
-  document.getElementById('f-login').hidden = true;
-  document.getElementById('nt-title').textContent = 'One moment…';
-  document.getElementById('nt-go').hidden = true;
-  document.getElementById('v-note').hidden = false;
-  document.body.dataset.acct = 'v-note';
-})();
-</script>
-<div id="menu" hidden role="dialog" aria-modal="true" aria-labelledby="m-title">
-  <div class="mcard">
-    <section id="m-main" class="af mview">
-      <h2 id="m-title">Paused</h2>
-      <p class="mnote" id="m-note" role="status"></p>
-      <button type="button" class="primary" id="m-resume">Resume</button>
-      <div class="mlist">
-        <button type="button" class="mitem" data-go="m-loc">Change location<span>Move to another stand</span></button>
-        <button type="button" class="mitem" data-go="m-set">Settings<span>Sound levels, looking around</span></button>
-        <button type="button" class="mitem" data-go="m-contact">Contact<span>Send Martin a message</span></button>
-        <button type="button" class="mitem" data-go="m-icon">Add game icon to your desktop<span>Open the game with a double-click</span></button>
-        <button type="button" class="mitem danger" data-go="m-exit">Exit game<span>Leave the marsh and log out</span></button>
-      </div>
-      <p class="mfoot">Press Esc to go back to the marsh</p>
-    </section>
-    <section id="m-loc" class="af mview" hidden>
-      <button type="button" class="back" data-go="m-main">← Back</button>
-      <h2>Change location</h2>
-      <p class="lead">Climb down and move to another stand. The animals carry on where they are.</p>
-      <div class="mlist" id="m-stands"></div>
-      <p class="mmsg" id="m-loc-msg" role="status"></p>
-    </section>
-    <section id="m-set" class="af mview" hidden>
-      <button type="button" class="back" data-go="m-main">← Back</button>
-      <h2>Settings</h2>
-      <h3>Sound levels</h3>
-      <div id="m-mix" class="srows"></div>
-      <h3>Looking around</h3>
-      <div class="srows">
-        <div class="srow"><label for="set-sens">Look sensitivity</label><input type="range" id="set-sens" min="25" max="250" step="5"><output for="set-sens" id="set-sens-out"></output></div>
-        <label class="check"><input type="checkbox" id="set-invert"> Invert up and down</label>
-      </div>
-      <p class="mfoot">Settings are saved on this device.</p>
-    </section>
-    <section id="m-contact" class="af mview" hidden>
-      <button type="button" class="back" data-go="m-main">← Back</button>
-      <h2>Contact</h2>
-      <div class="lead letter"><p>Hope you’re enjoying the game. If you have any questions or comments please use the form below to get in touch.</p><p>Thanks!<br>Martin</p></div>
-      <form id="f-contact" class="af" novalidate>
-        <div class="field">
-          <label for="ct-name">Name</label>
-          <input id="ct-name" maxlength="80" autocomplete="name" required>
-          <p class="ferr" id="ct-name-err"></p>
-        </div>
-        <div class="field">
-          <label for="ct-email">Email</label>
-          <p class="hint" id="ct-email-hint">So Martin can reply to you.</p>
-          <input type="email" id="ct-email" maxlength="200" autocomplete="email" inputmode="email" autocapitalize="off" spellcheck="false" aria-describedby="ct-email-hint" required>
-          <p class="ferr" id="ct-email-err"></p>
-        </div>
-        <div class="field">
-          <label for="ct-message">Message</label>
-          <textarea id="ct-message" rows="6" maxlength="4000" required></textarea>
-          <p class="ferr" id="ct-message-err"></p>
-        </div>
-        <p class="mmsg" id="ct-msg" role="alert"></p>
-        <button type="submit" class="primary" data-busy="Sending…">Send</button>
-      </form>
-      <div id="ct-done" hidden>
-        <p class="mmsg ok">Thanks! Your message is on its way. Martin will reply to <b id="ct-done-email"></b>.</p>
-        <button type="button" class="secondary" id="ct-another">Write another message</button>
-      </div>
-    </section>
-    <section id="m-icon" class="af mview" hidden>
-      <button type="button" class="back" data-go="m-main">← Back</button>
-      <h2 id="ic-title">Add game icon to your desktop</h2>
-      <div class="ic-tile" aria-hidden="true"><img src="./icon-192.png" alt="" width="64" height="64"><span>Hunting LTD</span></div>
-      <div id="ic-desk">
-        <p class="lead" id="ic-lead"></p>
-        <button type="button" class="primary" id="ic-save">Add icon to desktop</button>
-        <ol class="steps" id="ic-dsteps" hidden></ol>
-        <button type="button" class="secondary" id="ic-file" hidden>Save a shortcut file instead</button>
-      </div>
-      <div id="ic-phone" hidden>
-        <p class="lead">Put a Hunting LTD icon on your home screen. Tapping it opens the game, just like a bookmark.</p>
-        <ol class="steps" id="ic-steps"></ol>
-      </div>
-      <p class="mmsg" id="ic-msg" role="status"></p>
-    </section>
-    <section id="m-exit" class="af mview" hidden>
-      <button type="button" class="back" data-go="m-main">← Back</button>
-      <h2>Exit game</h2>
-      <p class="lead" id="m-exit-text">Leave the marsh and log out? Your marsh closes, and next time you start a fresh one.</p>
-      <button type="button" class="primary danger" id="m-exit-yes">Exit game</button>
-      <button type="button" class="secondary" data-go="m-main">Cancel</button>
-    </section>
-  </div>
-</div>
-<div id="mixer" hidden><div class="mx-card"><h3>Sound levels</h3><div id="mixrows"></div><p class="mx-note">O opens and closes this panel · your levels are remembered</p><button id="mixclose" type="button">Done</button></div></div>
-<pre id="err"></pre>
-<script type="module" src="./src/main.js"></script>
+<script type="module" src="./src/pages/account-pages.js"></script>
 </body>
 </html>

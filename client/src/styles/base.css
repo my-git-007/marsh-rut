@@ -1,0 +1,16 @@
+/* Shared by every page: colours, the dark start card and the badge at its top. */
+:root{--ink:#ece6d6;--dim:rgba(236,230,214,.62);--line:rgba(236,230,214,.22);--bg:#0b0c0a}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--ink:#ece6d6;--bg:#0b0c0a}}
+:root[data-theme="dark"]{--ink:#ece6d6;--bg:#0b0c0a}
+html,body{margin:0;height:100%;background:var(--bg);overflow:hidden;color:var(--ink);font-family:Georgia,"Times New Roman",serif}
+#err{position:fixed;left:8px;top:8px;right:8px;white-space:pre-wrap;background:#300;color:#fcc;font:12px monospace;padding:8px;display:none;z-index:99}
+#start{position:fixed;inset:0;display:flex;align-items:safe center;justify-content:center;overflow-y:auto;background:rgba(8,9,7,.55);z-index:10;padding:16px;box-sizing:border-box}
+.card{max-width:600px;width:100%;padding:30px 34px;background:rgba(12,13,10,.82);border:1px solid var(--line);box-sizing:border-box}
+.card h1{font-weight:normal;letter-spacing:.18em;font-size:26px;margin:0 0 6px;text-transform:uppercase}
+.card .sub{color:var(--dim);font-style:italic;margin:0 0 20px}
+.card p{font-size:14px;line-height:1.55;color:var(--dim)}
+@media (max-width:520px){.card{padding:22px 18px}.card h1{font-size:20px}}
+/* the badge fills the top of the start card and fades into it */
+.card h1.brand{margin:-30px -34px 22px;letter-spacing:0;font-size:0;line-height:0}
+.brand img{display:block;width:100%;height:auto;-webkit-mask-image:linear-gradient(to bottom,#000 78%,transparent);mask-image:linear-gradient(to bottom,#000 78%,transparent)}
+.card{background:rgba(19,18,14,.94);border-color:rgba(198,144,91,.45);box-shadow:0 24px 70px rgba(0,0,0,.6);overflow:hidden}

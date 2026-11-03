@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Create an account · Hunting LTD</title>
+<link rel="icon" href="./icon.ico" sizes="any">
+<link rel="icon" href="./icon-32.png" type="image/png" sizes="32x32">
+<link rel="apple-touch-icon" href="./apple-touch-icon.png">
+<link rel="manifest" href="./manifest.webmanifest">
+<meta name="theme-color" content="#0b0c0a">
+<meta name="apple-mobile-web-app-title" content="Hunting LTD">
+<link rel="stylesheet" href="./src/styles/base.css">
+<link rel="stylesheet" href="./src/styles/forms.css">
+<link rel="stylesheet" href="./src/styles/account.css">
+</head>
+<body data-acct data-page="create-account">
+<!-- One of the account pages (index, create-account, forgot-password, reset-password, confirm-email). They share
+     src/styles/{base,forms,account}.css and src/pages/account-pages.js; the game itself is hunting.html. -->
+<div id="start"><div class="card">
+  <h1 class="brand"><picture><source srcset="./badge.webp" type="image/webp"><img src="./badge.jpg" alt="Hunting LTD" width="920" height="460"></picture></h1>
+  <div id="acct">
+    <form id="f-signup" class="af" novalidate aria-labelledby="h-signup">
+      <h2 id="h-signup">Create an account</h2>
+      <div class="field">
+        <label for="su-name">Hunter name</label>
+        <p class="hint" id="su-name-hint">Shown in the game. Up to 24 characters.</p>
+        <input id="su-name" placeholder="Hunter name" maxlength="24" autocomplete="nickname" aria-describedby="su-name-hint" required>
+        <p class="ferr" id="su-name-err"></p>
+      </div>
+      <div class="field">
+        <label for="su-email">Email</label>
+        <p class="hint" id="su-email-hint">We’ll send a link to confirm it.</p>
+        <input type="email" id="su-email" placeholder="Email" autocomplete="email" inputmode="email" autocapitalize="off" spellcheck="false" aria-describedby="su-email-hint" required>
+        <p class="ferr" id="su-email-err"></p>
+      </div>
+      <div class="field">
+        <label for="su-pass">Password</label>
+        <p class="hint" id="su-pass-hint">At least 8 characters.</p>
+        <div class="pw"><input type="password" id="su-pass" placeholder="Password" autocomplete="new-password" minlength="8" aria-describedby="su-pass-hint" required><button type="button" class="reveal" aria-controls="su-pass" aria-pressed="false">Show</button></div>
+        <p class="caps" hidden>Caps Lock is on</p>
+        <p class="ferr" id="su-pass-err"></p>
+      </div>
+      <div class="field">
+        <label for="su-pass2">Confirm password</label>
+        <div class="pw"><input type="password" id="su-pass2" placeholder="Confirm password" autocomplete="new-password" minlength="8" required><button type="button" class="reveal" aria-controls="su-pass2" aria-pressed="false">Show</button></div>
+        <p class="ferr" id="su-pass2-err"></p>
+      </div>
+      <button type="submit" class="primary" data-busy="Creating your account…">Create account</button>
+      <p class="switch or"><span class="pre">Already have an account?</span> <a href="index.html">Log in</a></p>
+    </form>
+    <div id="acctmsg" role="alert" aria-live="assertive"></div>
+  </div>
+</div></div>
+<script type="module" src="./src/pages/account-pages.js"></script>
+</body>
+</html>

@@ -55,14 +55,21 @@ shared/            runs in the browser and on the server; no graphics or sound
     bullparams.js      a bull's class, antlers, temperament and coat
 server/server.js   one private marsh per logged-in player, over WebSockets
 server/auth.js     checks the player's Firebase login token
+server/mail.js     account emails (confirm, reset) with links to the game's own pages, sent through Resend
 client/            the browser game (Vite)
-  index.html         page, HUD, start screen
+  index.html             log in (the front door; a logged-in player is sent on to the game)
+  create-account.html    create an account, then confirm-email.html
+  forgot-password.html   ask for a password reset link
+  reset-password.html    where the reset email's link lands: choose a new password
+  confirm-email.html     "check your email", and where the confirmation email's link lands
+  hunting.html           the game: the marsh, HUD, start card, Esc menu
   assets/            sounds/ and reference/ (served as separate files the browser can cache)
   src/
     main.js            start-up and frame loop
     net/hosts.js       LocalHost (simulation in the tab) and RemoteHost (server + interpolation)
     auth/auth.js       accounts through Firebase: log in, create account, password reset, log out
-    ui/account.js      the account forms on the start screen
+    pages/account-pages.js  the account pages (one script; <body data-page> says which)
+    styles/            base.css (all pages), forms.css, account.css (parchment over a still of the lake), game.css
     views/             how animals look and move on screen; world-events.js turns host events into sounds and effects
     models/            sculpted moose, antlers, reference bull, critters
     render/            renderer, textures, sky, terrain, water, ridges, vegetation, fx, birds
@@ -134,7 +141,7 @@ does the account work:
 - it sends the password-reset emails;
 - it slows down password guessing.
 
-The game shows the forms (`client/src/ui/account.js`). The server never sees a password: the browser sends a
+The game shows the forms (`client/src/pages/account-pages.js`). The server never sees a password: the browser sends a
 short-lived ID token, and `server/auth.js` checks its signature with Google's public keys.
 
 Setting it up:

@@ -50,7 +50,10 @@ const DEV_KEY = 'marshrut-devuser';
 let devUser = null;
 const view = (u) => (u ? { name: u.displayName || (u.email || '').split('@')[0], email: u.email, verified: !!u.emailVerified } : null);
 const devView = () => (devUser ? { name: devUser, email: '', verified: true } : null);
-const BACK = () => ({ url: location.origin + location.pathname });   // the email's link page offers a way back to the game
+// handleCodeInApp: Firebase's link page doesn't use the code itself; it forwards straight to the game with
+// ?mode=...&oobCode=..., and the start screen (ui/account.js) confirms the email or asks for the new password.
+// (Needed because the console's "Customize action URL" setting won't save for this project.)
+const BACK = () => ({ url: location.origin + location.pathname, handleCodeInApp: true });
 
 export async function watchUser(cb) {
   if (!FIREBASE) {

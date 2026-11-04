@@ -131,7 +131,11 @@ export class Sim {
     return H;
   }
   hunterList() {
-    return [...this.hunters.values()].map((h) => ({ id: h.id, name: h.name, stand: h.stand }));
+    return [...this.hunters.values()].map((h) => ({
+      id: h.id,
+      name: h.name,
+      stand: h.stand,
+    }));
   }
   nearestHunter(x, z) {
     let h = null,
@@ -176,7 +180,12 @@ export class Sim {
     H.lastCallEnd = H.callEnd;
     H.calls.push(this.time);
     H.calls = H.calls.filter((t) => this.time - t < 600);
-    this.emit({ e: 'call', hunter: id, clip: String(clip || '').slice(0, 80), type });
+    this.emit({
+      e: 'call',
+      hunter: id,
+      clip: String(clip || '').slice(0, 80),
+      type,
+    });
     for (const bl of this.bulls) {
       const delay = bl.a.distTo(H) / 343 + Math.min(dur, 3) * 0.5;
       this.after(delay, () => {
@@ -196,7 +205,14 @@ export class Sim {
       if (chance(this.forceTwo ? 1 : 0.22))
         this.after(rand(4, 15), () => {
           if (this.hunters.has(id) && this.bulls.length <= this.maxBulls())
-            this.bulls.push(new Bull(this, { second: true, avoid: first.edge, interest: 0.95, focus: H }));
+            this.bulls.push(
+              new Bull(this, {
+                second: true,
+                avoid: first.edge,
+                interest: 0.95,
+                focus: H,
+              }),
+            );
         });
     }
     return true;
@@ -318,7 +334,10 @@ export class Sim {
       const minTier = pest ? Math.min(BULL_TIERS.length - 1, pest.p.tier + 1) : 1;
       this.after(rand(10, 35), () => {
         if (cg.done || !this.hunters.size) return;
-        const b = new Bull(this, { minTier: chance(0.8) ? minTier : undefined, focus: this.nearestHunter(c.x, c.z).h });
+        const b = new Bull(this, {
+          minTier: chance(0.8) ? minTier : undefined,
+          focus: this.nearestHunter(c.x, c.z).h,
+        });
         this.bulls.push(b);
         const e = nearestEdge(this, c.x, c.z),
           h = off(e, rand(50, 110));
@@ -358,7 +377,11 @@ export class Sim {
     return { t: r3(this.time), wind: windState(this.wind), a: rows };
   }
   spawnList() {
-    return [...this.bodies.values()].map((b) => ({ id: b.id, kind: b.kind, vis: b.vis }));
+    return [...this.bodies.values()].map((b) => ({
+      id: b.id,
+      kind: b.kind,
+      vis: b.vis,
+    }));
   }
   debugText() {
     const L = [];
@@ -419,22 +442,58 @@ export class Sim {
       const kinds = (q('kinds') || 'bear,wolf,coyote,raccoon,rabbit,porcupine').split(',');
       const pick = (k, key, list) => (q(key) && SPECIES[k][list].some((x) => x.id === q(key)) ? q(key) : undefined);
       kinds.forEach((k, i) => {
-        const c = critter(this, k, { size: pick(k, 'size', 'sizes'), coat: pick(k, 'coat', 'coats') });
+        const c = critter(this, k, {
+          size: pick(k, 'size', 'sizes'),
+          coat: pick(k, 'coat', 'coats'),
+        });
         c.place(H.x - 9 + i * 6, H.z - num('dist', 30), num('h', 0));
         if (q('walk') != null) c.goTo(c.x + 60, c.z, q('walk') === 'trot' ? 'trot' : 'walk');
         else if (q('forage') != null) c.forageOn = true;
       });
     } else if (name === 'antlers') {
+      // size check: one line at the same distance (so perspective doesn't skew it), side-on: the bear sizes,
+      // then one cow of each type, smallest to largest, then one bull of each size. ?cows=0 / ?bears=0 hide those;
+      // ?h= turns them (0 = side-on), ?dist= moves the line
       clear();
       this.frozen = true;
-      const z = H.z - num('dist', 40);
-      for (let c = 0; c < BULL_TIERS.length; c++) {
-        const b = new Bull(this, { tier: c, focus: H });
-        b.a.place(H.x - 18 + c * 6, z, num('h', -1.2));
-        b.hold(1e9);
-        b.dispT = 1e9;
-        b.a.look = null;
-        this.bulls.push(b);
+      const z = H.z - num('dist', 35),
+        h = num('h', 0);
+      const line = [];
+      if (q('bears') !== '0')
+        for (const sz of SPECIES.bear.sizes)
+          line.push({
+            gap: 3.4,
+            put: (x) => critter(this, 'bear', { size: sz.id, coat: 'black' }).place(x, z, h),
+          });
+      if (q('cows') !== '0')
+        for (const t of [...COW_TYPES].sort((a, b) => a.scale[0] + a.scale[1] - b.scale[0] - b.scale[1]))
+          line.push({
+            gap: 4.6,
+            put: (x) => {
+              const cg = new CowGroup(this, true, { type: t.id, calves: 0 });
+              cg.state = 'frozen';
+              cg.cow.look = null;
+              cg.cow.place(x, z, h);
+              this.cows.push(cg);
+            },
+          });
+      for (let c = 0; c < BULL_TIERS.length; c++)
+        line.push({
+          gap: 5.6,
+          put: (x) => {
+            const b = new Bull(this, { tier: c, focus: H });
+            b.a.place(x, z, h);
+            b.hold(1e9);
+            b.dispT = 1e9;
+            b.a.look = null;
+            this.bulls.push(b);
+          },
+        });
+      const width = line.reduce((w, e) => w + e.gap, 0);
+      let x = H.x - width / 2;
+      for (const e of line) {
+        e.put(x + e.gap / 2);
+        x += e.gap;
       }
     } else if (name === 'lineup') {
       clear();
@@ -530,7 +589,10 @@ export class Sim {
                 host = cg; // calves need a mother to belong to: an extra cow, parked out of the way
                 cg.cow.place(H.x + 80, H.z - 400, h);
               }
-              const c = host.addCalf(0.85 * between(t.scale), 0, { type: t.id, coat: co });
+              const c = host.addCalf(0.85 * between(t.scale), 0, {
+                type: t.id,
+                coat: co,
+              });
               c.place(x, z, h);
               c.look = null;
             });
@@ -587,7 +649,10 @@ export class Sim {
       b.p.traits.rut = 0;
       const atBull = q('target') === 'bull',
         P = atBull ? b.a : cg.cow; // ?target=bull: the wolves test the bull instead
-      const w = new WildEvent(this, q('kind') || 'wolf', { at: { x: P.x + 40, z: P.z - 170 }, n: 3 });
+      const w = new WildEvent(this, q('kind') || 'wolf', {
+        at: { x: P.x + 40, z: P.z - 170 },
+        n: 3,
+      });
       this.wild = [w];
       w.prey = P;
       w.rule = { act: 'test', keep: [30, 50] };
@@ -598,8 +663,13 @@ export class Sim {
     } else if (name === 'hare') {
       // a coyote and a hare
       clear();
-      const r = new WildEvent(this, 'rabbit', { at: { x: H.x + 20, z: H.z - 90 } });
-      const c = new WildEvent(this, 'coyote', { at: { x: H.x - 40, z: H.z - 160 }, n: 1 });
+      const r = new WildEvent(this, 'rabbit', {
+        at: { x: H.x + 20, z: H.z - 90 },
+      });
+      const c = new WildEvent(this, 'coyote', {
+        at: { x: H.x - 40, z: H.z - 160 },
+        n: 1,
+      });
       this.wild = [r, c];
       c.prey = r.lead;
       c.rule = { act: 'hunt' };

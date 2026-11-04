@@ -189,7 +189,11 @@ ok(bad.denied === 'login' && !bad.you, `a bad login token is refused (${bad.deni
 const old = await new Promise((resolve) => {
   const ws = new WebSocket('ws://localhost:8091');
   ws.on('open', () => ws.send(JSON.stringify({ t: 'hello', v: 1, token: 'X' })));
-  ws.on('message', (d) => resolve(JSON.parse(d)));
+  let answer;
+  ws.on('message', (d) => (answer = JSON.parse(d)));
+  // Wait for the server to close it: an open connection counts towards the per-address limit and could get the
+  // next test's player refused for that reason instead.
+  ws.on('close', () => resolve(answer));
 });
 ok(old.t === 'denied' && old.reason === 'version', 'an out-of-date game is told to reload');
 

@@ -23,7 +23,7 @@
 //   { t: 'tick', snap, ev }                              snapshot (see Sim.snapshot) + events since the last tick
 //   { t: 'hunters', list }                               someone joined or left (for shared marshes later)
 //   { t: 'pong', c }
-export const PROTOCOL_VERSION = 3;   // 3: the animal catalogue (coats, types, hares, porcupines)
-export const TICK_HZ = 20;       // simulation steps per second on the server
-export const SEND_EVERY = 2;     // a snapshot goes out every 2nd step (10 per second)
+export const PROTOCOL_VERSION = 4; // 3: the animal catalogue; 4: six bull sizes, coats by size (hump grey)
+export const TICK_HZ = 20; // simulation steps per second on the server
+export const SEND_EVERY = 2; // a snapshot goes out every 2nd step (10 per second)
 export const INTERP_DELAY = 0.15; // browsers draw this far (seconds) behind the newest snapshot

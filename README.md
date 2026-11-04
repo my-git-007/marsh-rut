@@ -84,9 +84,11 @@ tools/             checks and one-off tools (split-client.mjs cut the original s
 ```
 
 **The animal engine.** Everything you might want to tune lives in `shared/sim/catalog.js`, as data:
-- 35 bull types in 7 size tiers (small 4, medium-small 4, medium 6, medium-large 6, large 6, very large 6,
-  extremely large 3), each with its own antler form, coat, build and personality nudges; plus 6 cow types,
-  3 calf types, and sizes × coats for bears, wolves, coyotes, raccoons, snowshoe hares and porcupines;
+- 31 bull types in 6 size tiers (small 4, medium 6, medium-large 6, large 6, very large 6, extremely large 3),
+  each with its own antler form, build and personality nudges; body size, antler spread and coat come from the
+  tier (BULL_TIERS); plus 6 cow types, 3 calf types, and sizes × coats for bears, wolves, coyotes, raccoons,
+  snowshoe hares and porcupines;
+- which of those species live in this marsh (MARSH_SPECIES: bears, wolves and coyotes for now);
 - personality traits (bold, wary, curious, playful, aggressive, persistent, restless, lazy, rut) rolled per animal;
 - how often each species turns up (SPAWN, SPECIES[kind].spawn), and how it moves (SPECIES[kind].move);
 - how each animal reacts to each other one (REACT: watch, avoid, flee, stand, defend, freeze, quills…) and what
@@ -94,8 +96,10 @@ tools/             checks and one-off tools (split-client.mjs cut the original s
 Every species, coat and bull type has an id, so real 3D models can later be matched to them; until then the
 browser sculpts each one. `npm run check` runs `tools/check-animals.js`, which plays out each behaviour many
 times (courtship and bellows, rivals, a cow keeping a bull off her calf, wolves, coyote and hare, porcupine) and
-fails if any stops happening. Test scenes: `hunting/?test=catalog&tier=6`, `?test=zoo`, `?test=court`,
-`?test=calfcow`, `?test=wolves&target=bull`, `?test=hare` (add `&debug` for the live state).
+fails if any stops happening. Test scenes (the grass is cleared in front of the stand for these):
+`hunting/?test=catalog&tier=5`, `?test=antlers`, `?test=bull&tier=3` or `&type=marsh-king`, `?test=zoo` (every
+size × coat, cows and calves; `&only=bear`, `&all` adds the species not in this marsh), `?test=wild&kinds=bear&size=big-boar`,
+`?test=court`, `?test=calfcow`, `?test=wolves&target=bull`, `?test=hare` (add `&debug` for the live state).
 
 **The host decides and the browser draws.** Whoever hosts the marsh runs `shared/sim`: the server when online,
 or the tab itself offline. A simulation can hold up to eight hunters (one per stand), which leaves room for hunting

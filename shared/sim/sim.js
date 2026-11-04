@@ -10,6 +10,7 @@ import { CowGroup } from './cows.js';
 import { WildEvent, critter } from './wildlife.js';
 import { updateEcology } from './ecology.js';
 import { nearestEdge } from './places.js';
+import { setupMoves } from './moves.js';
 import { off } from '../world.js';
 import {
   SPAWN,
@@ -238,6 +239,7 @@ export class Sim {
       }
     }
     if (this.frozen) {
+      if (this.moves) this.moves(dt); // ?test=moves: the scripted moves
       for (const b of this.bodies.values()) b.update(dt);
       return;
     }
@@ -450,6 +452,11 @@ export class Sim {
         if (q('walk') != null) c.goTo(c.x + 60, c.z, q('walk') === 'trot' ? 'trot' : 'walk');
         else if (q('forage') != null) c.forageOn = true;
       });
+    } else if (name === 'moves') {
+      // a bull, a cow and a bear, each playing every move it has in a loop (see moves.js)
+      clear();
+      this.frozen = true;
+      this.moves = setupMoves(this, H, q);
     } else if (name === 'antlers') {
       // size check: one line at the same distance (so perspective doesn't skew it), side-on: the bear sizes,
       // then one cow of each type, smallest to largest, then one bull of each size. ?cows=0 / ?bears=0 hide those;

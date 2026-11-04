@@ -26,7 +26,7 @@ const IN = 39.37;
 // antlers for a bull of this tier and type (see BULL_TYPES[].ant in catalog.js)
 export function antlerFor(tier, type = {}) {
   const T = type.ant || {},
-    form = T.form || (tier.i === 0 ? pick(['spike', 'fork', 'cervina']) : 'palm');
+    form = T.form || 'palm';
   const q = T.q || [0, 1],
     f = rand(q[0], q[1]);
   const A = {
@@ -35,7 +35,7 @@ export function antlerFor(tier, type = {}) {
     tilt: T.tilt ? between(T.tilt) : rand(0.15, 0.38),
     cup: rand(0.9, 1.3) * (T.cup || 1),
     palmW: rand(0.85, 1.15) * (T.palmW || 1),
-    nonTyp: chance(T.nonTyp || (tier.i >= 3 ? 0.12 : 0)),
+    nonTyp: chance(T.nonTyp || (tier.i >= 2 ? 0.12 : 0)),
     broken: T.broken ? randi(T.broken[0], T.broken[1]) : 0,
     butterfly: chance(T.butterfly != null ? T.butterfly : 0.3),
     blunt: chance(T.blunt || 0),
@@ -96,7 +96,7 @@ export function refBullAntlers() {
 export function palLin(c) {
   const v = rand(0.94, 1.06),
     o = {};
-  for (const k in c) o[k] = hexLin(c[k], v);
+  for (const k in c) o[k] = typeof c[k] === 'number' ? c[k] : hexLin(c[k], v);
   return o;
 }
 // kept for anything that still asks for a coat by kind
@@ -104,7 +104,7 @@ export function coatPal(kind) {
   return palLin(rollCoat(kind).c);
 }
 
-// opt: tier (0..6), type (id), minTier, style (force) — test scenarios and bellow-drawn bulls use them
+// opt: tier (0..5), type (id), minTier, style (force) — test scenarios and bellow-drawn bulls use them
 export function makeBullParams(opt = {}) {
   if (opt.cls != null && opt.tier == null) opt = { ...opt, tier: opt.cls };
   const { tier, type } = rollBullType(opt);
@@ -115,7 +115,12 @@ export function makeBullParams(opt = {}) {
   const bold = traits.bold;
   const reply = style === 'silent' ? rand(0.08, 0.2) : style === 'charger' ? rand(0.65, 0.95) : rand(0.35, 0.8);
   const build = clamp((type.build || 0) * 0.5 + 0.5 + rand(-0.3, 0.3), 0, 1);
-  const coat = rollCoat('bull', type.coat);
+  const coat = rollCoat('bull', type.coat || tier.coats);
+  const scale = lerp(tier.scale[0], tier.scale[1], build);
+  const spreadIn = Math.round(ant.spread * IN);
+  // the browser draws the antlers inside the scaled body, so draw them smaller by the same amount: the rack you
+  // see is the spread in the catalogue, whatever his body size
+  ant.spread /= scale;
   return {
     cls: tier,
     tier: tier.i,
@@ -125,7 +130,7 @@ export function makeBullParams(opt = {}) {
     ant,
     style,
     traits,
-    scale: lerp(tier.scale[0], tier.scale[1], build),
+    scale,
     kg: Math.round(lerp(tier.kg[0], tier.kg[1], build)),
     bold,
     reply,
@@ -136,7 +141,7 @@ export function makeBullParams(opt = {}) {
     coat,
     pal: palLin(coat.c),
     worn,
-    spreadIn: Math.round(ant.spread * IN),
+    spreadIn,
     points: ant.points,
     bellLen: between(tier.bellLen) * (worn ? 1.2 : 1),
   };

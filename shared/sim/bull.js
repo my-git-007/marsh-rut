@@ -17,15 +17,15 @@ export class Bull {
     this.sim = sim;
     const p = (this.p = makeBullParams(opt));
     if (opt.refBull) {
-      p.cls = BULL_CLASSES[4];
-      p.tier = 4;
+      p.cls = BULL_CLASSES[3];
+      p.tier = 3;
       p.ant = refBullAntlers();
       p.scale = 1.08;
       p.style = 'swagger';
       p.worn = false;
       p.reply = 0.8;
       p.voice.rate = 0.9;
-      p.spreadIn = Math.round(p.ant.spread * 39.37);
+      p.spreadIn = Math.round(p.ant.spread * p.scale * 39.37); // the rack as drawn (scaled with his body)
       p.points = p.ant.points;
     }
     const vis = {
@@ -50,7 +50,7 @@ export class Bull {
     this.a.eco = { role: p.cls.role, sp: 'moose' };
     this.id = this.a.id;
     this.cowGoal = null;
-    this.size = p.scale * (0.7 + p.ant.spread * 0.3);
+    this.size = p.scale * (0.7 + (p.spreadIn / 39.37) * 0.3);
     this.focus = opt.focus || sim.pickHunter();
     this.edge = bullEdge(sim, opt.avoid, this.focus);
     this.home = off(this.edge, rand(110, 190));

@@ -137,6 +137,7 @@ const FUR_LEN = {
   hoof: 0,
   bell: 0.07,
 };
+const BULL_LEN = 1.1; // bulls' bodies are this much longer than the base sculpt (cows and calves keep it)
 const BONES = ['body', 'neck', 'head', 'jaw', 'fhL', 'fkL', 'fhR', 'fkR', 'hhL', 'hkL', 'hhR', 'hkR'];
 function mooseRig(kind) {
   const cow = kind !== 'bull',
@@ -204,6 +205,24 @@ function mooseRig(kind) {
   Cp('legLo', 'hk', [-0.86, 0.64, 0.18], [-0.82, 0.13, 0.18], 0.045, 0.04, 0.02, true);
   Cp('legLo', 'hk', [-0.82, 0.13, 0.18], [-0.78, 0.05, 0.18], 0.05, 0.045, 0.02, true);
   E('hoof', 'hk', [-0.76, 0.035, 0.18], [0.075, 0.04, 0.052], 0.012, 0, true);
+  // bulls: a longer body. The torso stretches by BULL_LEN; the head, neck and legs move with it, unchanged.
+  if (kind === 'bull') {
+    const d = (x) => (BULL_LEN - 1) * clamp(x, -0.9, 0.6);
+    const legX = { fh: J.fh[0], fk: J.fh[0], hh: J.hh[0], hk: J.hh[0] };
+    for (const p of P) {
+      const leg = /^(leg|hoof)/.test(p.tag);
+      const sh = (q) => [q[0] + d(leg ? legX[p.bone] : q[0]), q[1], q[2]];
+      if (p.t === 'e') {
+        p.c = sh(p.c);
+        if (p.tag === 'torso' || p.tag === 'hump') p.r = [p.r[0] * BULL_LEN, p.r[1], p.r[2]];
+      } else {
+        p.p0 = sh(p.p0);
+        p.p1 = sh(p.p1);
+      }
+    }
+    for (const k of ['neck', 'head', 'jaw']) J[k] = [J[k][0] + d(J[k][0]), J[k][1], J[k][2]];
+    for (const k of ['fh', 'fk', 'hh', 'hk']) J[k] = [J[k][0] + d(legX[k]), J[k][1], J[k][2]];
+  }
   // calves: leggier, body raised, smaller head
   if (calf) {
     const isLeg = (p) => /^(leg|hoof)/.test(p.tag);
@@ -500,7 +519,7 @@ function buildMooseKind(kind) {
 function coatVariant(base, kind, pd, pos, nor, tagOf) {
   const nv = pos.length / 3;
   const pl = {};
-  for (const k in pd) pl[k] = hexLin(pd[k]);
+  for (const k in pd) pl[k] = typeof pd[k] === 'number' ? pd[k] : hexLin(pd[k]);
   const col = new Float32Array(nv * 3);
   for (let v = 0; v < nv; v++) {
     const x = pos[v * 3],
@@ -509,11 +528,18 @@ function coatVariant(base, kind, pd, pos, nor, tagOf) {
       ny_ = nor[v * 3 + 1],
       t = tagOf[v];
     let c;
+    // grizzle: fine grey flecks (grey hairs mixed into the coat), strongest on top of the hump and fading out
+    // smoothly around it, so there is no edge
+    const fleck = pl.hump || pl.bell ? 0.55 + noise2(x * 31 + z * 17 + 3, y * 31 - z * 23) : 0;
+    const griz = pl.hump ? (pl.humpK || 0.4) * fleck : 0;
+    const humpW = griz ? smoothstep(1.6, 1.92, y) * (1 - smoothstep(0.3, 0.75, Math.abs(x - 0.33))) : 0;
     if (t === 'torso' || t === 'hump' || t === 'tail') {
       c = mix3(pl.body, pl.back, smoothstep(0.25, 0.85, ny_) * smoothstep(1.55, 1.85, y));
       c = mix3(c, pl.belly, smoothstep(-0.3, -0.8, ny_));
+      if (griz) c = mix3(c, pl.hump, griz * humpW);
     } else if (t === 'neck') c = mix3(pl.body, pl.belly, smoothstep(-0.2, -0.8, ny_));
-    else if (t === 'mane' || t === 'bell') c = pl.mane;
+    else if (t === 'mane') c = griz ? mix3(pl.mane, pl.hump, griz * 0.5) : pl.mane;
+    else if (t === 'bell') c = pl.bell ? mix3(pl.mane, pl.bell, 0.3 + 0.6 * fleck) : pl.mane;
     else if (t === 'head') c = mix3(pl.head, pl.belly, smoothstep(-0.3, -0.9, ny_) * 0.4);
     else if (t === 'muzzle') c = pl.muzzle;
     else if (t === 'jaw') c = mix3(pl.muzzle, pl.belly, 0.4);
@@ -521,8 +547,11 @@ function coatVariant(base, kind, pd, pos, nor, tagOf) {
     else if (t === 'legMid') {
       const fr = x > 0;
       c = mix3(pl.legUp, pl.leg, smoothstep(fr ? 0.85 : 0.95, fr ? 0.6 : 0.72, y / (kind === 'calf' ? 1.22 : 1)));
-    } else if (t === 'legLo') c = pl.leg;
-    else c = pl.hoof;
+    } else if (t === 'legLo') {
+      // below the knee: mid brown fading to light brown down toward the hoof
+      const kn = (x > 0 ? 0.53 : 0.64) * (kind === 'calf' ? 1.22 : 1);
+      c = pl.shin ? mix3(pl.leg, pl.shin, smoothstep(kn, 0.12, y)) : pl.leg;
+    } else c = pl.hoof;
     const nz_ = 0.9 + 0.2 * (0.5 + noise2(x * 7.1 + z * 3.3 + 11, y * 7.1 - z * 5.2));
     col[v * 3] = c[0] * nz_;
     col[v * 3 + 1] = c[1] * nz_;

@@ -14,7 +14,7 @@ import {
   inStandCorridor,
   nearestStandDist,
 } from '../../../shared/world.js';
-import { PLAYER } from '../state.js';
+import { PLAYER, TEST } from '../state.js';
 import { atlasMats, buildInstanced, crossGeo, grassGeo, windInject } from './billboards.js';
 import { C, SUN_DIR, scene } from './core.js';
 import { T } from './textures.js';
@@ -34,7 +34,19 @@ function buildGrass() {
     GRASS = null;
   }
   const items = [];
+  const FWD = Math.atan2(-Math.cos(PLAYER.yaw || 0), -Math.sin(PLAYER.yaw || 0));
+  const fx = Math.cos(FWD),
+    fz = Math.sin(FWD);
+  // test scenes (?test=zoo, catalog, ...): a wide clearing in front of the stand, so every animal is in full view
+  const clearing = TEST && TEST !== '1' && TEST !== 'solo';
   const tryAdd = (x, z) => {
+    if (clearing) {
+      const dx = x - PLAYER.x,
+        dz = z - PLAYER.z,
+        f = dx * fx + dz * fz,
+        l = Math.abs(dz * fx - dx * fz);
+      if (f > 3 && f < 340 && l < 35 + f * 0.45) return;
+    }
     const e = marshE(x, z);
     if (e > 0.035) return;
     const edgeK = 1 - smoothstep(-0.012, 0.035, e);
@@ -53,7 +65,9 @@ function buildGrass() {
     c = c.map((v) => v * (1 + pale * 0.25));
     const wet = 1 - smoothstep(WATER_Y + 0.05, WATER_Y + 0.7, h);
     c = [c[0] * (1 - wet * 0.35), c[1] * (1 - wet * 0.2), c[2] * (1 - wet * 0.45)];
-    const hgt = rand(0.85, 1.42) * (1 - wet * 0.25) * (0.85 + 0.3 * dens) * (0.45 + 0.55 * edgeK);
+    // a few patches where the grass grows shorter (open spots where smaller animals show)
+    const short = smoothstep(0.14, 0.24, noise2(x * 0.016 + 41, z * 0.016 - 17));
+    const hgt = rand(0.85, 1.42) * (1 - wet * 0.25) * (0.85 + 0.3 * dens) * (0.45 + 0.55 * edgeK) * (1 - 0.45 * short);
     items.push({
       x,
       y: h - 0.05,
@@ -67,7 +81,6 @@ function buildGrass() {
   };
   for (let i = 0; i < 95000; i++) tryAdd(rand(-260, 260), rand(-760, 10));
   // extra-dense grass in front of this player's stand (it's only scenery, so each browser does its own)
-  const FWD = Math.atan2(-Math.cos(PLAYER.yaw || 0), -Math.sin(PLAYER.yaw || 0));
   for (let i = 0; i < 70000; i++) {
     const a = rand(-PI * 0.95, PI * 0.95) + FWD,
       r = Math.sqrt(Math.random()) * 320;

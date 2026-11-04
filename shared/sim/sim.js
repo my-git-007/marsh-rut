@@ -11,7 +11,18 @@ import { WildEvent, critter } from './wildlife.js';
 import { updateEcology } from './ecology.js';
 import { nearestEdge } from './places.js';
 import { off } from '../world.js';
-import { SPAWN, SPECIES, COW_SOCIAL, BULL_TIERS, BULL_TYPES, between } from './catalog.js';
+import {
+  SPAWN,
+  SPECIES,
+  MARSH_SPECIES,
+  COW_SOCIAL,
+  BULL_TIERS,
+  BULL_TYPES,
+  COW_TYPES,
+  CALF_TYPES,
+  MOOSE_COATS,
+  between,
+} from './catalog.js';
 
 const r1 = (v) => Math.round(v * 10) / 10,
   r2 = (v) => Math.round(v * 100) / 100,
@@ -33,9 +44,12 @@ export class Sim {
     this.stands = STANDS;
     this.nextBull = between(SPAWN.bull.first);
     this.nextCow = between(SPAWN.cow.first);
-    // one timer per species (wolves and coyotes share one: see SPAWN.canid), from SPECIES[kind].spawn
-    this.wildNext = { canid: Math.min(between(SPECIES.wolf.spawn.first), between(SPECIES.coyote.spawn.first)) };
-    for (const k in SPECIES) if (k !== 'wolf' && k !== 'coyote') this.wildNext[k] = between(SPECIES[k].spawn.first);
+    // one timer per species that lives in this marsh (MARSH_SPECIES; wolves and coyotes share one: see SPAWN.canid)
+    this.wildNext = {};
+    if (MARSH_SPECIES.includes('wolf') || MARSH_SPECIES.includes('coyote'))
+      this.wildNext.canid = Math.min(between(SPECIES.wolf.spawn.first), between(SPECIES.coyote.spawn.first));
+    for (const k of MARSH_SPECIES)
+      if (k !== 'wolf' && k !== 'coyote') this.wildNext[k] = between(SPECIES[k].spawn.first);
     this.frozen = false;
     this.alwaysFight = false;
     this.forceTwo = false;
@@ -267,10 +281,17 @@ export class Sim {
       W[k] -= dt;
       if (W[k] > 0) continue;
       if (k === 'canid') {
-        const kind = chance(SPAWN.canid.coyote) ? 'coyote' : 'wolf',
+        const both = MARSH_SPECIES.includes('wolf') && MARSH_SPECIES.includes('coyote'),
+          kind = both
+            ? chance(SPAWN.canid.coyote)
+              ? 'coyote'
+              : 'wolf'
+            : MARSH_SPECIES.includes('wolf')
+              ? 'wolf'
+              : 'coyote',
           sp = SPECIES[kind].spawn;
         W[k] = between(sp.every);
-        if (!count('wolf') && !count('coyote') && chance(SPECIES.wolf.spawn.p + SPECIES.coyote.spawn.p))
+        if (!count('wolf') && !count('coyote') && chance(both ? SPECIES.wolf.spawn.p + SPECIES.coyote.spawn.p : sp.p))
           this.wild.push(new WildEvent(this, kind));
       } else {
         const sp = SPECIES[k].spawn;
@@ -294,7 +315,7 @@ export class Sim {
     }
     const others = this.bulls.filter((b) => b !== pest && !b.done).length;
     if (this.hunters.size && !others && this.bulls.length < this.maxBulls() + 1 && chance(COW_SOCIAL.bellowNewBull)) {
-      const minTier = pest ? Math.min(BULL_TIERS.length - 1, pest.p.tier + 2) : 2;
+      const minTier = pest ? Math.min(BULL_TIERS.length - 1, pest.p.tier + 1) : 1;
       this.after(rand(10, 35), () => {
         if (cg.done || !this.hunters.size) return;
         const b = new Bull(this, { minTier: chance(0.8) ? minTier : undefined, focus: this.nearestHunter(c.x, c.z).h });
@@ -457,7 +478,7 @@ export class Sim {
       B_.setState('posture');
       A_.postureEnd = B_.postureEnd = this.time + 1;
     } else if (name === 'catalog') {
-      // every bull type, row by row (frozen): ?scenario=catalog&tier=6
+      // every bull type, row by row (frozen): ?test=catalog&tier=5
       clear();
       this.frozen = true;
       const z0 = H.z - num('dist', 45);
@@ -472,17 +493,60 @@ export class Sim {
         this.bulls.push(b);
       });
     } else if (name === 'zoo') {
-      // every coat of every other species, frozen in rows
+      // every size of every species in every coat, frozen in a grid (the browser clears the grass for test scenes).
+      // Left: this marsh's other species, a row per size, a column per coat. Right: cows (a row per cow type) and
+      // calves (a row per calf type), a column per coat. ?only=bear|wolf|coyote|cow|calf shows one up close;
+      // ?all adds the species that don't live in this marsh (raccoon, rabbit, porcupine).
       clear();
       this.frozen = true;
-      let row = 0;
-      const bySize = q('by') === 'size';
-      for (const k in SPECIES) {
-        SPECIES[k][bySize ? 'sizes' : 'coats'].forEach((co, i) => {
-          const c = critter(this, k, bySize ? { size: co.id } : { coat: co.id });
-          c.place(H.x - 8 + i * 4.5, H.z - num('dist', 28) - row * 5, num('h', 0));
-        });
-        row++;
+      const only = q('only'),
+        z0 = H.z - num('dist', 22),
+        h = num('h', 0);
+      const others = q('all') != null ? Object.keys(SPECIES).filter((k) => !MARSH_SPECIES.includes(k)) : [];
+      const kinds = only ? [only] : [...MARSH_SPECIES, ...others, 'cow', 'calf'];
+      const xL = only ? H.x - 8 : H.x - 24,
+        xR = only ? H.x - 11 : H.x + 4;
+      let rowL = 0,
+        rowR = 0,
+        host = null;
+      for (const k of kinds) {
+        if (k === 'cow' || k === 'calf') {
+          const types = k === 'cow' ? COW_TYPES : CALF_TYPES,
+            coats = Object.keys(MOOSE_COATS[k]);
+          for (const t of types) {
+            coats.forEach((co, i) => {
+              const x = xR + i * 5.5,
+                z = z0 - rowR * 6.5;
+              if (k === 'cow' || !host) {
+                const cg = new CowGroup(this, true, {
+                  type: k === 'cow' ? t.id : undefined,
+                  coat: k === 'cow' ? co : undefined,
+                  calves: 0,
+                });
+                cg.state = 'frozen';
+                cg.cow.look = null;
+                this.cows.push(cg);
+                if (k === 'cow') return cg.cow.place(x, z, h);
+                host = cg; // calves need a mother to belong to: an extra cow, parked out of the way
+                cg.cow.place(H.x + 80, H.z - 400, h);
+              }
+              const c = host.addCalf(0.85 * between(t.scale), 0, { type: t.id, coat: co });
+              c.place(x, z, h);
+              c.look = null;
+            });
+            rowR++;
+          }
+          rowR += 0.4;
+        } else if (SPECIES[k]) {
+          for (const sz of SPECIES[k].sizes) {
+            SPECIES[k].coats.forEach((co, i) => {
+              const c = critter(this, k, { size: sz.id, coat: co.id });
+              c.place(xL + i * 4.5, z0 - rowL * 4.5, h);
+            });
+            rowL++;
+          }
+          rowL += 0.5;
+        }
       }
     } else if (name === 'court') {
       // a young bull pesters a lone cow: she bellows, a big bull comes in
@@ -503,7 +567,7 @@ export class Sim {
       this.cows = [cg];
       cg.placeAt(H.x, H.z - 150, 0);
       cg.setState('graze', 30);
-      const b = new Bull(this, { tier: num('tier', 4), focus: H });
+      const b = new Bull(this, { tier: num('tier', 3), focus: H });
       this.bulls = [b];
       b.a.place(H.x - 30, H.z - 230, 0);
       b.everSeen = true;
@@ -515,7 +579,7 @@ export class Sim {
       this.cows = [cg];
       cg.placeAt(H.x + 40, H.z - 160, 0);
       cg.setState('graze', 60);
-      const b = new Bull(this, { tier: num('tier', 5), focus: H });
+      const b = new Bull(this, { tier: num('tier', 4), focus: H });
       this.bulls = [b];
       b.a.place(H.x - 120, H.z - 200, 0);
       b.everSeen = true;

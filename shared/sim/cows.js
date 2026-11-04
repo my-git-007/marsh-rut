@@ -16,7 +16,7 @@ import { threat, nearestBody, awayFrom, distB, SENSE_EVERY } from './ecology.js'
 const CURIOUS_OF = new Set(['rabbit', 'porcupine', 'raccoon', 'calf']);
 
 export class CowGroup {
-  // opt: type (cow type id), calves (0/1/2) — for test scenes
+  // opt: type (cow type id), coat (cow coat id), calves (0/1/2) — for test scenes
   constructor(sim, initial, opt = {}) {
     this.sim = sim;
     this.done = false;
@@ -71,8 +71,8 @@ export class CowGroup {
     this.moanT = rand(30, 120);
   }
   // scale: force a size (test scenes); otherwise the calf type's fraction of her size
-  addCalf(scale, i = 0) {
-    const R = rollCalf(),
+  addCalf(scale, i = 0, opt = {}) {
+    const R = rollCalf(opt),
       s = scale || this.cow.scale * R.scale;
     const c = new Body(
       this.sim,

@@ -11,6 +11,7 @@ import {
   CALF_TYPES,
   SPECIES,
   CALF_LEASH,
+  MARSH_SPECIES,
 } from '../shared/sim/catalog.js';
 import { makeBullParams } from '../shared/sim/bullparams.js';
 import { WildEvent } from '../shared/sim/wildlife.js';
@@ -23,18 +24,43 @@ const ok = (c, m) => {
 const pct = (n, N) => Math.round((n / N) * 100) + '%';
 
 // ---- the catalogue
-const want = [4, 4, 6, 6, 6, 6, 3];
+const want = [4, 6, 6, 6, 6, 3];
 ok(
-  BULL_TIERS.length === 7 && want.every((n, i) => BULL_TYPES.filter((t) => t.tier === i).length === n),
+  BULL_TIERS.length === 6 && want.every((n, i) => BULL_TYPES.filter((t) => t.tier === i).length === n),
   `bull types per tier: ${BULL_TIERS.map((t) => BULL_TYPES.filter((x) => x.tier === t.i).length).join(' ')} (want ${want.join(' ')}), ${BULL_TYPES.length} in all`,
 );
 ok(new Set(BULL_TYPES.map((t) => t.id)).size === BULL_TYPES.length, 'bull type ids are unique');
+// sizes, from the 3rd largest (tier 3): each size down ~5% smaller in body and ~10% in antlers; the two biggest ~10% up
+{
+  const mid = (r) => (r[0] + r[1]) / 2,
+    T = BULL_TIERS,
+    near = (a, b) => Math.abs(a / b - 1) < 0.02;
+  const body = [0.95 ** 3, 0.95 ** 2, 0.95, 1, 1.1, 1.21],
+    rack = [0.9 ** 3, 0.9 ** 2, 0.9, 1, 1.1, 1.21];
+  const bad = T.filter(
+    (t) => !near(mid(t.scale), mid(T[3].scale) * body[t.i]) || !near(mid(t.spreadIn), mid(T[3].spreadIn) * rack[t.i]),
+  );
+  ok(
+    !bad.length,
+    `bull sizes step as asked: body ${T.map((t) => mid(t.scale).toFixed(3)).join(' ')}, antlers ${T.map((t) => mid(t.spreadIn) + '"').join(' ')}` +
+      (bad.length ? ' — off: ' + bad.map((t) => t.k).join(', ') : ''),
+  );
+  const coatOf = (i) => Object.keys(T[i].coats);
+  ok(
+    coatOf(5).every((k) => MOOSE_COATS.bull[k].c.hump) &&
+      [2, 3, 4].every((i) => coatOf(i).every((k) => !MOOSE_COATS.bull[k].c.hump)) &&
+      [0, 1].every((i) => coatOf(i).every((k) => !coatOf(3).includes(k))),
+    `bull coats by size: biggest ${coatOf(5).join('/')}, 2nd–4th ${coatOf(3).join('/')}, two smallest ${coatOf(0).join('/')}`,
+  );
+  ok(
+    T.every((t) => Object.keys(t.coats).every((k) => MOOSE_COATS.bull[k])) && !BULL_TYPES.some((t) => t.coat),
+    'every tier coat exists, and bulls take their coat from their size',
+  );
+}
 const coatOk = (kind, w) => Object.keys(w || {}).every((k) => MOOSE_COATS[kind][k]);
 ok(
-  BULL_TYPES.every((t) => coatOk('bull', t.coat)) &&
-    COW_TYPES.every((t) => coatOk('cow', t.coat)) &&
-    CALF_TYPES.every((t) => coatOk('calf', t.coat)),
-  'every coat a type asks for exists',
+  COW_TYPES.every((t) => coatOk('cow', t.coat)) && CALF_TYPES.every((t) => coatOk('calf', t.coat)),
+  'every coat a cow or calf type asks for exists',
 );
 let badBull = '';
 for (const t of BULL_TYPES)
@@ -50,14 +76,14 @@ for (const t of BULL_TYPES)
       badBull = `${t.id}: scale ${p.scale} spread ${p.spreadIn} pts ${p.points}`;
   }
 ok(!badBull, 'every bull type rolls a bull inside its tier (size, spread, points)' + (badBull ? ' — ' + badBull : ''));
-const tierN = new Array(7).fill(0);
+const tierN = new Array(6).fill(0);
 for (let i = 0; i < 4000; i++) tierN[makeBullParams().tier]++;
 ok(
-  tierN[6] > 40 && tierN[6] < 300,
+  tierN[5] > 40 && tierN[5] < 300,
   `random bulls by tier (of 4000): ${tierN.join(' ')} — extremely large ones are rare`,
 );
 ok(
-  Object.values(SPECIES).every((S) => S.sizes.length >= 2 && S.coats.length >= 3),
+  Object.values(SPECIES).every((S) => S.sizes.length >= 2 && S.coats.length >= 2),
   `other species: ${Object.entries(SPECIES)
     .map(([k, S]) => `${k} ${S.sizes.length} sizes × ${S.coats.length} coats`)
     .join(', ')}`,
@@ -97,7 +123,7 @@ let close = 0,
   bel2 = 0;
 for (let i = 0; i < N; i++) {
   let near = 0;
-  const s = scene('court', { tier: 5 }, 300, (s) => {
+  const s = scene('court', { tier: 4 }, 300, (s) => {
     const b = s.bulls.find((x) => x.cowGoal),
       c = s.cows[0];
     if (b && c && Math.hypot(b.a.x - c.cow.x, b.a.z - c.cow.z) < 16) near += 0.05;
@@ -113,7 +139,7 @@ let kept = 0,
   moved = 0;
 for (let i = 0; i < N; i++) {
   let closeT = 0;
-  const s = scene('calfcow', { tier: 4 }, 300, (s) => {
+  const s = scene('calfcow', { tier: 3 }, 300, (s) => {
     const b = s.bulls[0],
       c = s.cows[0];
     if (b && c && !b.done && Math.hypot(b.a.x - c.cow.x, b.a.z - c.cow.z) < 30) closeT += 0.05;
@@ -131,14 +157,14 @@ let cowRan = 0,
   bigRan = 0;
 for (let i = 0; i < N; i++) {
   let far = 0;
-  const s = scene('wolves', { tier: 5 }, 200, (s) => {
+  const s = scene('wolves', { tier: 4 }, 200, (s) => {
     const c = s.cows[0];
     if (c && !c.done && c.state !== 'flee')
       for (const k of c.calves) if (Math.hypot(k.x - c.cow.x, k.z - c.cow.z) > CALF_LEASH.max + 15) far += 0.05;
   });
   if (/cow #\d+ (ran from wolves|faces a wolf)/.test(s.log.join('\n'))) cowRan++;
   if (far > 10) calfFar++;
-  const t = scene('wolves', { tier: 5, target: 'bull' }, 150);
+  const t = scene('wolves', { tier: 4, target: 'bull' }, 150);
   const L = t.log.join('\n');
   if (/stands his ground/.test(L)) bigStood++;
   if (/-> flee .*ran from wolves/.test(L)) bigRan++;
@@ -222,8 +248,8 @@ ok(hareRan >= N * 0.5, `... the hare bolts (or is caught): ${pct(hareRan, N)}`);
     `two hours: a calf is never more than ${Math.round(worst)} m from its mother while she is calm (${Math.round(calfT)} calf-seconds)`,
   );
   ok(
-    ['bull', 'cow', 'rabbit', 'raccoon'].every((k) => seen.has(k)),
-    `two hours: seen ${[...seen].sort().join(', ')}`,
+    ['bull', 'cow'].every((k) => seen.has(k)) && [...seen].every((k) => !SPECIES[k] || MARSH_SPECIES.includes(k)),
+    `two hours: seen ${[...seen].sort().join(', ')} (this marsh: moose, ${MARSH_SPECIES.join(', ')})`,
   );
 }
 console.log(fail ? `${fail} failed` : 'all animal checks passed');

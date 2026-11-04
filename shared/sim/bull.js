@@ -55,7 +55,7 @@ export class Bull {
   update(dt) {
     const a = this.a, G = this.sim; a.update(dt); this.t += dt; this.st += dt;
     this.interest = Math.max(0, this.interest - dt * (this.state === 'distant' ? 0.0015 : 0.0035)); this.susp = Math.max(0, this.susp - dt * 0.005);
-    const d = this.d();
+    this.d(); // the value isn't needed here, but the call keeps this.focus on a hunter who is still present
     switch (this.state) {
       case 'distant':
         this.wanderT -= dt; if (this.wanderT <= 0 && !a.target) { this.wanderT = rand(15, 45); a.walkSpeed = 0.6; a.goTo(this.home.x + rand(-35, 35), this.home.z + rand(-35, 35)); }
@@ -327,6 +327,7 @@ export class Bull {
       this.dispT = rand(3, 7);
       if (d < 20 && this.p.traits.aggressive > 0.45) { a.goTo(a.x + (p.x - a.x) * 0.6, a.z + (p.z - a.z) * 0.6, 'trot'); this.sim.emit({ e: 'brush', x: a.x, z: a.z, len: 1.5, gain: 1.2 }); }   // a short charge
       else if (chance(0.4)) { a.swayOn = true; this.sim.after(4, () => { a.swayOn = false; }); }
+      // eslint-disable-next-line no-dupe-else-if -- chance() rolls afresh each time, so this branch does run
       else if (chance(0.4)) a.thrash(rand(2, 4));
       else if (this.p.style !== 'silent' && chance(0.5)) this.grunts(randi(1, 3));
     }

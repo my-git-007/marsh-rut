@@ -12,7 +12,11 @@
     "bench": "node tools/bench-marshes.mjs",
     "check": "node tools/check-shared.js && node tools/check-animals.js",
     "check:sounds": "node tools/check-sounds.js",
-    "test:mp": "node tools/mp-test.mjs"
+    "test:mp": "node tools/mp-test.mjs",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "prepare": "husky || true"
   },
   "dependencies": {
     "jose": "6.2.12",
@@ -20,13 +24,27 @@
     "ws": "8.22.0"
   },
   "devDependencies": {
+    "@eslint/js": "9.39.5",
     "acorn": "8.14.0",
     "acorn-walk": "8.3.4",
+    "eslint": "9.39.5",
     "firebase": "12.19.0",
+    "globals": "17.14.0",
+    "husky": "9.1.7",
+    "lint-staged": "16.4.0",
     "prettier": "3.3.3",
     "vite": "6.4.4"
   },
   "engines": {
     "node": ">=20"
+  },
+  "lint-staged": {
+    "*.{js,mjs}": [
+      "eslint --fix --no-warn-ignored",
+      "prettier --write"
+    ],
+    "*.{css,html,json,yml,yaml}": [
+      "prettier --write"
+    ]
   }
 }

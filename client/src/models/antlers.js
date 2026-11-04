@@ -362,7 +362,7 @@ function buildMoose(o) {
     loft(TORSO, {
       sub: 5,
       radial: 24,
-      col: (t, ca, sa) => {
+      col: (t, ca) => {
         let c = mix3(pal.belly, pal.body, smoothstep(-0.8, 0.1, ca));
         c = mix3(c, pal.back, smoothstep(0.35, 1, ca) * o.saddle * smoothstep(0.2, 0.75, t));
         return c;

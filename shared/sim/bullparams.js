@@ -1,6 +1,6 @@
 // Who a bull is: size tier, type, body size, antlers, temperament, voice and coat. Rolled once by the host
 // when the bull is born and sent to every browser, so everyone sees the same bull. The numbers live in catalog.js.
-import { clamp, lerp, rand, randi, pick, chance, random, hexLin } from '../util.js';
+import { clamp, lerp, rand, randi, pick, chance, hexLin } from '../util.js';
 import { BULL_TIERS, BULL_TYPES, STYLES, STYLE_NAMES, rollBullType, rollCoat, rollTraits, pickW, between } from './catalog.js';
 
 export { STYLE_NAMES };

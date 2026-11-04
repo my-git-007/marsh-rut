@@ -9,8 +9,6 @@ function buildRidge(R, hmin, hmax, col, haze, seed, N) {
   const pos = [],
     cols = [],
     idx = [];
-  const top = mix3(col, haze, 0.0),
-    c1 = [];
   for (let i = 0; i <= N; i++) {
     const a = (i / N) * TAU;
     const f =

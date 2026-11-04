@@ -5,7 +5,6 @@
 import { Sim } from '../shared/sim/sim.js';
 import { BULL_TIERS, BULL_TYPES, MOOSE_COATS, COW_TYPES, CALF_TYPES, SPECIES, CALF_LEASH } from '../shared/sim/catalog.js';
 import { makeBullParams } from '../shared/sim/bullparams.js';
-import { CowGroup } from '../shared/sim/cows.js';
 import { WildEvent } from '../shared/sim/wildlife.js';
 
 let fail = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fail++; };

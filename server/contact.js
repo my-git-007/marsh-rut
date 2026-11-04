@@ -25,6 +25,7 @@ function allowed(uid, ip) {
 }
 function record(uid, ip) { const now = Date.now(); for (const k of ['uid:' + uid, 'ip:' + ip]) sent.set(k, [...(sent.get(k) || []), now]); }
 
+// eslint-disable-next-line no-control-regex -- removing control characters is the point of this pattern
 const clean = (s, n) => String(s == null ? '' : s).replace(/\r\n?/g, '\n').replace(/[\u0000-\u0008\u000b-\u001f\u007f]/g, '').trim().slice(0, n);
 
 // -> { ok: true } or { ok: false, reason: 'off' | 'invalid' | 'limit' | 'failed', field? }

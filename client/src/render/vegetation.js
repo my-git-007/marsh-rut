@@ -19,7 +19,6 @@ function buildGrass() {
     GRASS = null;
   }
   const items = [];
-  const pd = (x, z) => Math.hypot(x - PLAYER.x, z - PLAYER.z);
   const tryAdd = (x, z) => {
     const e = marshE(x, z);
     if (e > 0.035) return;
@@ -262,7 +261,7 @@ function buildNearTrees(list) {
   const bd = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking, map: T.branch, alphaTest: 0.4 });
   const live = cards.filter((c) => !c.dead),
     dead = cards.filter((c) => c.dead);
-  const grp = buildInstanced(live, g, bm, { cell: 400, cast: true, depth: bd });
+  buildInstanced(live, g, bm, { cell: 400, cast: true, depth: bd });
   // swap scale: our items use sx as length, sy/sz as width — handled by buildInstanced (sz)
   if (dead.length) {
     const dm = new THREE.MeshLambertMaterial({ color: C('#5a4c40') });

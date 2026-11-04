@@ -25,12 +25,10 @@ function toTex(c, srgb = true, rep = false) {
 }
 function wrapStroke(g, S, fn) {
   fn(0, 0);
-  if (true) {
-    fn(-S, 0);
-    fn(S, 0);
-    fn(0, -S);
-    fn(0, S);
-  }
+  fn(-S, 0);
+  fn(S, 0);
+  fn(0, -S);
+  fn(0, S);
 }
 function paintDetail(base, cols, n, maxL) {
   const S = 512,

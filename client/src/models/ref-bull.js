@@ -180,7 +180,6 @@ function buildRefAntlers(P, mat) {
   const g = new THREE.Group();
   const col = antlerColFn(P);
   const V3 = (x, y, z) => new THREE.Vector3(x, y, z);
-  const UP = V3(0, 1, 0);
   const palms = [];
   for (const S of REF_ANTLER.sides) {
     const s = S.s;

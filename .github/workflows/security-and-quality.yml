@@ -42,15 +42,17 @@ jobs:
         with:
           languages: javascript-typescript, python, actions
       - uses: github/codeql-action/analyze@v4
-        with:
-          output: codeql-results
       # CodeQL reports what it finds but passes either way, so this is what makes a serious finding stop the run.
-      - name: Fail on serious findings
+      # It asks GitHub for open alerts, so an alert someone reviewed and dismissed as a false alarm doesn't block.
+      - name: Fail on open high or critical alerts
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          serious=$(jq -s '[.[].runs[].results[]? | select(.level == "error")] | length' codeql-results/*.sarif)
-          echo "Serious findings: $serious"
-          jq -r '.runs[].results[]? | select(.level == "error") | "\(.ruleId) \(.locations[0].physicalLocation.artifactLocation.uri):\(.locations[0].physicalLocation.region.startLine)"' codeql-results/*.sarif
-          test "$serious" -eq 0
+          gh api --paginate "repos/$GITHUB_REPOSITORY/code-scanning/alerts?ref=$GITHUB_REF&state=open&per_page=100" \
+            --jq '.[] | select(.rule.security_severity_level == "high" or .rule.security_severity_level == "critical" or .rule.severity == "error") | "\(.rule.security_severity_level) \(.rule.id) \(.most_recent_instance.location.path):\(.most_recent_instance.location.start_line)"' > serious.txt
+          cat serious.txt
+          echo "Open serious alerts: $(wc -l < serious.txt)"
+          test ! -s serious.txt
 
   # A second secret scan. GitHub's own secret scanning and push protection are always on for this repo.
   # This one starts working once the repository secret GITGUARDIAN_API_KEY exists (free account at gitguardian.com).

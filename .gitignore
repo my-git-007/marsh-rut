@@ -4,3 +4,57 @@ dist/
 .DS_Store
 tools/_old/
 dist-dev/
+
+# ---- Security: never commit these ----
+# Passwords and API keys in environment files. Keep a blank .env.example instead.
+.env
+.env.*
+!.env.example
+.dev.vars
+.npmrc
+.netrc
+.pypirc
+
+# Private keys and certificates
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+id_rsa*
+id_ed25519*
+
+# Service accounts, sign-in tokens and credential files
+credentials.json
+secrets.json
+token.json
+client_secret*.json
+service-account*.json
+serviceAccount*.json
+*firebase-adminsdk*.json
+*recovery-codes*
+
+# Local databases and data dumps, which can hold personal data
+*.db
+*.sqlite
+*.sqlite3
+*.sql
+*.dump
+
+# Local settings from tools, which can hold keys
+.claude/
+.fly/
+.wrangler/
+.vercel/
+.netlify/
+
+# ---- Clutter ----
+node_modules/
+coverage/
+*.log
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ---- This project ----

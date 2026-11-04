@@ -12,7 +12,7 @@ import { REF_GEO, REF_MAT, buildRefAntlers, refAntlerReady } from './ref-bull.js
    skinned to a skeleton (neck, head, jaw, hips, knees/hocks) and coloured per coat variant. */
 const MOOSE_KINDS = {};
 const SHELL_N = 8;
-const SHELL_MATS = [];
+const SHELL_MATS = []; // fur shells (moose and the larger critters); the tips are a lighter shade of the animal's own colour
 let MOOSE_BASE_MAT = null;
 const MOOSE_PALS = {
   bull: [
@@ -598,7 +598,7 @@ function mooseMats() {
         )
         .replace(
           '#include <color_fragment>',
-          '#include <color_fragment>\nif(h13(floor(vObj*165.0))<uSh*0.93+0.04)discard;diffuseColor.rgb*=mix(0.62,1.12,uSh);diffuseColor.rgb+=vec3(0.012,0.009,0.006)*uSh*uSh;',
+          '#include <color_fragment>\nif(h13(floor(vObj*165.0))<uSh*0.93+0.04)discard;diffuseColor.rgb*=mix(0.62,1.12,uSh)+0.5*uSh*uSh;',
         );
       furRim(s);
     };

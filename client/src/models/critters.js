@@ -1,6 +1,6 @@
 // models/critters.js — split out of the original single-file game (game.src.html)
 import * as THREE from 'three';
-import { hexLin, mix3, noise2, smoothstep } from '../../../shared/util.js';
+import { clamp, hexLin, mix3, noise2, smoothstep } from '../../../shared/util.js';
 import { mooseField, sdPrim } from './moose.js';
 import { CRITTER_SPEC } from '../../../shared/sim/body.js';
 
@@ -22,6 +22,24 @@ const CR_FUR = {
   earTip: 0.004,
   quill: 0.075,
 };
+// shorten (L < 1) or lengthen a body along its length: the torso between xMin and xMax stretches by L; the head,
+// neck and tail move with it, and each leg moves as one piece with its hip
+function shorten(P, J, L, xMin, xMax) {
+  const d = (x) => (L - 1) * clamp(x, xMin, xMax);
+  const legX = { fh: J.fh[0], fk: J.fh[0], hh: J.hh[0], hk: J.hh[0] };
+  for (const p of P) {
+    const leg = p.bone in legX;
+    const sh = (q) => [q[0] + d(leg ? legX[p.bone] : q[0]), q[1], q[2]];
+    if (p.t === 'e') {
+      p.c = sh(p.c);
+      if (p.tag === 'body') p.r = [p.r[0] * L, p.r[1], p.r[2]];
+    } else {
+      p.p0 = sh(p.p0);
+      p.p1 = sh(p.p1);
+    }
+  }
+  for (const k in J) J[k] = [J[k][0] + d(k in legX ? legX[k] : J[k][0]), J[k][1], J[k][2]];
+}
 function critterRig(kind, coat) {
   const P = [];
   const E = (tag, bone, c, r, k, ang, sym) => P.push({ t: 'e', tag, bone, c, r, k, a: ang || 0, sym: !!sym });
@@ -55,6 +73,7 @@ function critterRig(kind, coat) {
     Cp('leg', 'hh', [-0.48, 0.58, 0.15], [-0.42, 0.29, 0.15], 0.14, 0.09, 0.06, true);
     Cp('legLo', 'hk', [-0.42, 0.29, 0.15], [-0.47, 0.06, 0.15], 0.075, 0.07, 0.03, true);
     E('paw', 'hk', [-0.41, 0.035, 0.15], [0.12, 0.04, 0.075], 0.02, 0, true);
+    shorten(P, J, 0.85, -0.55, 0.45); // a shorter, more compact body
     pal = {
       body: '#141210',
       belly: '#0f0d0c',
@@ -123,7 +142,15 @@ function critterRig(kind, coat) {
     bounds = [-0.95, 1.0, -0.02, 1.1, -0.3, 0.3];
   } else if (kind === 'rabbit') {
     // snowshoe hare: compact, long upright ears, short front legs, big hind feet
-    J = { neck: [0.12, 0.2, 0], head: [0.17, 0.24, 0], tail: [-0.16, 0.16, 0], fh: [0.1, 0.13, 0.04], fk: [0.11, 0.06, 0.04], hh: [-0.1, 0.16, 0.06], hk: [-0.08, 0.06, 0.06] };
+    J = {
+      neck: [0.12, 0.2, 0],
+      head: [0.17, 0.24, 0],
+      tail: [-0.16, 0.16, 0],
+      fh: [0.1, 0.13, 0.04],
+      fk: [0.11, 0.06, 0.04],
+      hh: [-0.1, 0.16, 0.06],
+      hk: [-0.08, 0.06, 0.06],
+    };
     E('body', 'body', [-0.02, 0.16, 0], [0.17, 0.1, 0.085], 0.05);
     E('body', 'body', [-0.09, 0.14, 0.05], [0.08, 0.09, 0.05], 0.04, 0, true);
     E('body', 'body', [0.08, 0.16, 0], [0.08, 0.08, 0.07], 0.04);
@@ -138,11 +165,30 @@ function critterRig(kind, coat) {
     Cp('leg', 'hh', [-0.1, 0.16, 0.06], [-0.07, 0.07, 0.06], 0.05, 0.03, 0.02, true);
     Cp('legLo', 'hk', [-0.07, 0.07, 0.06], [-0.11, 0.016, 0.06], 0.02, 0.016, 0.01, true);
     E('paw', 'hk', [-0.03, 0.012, 0.06], [0.07, 0.012, 0.022], 0.01, 0, true);
-    pal = { body: '#6a5640', belly: '#a89a86', head: '#6e5a44', muzzle: '#8a7864', ear: '#5a4836', earTip: '#1e1a16', leg: '#8a7a66', legLo: '#c8c0b2', paw: '#d8d2c6', tail: '#c8c0b2' };
+    pal = {
+      body: '#6a5640',
+      belly: '#a89a86',
+      head: '#6e5a44',
+      muzzle: '#8a7864',
+      ear: '#5a4836',
+      earTip: '#1e1a16',
+      leg: '#8a7a66',
+      legLo: '#c8c0b2',
+      paw: '#d8d2c6',
+      tail: '#c8c0b2',
+    };
     bounds = [-0.28, 0.32, -0.02, 0.42, -0.14, 0.14];
   } else if (kind === 'porcupine') {
     // porcupine: low and humped, a coat of quills over the back and tail, short thick legs
-    J = { neck: [0.16, 0.2, 0], head: [0.22, 0.17, 0], tail: [-0.26, 0.17, 0], fh: [0.12, 0.13, 0.08], fk: [0.13, 0.06, 0.08], hh: [-0.14, 0.14, 0.08], hk: [-0.14, 0.06, 0.08] };
+    J = {
+      neck: [0.16, 0.2, 0],
+      head: [0.22, 0.17, 0],
+      tail: [-0.26, 0.17, 0],
+      fh: [0.12, 0.13, 0.08],
+      fk: [0.13, 0.06, 0.08],
+      hh: [-0.14, 0.14, 0.08],
+      hk: [-0.14, 0.06, 0.08],
+    };
     E('body', 'body', [-0.02, 0.19, 0], [0.24, 0.14, 0.15], 0.08);
     E('quill', 'body', [-0.04, 0.25, 0], [0.22, 0.12, 0.15], 0.06);
     E('quill', 'body', [-0.15, 0.22, 0], [0.12, 0.11, 0.12], 0.05);
@@ -157,7 +203,18 @@ function critterRig(kind, coat) {
     Cp('leg', 'hh', [-0.14, 0.14, 0.08], [-0.14, 0.06, 0.08], 0.04, 0.03, 0.015, true);
     Cp('legLo', 'hk', [-0.14, 0.06, 0.08], [-0.13, 0.012, 0.08], 0.026, 0.022, 0.01, true);
     E('paw', 'hk', [-0.11, 0.012, 0.08], [0.04, 0.012, 0.028], 0.01, 0, true);
-    pal = { body: '#2a231c', belly: '#1e1914', head: '#262019', muzzle: '#151210', ear: '#1e1914', leg: '#161310', legLo: '#121010', paw: '#0e0c0a', tail: '#2a231c', quill: '#8a8070' };
+    pal = {
+      body: '#2a231c',
+      belly: '#1e1914',
+      head: '#262019',
+      muzzle: '#151210',
+      ear: '#1e1914',
+      leg: '#161310',
+      legLo: '#121010',
+      paw: '#0e0c0a',
+      tail: '#2a231c',
+      quill: '#8a8070',
+    };
     bounds = [-0.45, 0.4, -0.02, 0.42, -0.26, 0.26];
   } else {
     // raccoon: hunched, short-legged, black mask, ringed tail
@@ -213,8 +270,14 @@ function critterRig(kind, coat) {
     p.hi = hi.map((v) => v + k);
     if (p.sym) p.lo[2] = -p.hi[2];
   }
-  if (coat && coat.c) pal = { ...pal, ...coat.c };   // the host chose this animal's coat (catalog.js)
-  return { J, P, pal, bounds, h: kind === 'rabbit' ? 0.007 : kind === 'raccoon' || kind === 'porcupine' ? 0.011 : kind === 'bear' ? 0.02 : 0.016 };
+  if (coat && coat.c) pal = { ...pal, ...coat.c }; // the host chose this animal's coat (catalog.js)
+  return {
+    J,
+    P,
+    pal,
+    bounds,
+    h: kind === 'rabbit' ? 0.007 : kind === 'raccoon' || kind === 'porcupine' ? 0.011 : kind === 'bear' ? 0.02 : 0.016,
+  };
 }
 const CRITTER_KINDS = {};
 function buildCritterKind(kind, coat) {
@@ -385,7 +448,12 @@ function buildCritterKind(kind, coat) {
       const ring = Math.sin((x + 0.29) * 55) > 0.2;
       c = ring ? pal.mask : pal.tail;
     }
-    if (bt === 'quill') c = mix3(pal.body, pal.quill, smoothstep(0.1, 0.7, 0.5 + noise2(x * 70 + z * 31, y * 70 - z * 23)) * smoothstep(-0.2, 0.5, ny_));
+    if (bt === 'quill')
+      c = mix3(
+        pal.body,
+        pal.quill,
+        smoothstep(0.1, 0.7, 0.5 + noise2(x * 70 + z * 31, y * 70 - z * 23)) * smoothstep(-0.2, 0.5, ny_),
+      );
     const nz_ = 0.9 + 0.2 * (0.5 + noise2(x * 9.1 + z * 4.3 + 3, y * 9.1 - z * 6.2));
     col[v * 3] = c[0] * nz_;
     col[v * 3 + 1] = c[1] * nz_;

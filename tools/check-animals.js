@@ -49,8 +49,8 @@ ok(new Set(BULL_TYPES.map((t) => t.id)).size === BULL_TYPES.length, 'bull type i
   ok(
     coatOf(5).every((k) => MOOSE_COATS.bull[k].c.hump) &&
       [2, 3, 4].every((i) => coatOf(i).every((k) => !MOOSE_COATS.bull[k].c.hump)) &&
-      [0, 1].every((i) => coatOf(i).every((k) => !coatOf(3).includes(k))),
-    `bull coats by size: biggest ${coatOf(5).join('/')}, 2nd–4th ${coatOf(3).join('/')}, two smallest ${coatOf(0).join('/')}`,
+      [0, 1, 2, 3, 4].every((i) => coatOf(i).every((k) => parseInt(MOOSE_COATS.bull[k].c.body.slice(1, 3), 16) < 0x28)),
+    `bull coats: the biggest (old) ${coatOf(5).join('/')}; every other size near-black ${coatOf(0).join('/')}`,
   );
   ok(
     T.every((t) => Object.keys(t.coats).every((k) => MOOSE_COATS.bull[k])) && !BULL_TYPES.some((t) => t.coat),

@@ -1,6 +1,6 @@
 // models/critters.js — split out of the original single-file game (game.src.html)
 import * as THREE from 'three';
-import { hexLin, mix3, noise2, smoothstep } from '../../../shared/util.js';
+import { clamp, hexLin, mix3, noise2, smoothstep } from '../../../shared/util.js';
 import { mooseField, sdPrim } from './moose.js';
 import { CRITTER_SPEC } from '../../../shared/sim/body.js';
 
@@ -22,6 +22,24 @@ const CR_FUR = {
   earTip: 0.004,
   quill: 0.075,
 };
+// shorten (L < 1) or lengthen a body along its length: the torso between xMin and xMax stretches by L; the head,
+// neck and tail move with it, and each leg moves as one piece with its hip
+function shorten(P, J, L, xMin, xMax) {
+  const d = (x) => (L - 1) * clamp(x, xMin, xMax);
+  const legX = { fh: J.fh[0], fk: J.fh[0], hh: J.hh[0], hk: J.hh[0] };
+  for (const p of P) {
+    const leg = p.bone in legX;
+    const sh = (q) => [q[0] + d(leg ? legX[p.bone] : q[0]), q[1], q[2]];
+    if (p.t === 'e') {
+      p.c = sh(p.c);
+      if (p.tag === 'body') p.r = [p.r[0] * L, p.r[1], p.r[2]];
+    } else {
+      p.p0 = sh(p.p0);
+      p.p1 = sh(p.p1);
+    }
+  }
+  for (const k in J) J[k] = [J[k][0] + d(k in legX ? legX[k] : J[k][0]), J[k][1], J[k][2]];
+}
 function critterRig(kind, coat) {
   const P = [];
   const E = (tag, bone, c, r, k, ang, sym) => P.push({ t: 'e', tag, bone, c, r, k, a: ang || 0, sym: !!sym });
@@ -55,6 +73,7 @@ function critterRig(kind, coat) {
     Cp('leg', 'hh', [-0.48, 0.58, 0.15], [-0.42, 0.29, 0.15], 0.14, 0.09, 0.06, true);
     Cp('legLo', 'hk', [-0.42, 0.29, 0.15], [-0.47, 0.06, 0.15], 0.075, 0.07, 0.03, true);
     E('paw', 'hk', [-0.41, 0.035, 0.15], [0.12, 0.04, 0.075], 0.02, 0, true);
+    shorten(P, J, 0.85, -0.55, 0.45); // a shorter, more compact body
     pal = {
       body: '#141210',
       belly: '#0f0d0c',

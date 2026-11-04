@@ -554,7 +554,10 @@ function mooseMats() {
     m.onBeforeCompile = (s) => {
       s.uniforms.uSh = { value: sh };
       s.vertexShader = s.vertexShader
-        .replace('#include <common>', '#include <common>\nuniform float uSh;\nattribute float aFur;\nvarying vec3 vObj;')
+        .replace(
+          '#include <common>',
+          '#include <common>\nuniform float uSh;\nattribute float aFur;\nvarying vec3 vObj;',
+        )
         .replace(
           '#include <begin_vertex>',
           'vec3 transformed=vec3(position)+normal*(uSh*aFur);transformed.y-=aFur*0.45*uSh*uSh;vObj=position;',
@@ -581,7 +584,7 @@ function buildMoose2(o) {
   let geo = K.variants[vi],
     baseMat = MOOSE_BASE_MAT,
     pal = K.pals[vi];
-  if (o.coat && o.coat.c) ({ geo, pal } = coatGeo(K, o.kind, o.coat));   // the host chose this animal's coat (catalog.js)
+  if (o.coat && o.coat.c) ({ geo, pal } = coatGeo(K, o.kind, o.coat)); // the host chose this animal's coat (catalog.js)
   const J = K.J;
   if (o.refBull && REF_GEO) {
     geo = REF_GEO;
@@ -674,7 +677,12 @@ function buildMoose2(o) {
   }
   let antler = null;
   if (o.antler) {
-    const am = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.62, metalness: 0, side: THREE.DoubleSide });
+    const am = new THREE.MeshStandardMaterial({
+      vertexColors: true,
+      roughness: 0.62,
+      metalness: 0,
+      side: THREE.DoubleSide,
+    });
     mats.push(am);
     antler = o.antler.ref && refAntlerReady() ? buildRefAntlers(o.antler, am) : buildAntlers(o.antler, am);
     const ar = new THREE.Group();

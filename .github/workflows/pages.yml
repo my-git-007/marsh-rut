@@ -33,7 +33,7 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
-      - run: npm run check            # the shared simulation runs headless
+      - run: npm run check # the shared simulation runs headless
       # Testing phase: the BBC archive recordings are published on purpose until permission is obtained or they
       # are replaced (see SOUNDS.md). The check still lists them in the log but no longer stops the deploy.
       # Remove continue-on-error to make it blocking again before a real public launch.

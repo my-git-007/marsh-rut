@@ -1,7 +1,19 @@
 // render/vegetation.js — split out of the original single-file game (game.src.html)
 import * as THREE from 'three';
 import { PI, TAU, chance, clamp, lin, noise2, pick, rand, randi, smoothstep } from '../../../shared/util.js';
-import { POND, POOLS, SHRUBS, STANDS, STREAM, WATER_Y, groundAt, marshE, streamDist, inStandCorridor, nearestStandDist } from '../../../shared/world.js';
+import {
+  POND,
+  POOLS,
+  SHRUBS,
+  STANDS,
+  STREAM,
+  WATER_Y,
+  groundAt,
+  marshE,
+  streamDist,
+  inStandCorridor,
+  nearestStandDist,
+} from '../../../shared/world.js';
 import { PLAYER } from '../state.js';
 import { atlasMats, buildInstanced, crossGeo, grassGeo, windInject } from './billboards.js';
 import { C, SUN_DIR, scene } from './core.js';
@@ -10,11 +22,14 @@ import { T } from './textures.js';
 /* ================= vegetation ================= */
 // The grass depends on where this player sits (it is densest in front of their stand), so changing location
 // grows it again: the old grass is removed first. The reeds along the water don't depend on the stand.
-let GRASS = null, reedsBuilt = false;
+let GRASS = null,
+  reedsBuilt = false;
 function buildGrass() {
   if (GRASS) {
     scene.remove(GRASS);
-    GRASS.traverse((o) => { if (o.isMesh) o.geometry.dispose(); });
+    GRASS.traverse((o) => {
+      if (o.isMesh) o.geometry.dispose();
+    });
     if (GRASS.children[0]) GRASS.children[0].material.dispose();
     GRASS = null;
   }
@@ -65,7 +80,12 @@ function buildGrass() {
   }
   const sunH = new THREE.Vector3(SUN_DIR.x, 0, SUN_DIR.z).normalize();
   const nrm = new THREE.Vector3(sunH.x * 0.6, 1, sunH.z * 0.6).normalize();
-  const mat = new THREE.MeshLambertMaterial({ map: T.grass, alphaTest: 0.36, side: THREE.DoubleSide, vertexColors: true });
+  const mat = new THREE.MeshLambertMaterial({
+    map: T.grass,
+    alphaTest: 0.36,
+    side: THREE.DoubleSide,
+    vertexColors: true,
+  });
   mat.onBeforeCompile = windInject(0.38);
   mat.customProgramCacheKey = () => 'grass';
   try {
@@ -112,7 +132,12 @@ function buildGrass() {
         r = pl.r * rand(0.7, 1.2);
       addReed(pl.x + Math.cos(a) * r, pl.z + Math.sin(a) * r);
     }
-  const rm = new THREE.MeshLambertMaterial({ map: T.cattail, alphaTest: 0.4, side: THREE.DoubleSide, vertexColors: true });
+  const rm = new THREE.MeshLambertMaterial({
+    map: T.cattail,
+    alphaTest: 0.4,
+    side: THREE.DoubleSide,
+    vertexColors: true,
+  });
   rm.onBeforeCompile = windInject(0.3);
   rm.customProgramCacheKey = () => 'reed';
   buildInstanced(reeds, grassGeo(nrm), rm, { cell: 80, receive: true, layer: 1 });
@@ -154,7 +179,10 @@ function buildForest() {
     else if (r < 0.025) t = 7;
     else if (wet && r < 0.36) t = r < 0.22 ? 2 : 6;
     else t = r < 0.5 ? 0 : r < 0.78 ? 1 : r < 0.9 ? 3 : 2;
-    let h = rand(TT[t].h[0], TT[t].h[1]) * (chance(0.28) ? rand(0.4, 0.7) : 1) * (0.85 + 0.3 * noise2(x * 0.02, z * 0.02) + 0.15);
+    let h =
+      rand(TT[t].h[0], TT[t].h[1]) *
+      (chance(0.28) ? rand(0.4, 0.7) : 1) *
+      (0.85 + 0.3 * noise2(x * 0.02, z * 0.02) + 0.15);
     if (out < 0) h *= 0.55;
     const y = groundAt(x, z) - 0.3;
     if (pd < 30 && t < 4) {
@@ -237,13 +265,34 @@ function buildNearTrees(list) {
       for (let k = 0; k < n; k++) {
         const ang = off + (k / n) * TAU + rand(-0.3, 0.3);
         const L = R * rand(0.75, 1.1);
-        cards.push({ x: tr.x, y: tr.y + y, z: tr.z, rot: ang, tz: -rand(0.25, 0.6), tx: rand(-0.3, 0.3), sx: L, sy: L * 0.5, sz: L * 0.5 });
+        cards.push({
+          x: tr.x,
+          y: tr.y + y,
+          z: tr.z,
+          rot: ang,
+          tz: -rand(0.25, 0.6),
+          tx: rand(-0.3, 0.3),
+          sx: L,
+          sy: L * 0.5,
+          sz: L * 0.5,
+        });
       }
     }
     if (tr.stand) {
       for (let y = 1.5; y < tr.eye - tr.y - 1.6; y += 0.45) {
         for (let k = 0; k < 3; k++)
-          cards.push({ x: tr.x, y: tr.y + y, z: tr.z, rot: rand(0, TAU), tz: -0.3, tx: 0, sx: 0.5, sy: 0.25, sz: 0.25, dead: true });
+          cards.push({
+            x: tr.x,
+            y: tr.y + y,
+            z: tr.z,
+            rot: rand(0, TAU),
+            tz: -0.3,
+            tx: 0,
+            sx: 0.5,
+            sy: 0.25,
+            sz: 0.25,
+            dead: true,
+          });
       }
     }
   }
@@ -304,7 +353,10 @@ function buildOneStand(S) {
   bar(0.42, ry, -0.62, 0.36, py, -0.5, 0.014);
   bar(-0.36, py, -0.5, -0.05, py - 0.9, 0.5, 0.02);
   bar(0.36, py, -0.5, 0.05, py - 0.9, 0.5, 0.02);
-  const seat = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.05, 0.34), new THREE.MeshLambertMaterial({ color: C('#2a2a24') }));
+  const seat = new THREE.Mesh(
+    new THREE.BoxGeometry(0.5, 0.05, 0.34),
+    new THREE.MeshLambertMaterial({ color: C('#2a2a24') }),
+  );
   seat.position.set(0, EYE - 0.62, 0.22);
   grp.add(seat);
   grp.position.set(S.x, 0, S.z);

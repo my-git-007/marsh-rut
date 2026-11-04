@@ -96,7 +96,14 @@ function buildAntlerSide(P, s, mat, grp) {
   const beamEnd = V3(-0.035, 0.085 + 0.03 * mass, s * (0.15 + spread * 0.05));
   grp.add(
     new THREE.Mesh(
-      taperTube([base, V3(-0.02, 0.04, s * 0.1), beamEnd], 0.05 * mass + 0.01, 0.045 * mass + 0.01, (t) => col(t * 0.2), 10, 10),
+      taperTube(
+        [base, V3(-0.02, 0.04, s * 0.1), beamEnd],
+        0.05 * mass + 0.01,
+        0.045 * mass + 0.01,
+        (t) => col(t * 0.2),
+        10,
+        10,
+      ),
       mat,
     ),
   );
@@ -159,7 +166,8 @@ function buildAntlerSide(P, s, mat, grp) {
       .addScaledVector(Wv, brow ? 0.55 : 0.75)
       .addScaledVector(out, brow ? 0.85 : 0.7);
     if (brow) dir.addScaledVector(Vv, 0.4);
-    let L = rand(0.11, 0.26) * (0.7 + mass * 0.5) * (brow ? 0.75 : 1) * (Math.abs(th) < 0.45 ? 1.15 : 1) * (P.tineK || 1);
+    let L =
+      rand(0.11, 0.26) * (0.7 + mass * 0.5) * (brow ? 0.75 : 1) * (Math.abs(th) < 0.45 ? 1.15 : 1) * (P.tineK || 1);
     const broken = P.broken > 0 && chance(P.broken / nT);
     if (broken) L *= rand(0.25, 0.45);
     if (P.blunt) L *= 0.7;
@@ -300,7 +308,10 @@ function furMat(len) {
     sh.uniforms.uFurLen = { value: len };
     sh.uniforms.uFurTex = { value: T.strands };
     sh.vertexShader = sh.vertexShader
-      .replace('#include <common>', '#include <common>\nuniform float uFurLen;\nvarying float vShell;\nvarying vec2 vFurUv;')
+      .replace(
+        '#include <common>',
+        '#include <common>\nuniform float uFurLen;\nvarying float vShell;\nvarying vec2 vFurUv;',
+      )
       .replace(
         '#include <begin_vertex>',
         'vec3 transformed=vec3(position);float sh=(float(gl_InstanceID)+1.0)/' +
@@ -308,7 +319,10 @@ function furMat(len) {
           '.0;vShell=sh;vFurUv=uv;transformed+=objectNormal*(sh*uFurLen);transformed.y-=uFurLen*0.5*sh*sh;',
       );
     sh.fragmentShader = sh.fragmentShader
-      .replace('#include <common>', '#include <common>\nuniform sampler2D uFurTex;\nvarying float vShell;\nvarying vec2 vFurUv;')
+      .replace(
+        '#include <common>',
+        '#include <common>\nuniform sampler2D uFurTex;\nvarying float vShell;\nvarying vec2 vFurUv;',
+      )
       .replace(
         '#include <color_fragment>',
         '#include <color_fragment>\nfloat fn=texture2D(uFurTex,vFurUv*2.4).r;if(fn<vShell*0.95+0.03)discard;diffuseColor.rgb*=mix(0.6,1.12,vShell);diffuseColor.rgb+=vec3(0.012,0.009,0.006)*vShell*vShell;',
@@ -495,7 +509,12 @@ function buildMoose(o) {
   }
   let antler = null;
   if (o.antler) {
-    const am = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.62, metalness: 0, side: THREE.DoubleSide });
+    const am = new THREE.MeshStandardMaterial({
+      vertexColors: true,
+      roughness: 0.62,
+      metalness: 0,
+      side: THREE.DoubleSide,
+    });
     mats.push(am);
     antler = buildAntlers(o.antler, am);
     const ar = new THREE.Group();
@@ -534,7 +553,10 @@ function buildMoose(o) {
     hip.add(knee);
     knee.add(
       fur(
-        new THREE.Mesh(loft(lo, { sub: 3, radial: 12, col: (t, ca, sa, P) => (P.y < (front ? -0.47 : -0.54) ? pal.hoof : pal.leg) }), mat),
+        new THREE.Mesh(
+          loft(lo, { sub: 3, radial: 12, col: (t, ca, sa, P) => (P.y < (front ? -0.47 : -0.54) ? pal.hoof : pal.leg) }),
+          mat,
+        ),
         0.012,
       ),
     );

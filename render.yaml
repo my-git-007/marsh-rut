@@ -8,6 +8,6 @@ services:
     healthCheckPath: /health
     envVars:
       - key: ALLOWED_ORIGINS
-        value: ""
+        value: ''
       - key: FIREBASE_PROJECT_ID
-        value: ""
+        value: ''

@@ -32,7 +32,9 @@ async function loadRefAssets() {
     im.onerror = () => res(null);
     im.src = refTexUrl;
   });
-  const ant = fetch(refAntlerUrl).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+  const ant = fetch(refAntlerUrl)
+    .then((r) => (r.ok ? r.json() : null))
+    .catch(() => null);
   [REF_IMG, REF_ANTLER] = await Promise.all([img, ant]);
 }
 const refAntlerReady = () => !!REF_ANTLER;
@@ -203,14 +205,26 @@ function buildRefAntlers(P, mat) {
       burr = V3(0, 0, 0.075 * s);
     g.add(
       new THREE.Mesh(
-        taperTube([burr.clone().add(V3(0, -0.02, -0.01 * s)), burr.clone().add(V3(0, 0.025, 0.02 * s))], 0.068, 0.062, () => col(0), 10, 2),
+        taperTube(
+          [burr.clone().add(V3(0, -0.02, -0.01 * s)), burr.clone().add(V3(0, 0.025, 0.02 * s))],
+          0.068,
+          0.062,
+          () => col(0),
+          10,
+          2,
+        ),
         mat,
       ),
     ); // burr
     g.add(
       new THREE.Mesh(
         taperTube(
-          [burr, V3(0.005, 0.035, s * 0.17), V3(R[0] * 0.5, R[1] * 0.8, s * 0.24), root.clone().add(V3(-0.01, 0, s * 0.03))],
+          [
+            burr,
+            V3(0.005, 0.035, s * 0.17),
+            V3(R[0] * 0.5, R[1] * 0.8, s * 0.24),
+            root.clone().add(V3(-0.01, 0, s * 0.03)),
+          ],
           0.066,
           0.058,
           (t) => col(0.12 + t * 0.15),

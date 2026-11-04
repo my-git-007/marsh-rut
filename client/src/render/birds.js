@@ -26,7 +26,9 @@ function birdMesh(type) {
   }
   const head = new THREE.Mesh(
     new THREE.SphereGeometry(S * 0.11, 6, 5),
-    type === 'goose' ? BIRD_MATS.goosehead || (BIRD_MATS.goosehead = new THREE.MeshLambertMaterial({ color: C('#0a0a0a') })) : m,
+    type === 'goose'
+      ? BIRD_MATS.goosehead || (BIRD_MATS.goosehead = new THREE.MeshLambertMaterial({ color: C('#0a0a0a') }))
+      : m,
   );
   head.position.set(S * (type === 'goose' ? 0.85 : 0.55), 0.03, 0);
   g.add(head);

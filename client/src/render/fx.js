@@ -95,7 +95,9 @@ function addRipple(x, z, amp) {
 }
 function updateFx() {
   for (let i = SHAKES.length - 1; i >= 0; i--) if (SHAKES[i].t < G.time) SHAKES.splice(i, 1);
-  const sh = SHAKES.slice().sort((a, b) => Math.hypot(a.x - PLAYER.x, a.z - PLAYER.z) - Math.hypot(b.x - PLAYER.x, b.z - PLAYER.z));
+  const sh = SHAKES.slice().sort(
+    (a, b) => Math.hypot(a.x - PLAYER.x, a.z - PLAYER.z) - Math.hypot(b.x - PLAYER.x, b.z - PLAYER.z),
+  );
   U.shake.value.forEach((v, i) => {
     const s = sh[i];
     if (s) v.set(s.x, s.z, s.r, s.amp * Math.min(1, (s.t - G.time) * 2));
@@ -133,4 +135,18 @@ U.moose = { value: [...Array(24)].map(() => new THREE.Vector4()) };
 U.shake = { value: [...Array(6)].map(() => new THREE.Vector4()) };
 U.rip = { value: [...Array(14)].map(() => new THREE.Vector4(0, 0, -99, 0)) };
 
-export { GRASS_HITS, RIPI, SHAKES, TRAILS, VAPOR, VTEX, _nose, _nose2, addRipple, addShake, updateFx, updateVapor, vaporFrom };
+export {
+  GRASS_HITS,
+  RIPI,
+  SHAKES,
+  TRAILS,
+  VAPOR,
+  VTEX,
+  _nose,
+  _nose2,
+  addRipple,
+  addShake,
+  updateFx,
+  updateVapor,
+  vaporFrom,
+};

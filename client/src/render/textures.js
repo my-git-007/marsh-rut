@@ -93,7 +93,19 @@ function paintGrassCard() {
     H = 512,
     c = mkC(W, H),
     g = c.getContext('2d');
-  const pal = ['#cdb27a', '#b99a5c', '#d8c48e', '#a8864e', '#c2a265', '#9b7a45', '#e0cf9c', '#bfa36a', '#8f8a52', '#a3703f', '#c9a96b'];
+  const pal = [
+    '#cdb27a',
+    '#b99a5c',
+    '#d8c48e',
+    '#a8864e',
+    '#c2a265',
+    '#9b7a45',
+    '#e0cf9c',
+    '#bfa36a',
+    '#8f8a52',
+    '#a3703f',
+    '#c9a96b',
+  ];
   for (let i = 0; i < 360; i++) {
     const x0 = 14 + Math.random() * 484,
       h = H * (0.4 + 0.6 * Math.pow(Math.random(), 0.65)),
@@ -412,8 +424,16 @@ function paintBark() {
   return c;
 }
 function makeTextures() {
-  T.marsh = toTex(paintDetail('#8a8070', ['#a89c84', '#7c705e', '#968a74', '#5e5446', '#b8ab90', '#6e6656'], 24000, 15), false, true);
-  T.forest = toTex(paintDetail('#6a6858', ['#7a6a50', '#4a4436', '#5a6444', '#3a3a2e', '#8a7656', '#4e5a3c'], 22000, 9), false, true);
+  T.marsh = toTex(
+    paintDetail('#8a8070', ['#a89c84', '#7c705e', '#968a74', '#5e5446', '#b8ab90', '#6e6656'], 24000, 15),
+    false,
+    true,
+  );
+  T.forest = toTex(
+    paintDetail('#6a6858', ['#7a6a50', '#4a4436', '#5a6444', '#3a3a2e', '#8a7656', '#4e5a3c'], 22000, 9),
+    false,
+    true,
+  );
   T.fur = toTex(paintFur(), false, true);
   T.fur.repeat.set(5, 5);
   T.grass = toTex(paintGrassCard());
@@ -468,8 +488,14 @@ function makeTextures() {
     cols: ['#22341f', '#2c4226', '#1c2a18', '#33482a'],
     core: 'rgba(14,22,14,.92)',
   });
-  paintDeciduous(tg, 0, 1024, 512, 1024, { bark: '#c9c4b2', cols: ['#e3b53a', '#d79a28', '#f0cd5a', '#c4862a', '#e8c24a', '#9aa53a'] });
-  paintDeciduous(tg, 512, 1024, 512, 1024, { bark: '#ddd8cc', cols: ['#d9a830', '#e6bd45', '#c98a26', '#b0762a', '#efd06a'] });
+  paintDeciduous(tg, 0, 1024, 512, 1024, {
+    bark: '#c9c4b2',
+    cols: ['#e3b53a', '#d79a28', '#f0cd5a', '#c4862a', '#e8c24a', '#9aa53a'],
+  });
+  paintDeciduous(tg, 512, 1024, 512, 1024, {
+    bark: '#ddd8cc',
+    cols: ['#d9a830', '#e6bd45', '#c98a26', '#b0762a', '#efd06a'],
+  });
   paintConifer(tg, 1024, 1024, 512, 1024, {
     crownBase: 0.9,
     prof: (t) => Math.pow(t, 0.7) * 0.85,

@@ -35,6 +35,20 @@ export function updateViews(dt, states) {
   for (const [id, v] of VIEWS) v.update(dt, states.get(id));
 }
 
+// test scenes (?test=moves): one line per animal naming the move it is playing
+const CAPS = new Map();
+function showCaption(k, text) {
+  let el = document.getElementById('testcap');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'testcap';
+    el.style.cssText =
+      'position:absolute;left:16px;top:16px;z-index:5;pointer-events:none;white-space:pre;background:rgba(14,10,6,.72);color:#f4e6c4;padding:10px 14px;border-left:3px solid #c6905b;font:15px/1.6 Georgia,serif';
+    document.body.appendChild(el);
+  }
+  CAPS.set(k, text);
+  el.textContent = [...CAPS.values()].join('\n');
+}
 function hunterStand(id) {
   const h = NET.hunters.find((x) => x.id === id);
   return h ? STANDS[h.stand] : null;
@@ -77,6 +91,9 @@ export function handleEvent(ev) {
         const s = hunterStand(ev.hunter);
         if (s) playOtherCall(s, ev.clip);
       }
+      break;
+    case 'caption':
+      showCaption(ev.k, ev.text);
       break;
     case 'pour':
       if (ev.hunter !== PLAYER.id) {

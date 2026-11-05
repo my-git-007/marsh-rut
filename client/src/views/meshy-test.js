@@ -1,6 +1,6 @@
 // ?test=meshy: the bull moose made in Meshy, shown beside the game's own second-largest bull (built by the sim,
 // in the middle), at the same length, side-on. Left: the rigged Meshy model (about 10,000 triangles), walking in
-// place with its legs driven by code, to show the rig bends the mesh (&still stops it). Right: the high-detail
+// place with its legs driven by code, to show the rig bends the mesh (&still: standing; &phase=0..1: frozen). Right: the high-detail
 // Meshy model (about 457,000 triangles, no rig). Loaded only for this test.
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
@@ -61,39 +61,85 @@ function place(root, x, z, len) {
   return { wrap, k, size };
 }
 
-// the rig: four legs, each a chain from hip to hoof. Find them by their hooves (bones near the ground).
+// the rig: four legs, each a chain of bones from the hoof up to where it joins the spine (shoulder blade or hip).
+// Meshy rigged the bull mid-stride, so first stand each leg straight: the hoof under the top of the leg, the cannon
+// (knee or hock down to the hoof) upright. The walk then adds to that.
+const SIDE = new THREE.Vector3(1, 0, 0); // the model's sideways axis (it is long along z): legs swing about it
+const boneKids = (b) => b.children.filter((c) => c.isBone).length;
 function legRig(root) {
   const bones = [];
   root.traverse((b) => b.isBone && bones.push(b));
   root.updateMatrixWorld(true);
   const wp = (b) => b.getWorldPosition(new THREE.Vector3());
-  const hooves = bones.filter((b) => !b.children.some((c) => c.isBone) && wp(b).y < 0.12);
+  // the hooves: the four lowest bone tips (one hind hoof is raised mid-stride, so not all are on the ground)
+  const hooves = bones
+    .filter((b) => !boneKids(b))
+    .sort((a, b) => wp(a).y - wp(b).y)
+    .slice(0, 4);
   const midZ = hooves.reduce((s, b) => s + wp(b).z, 0) / (hooves.length || 1);
-  const chains = hooves.map((h) => {
-    const chain = [];
-    for (let b = h; b && b.isBone && chain.length < 7; b = b.parent) chain.push(b);
-    return [h, chain];
+  const joint = (b) => ({
+    b,
+    q0: b.quaternion.clone(),
+    ax: SIDE.clone().applyQuaternion(b.getWorldQuaternion(new THREE.Quaternion()).invert()),
   });
-  const legs = chains
-    .filter(([, c]) => c.length >= 3)
-    .map(([h, chain]) => {
-      const hip = chain[chain.length - 2],
-        knee = chain[Math.min(3, chain.length - 2)];
-      const lat = new THREE.Vector3(1, 0, 0); // the model's sideways axis: legs swing about it
-      const local = (b) => lat.clone().applyQuaternion(b.getWorldQuaternion(new THREE.Quaternion()).invert());
-      return {
-        front: wp(h).z > midZ,
-        x: wp(hip).x,
-        hip: { b: hip, q0: hip.quaternion.clone(), ax: local(hip) },
-        knee: { b: knee, q0: knee.quaternion.clone(), ax: local(knee) },
-      };
+  const legs = [];
+  for (const h of hooves) {
+    const chain = [h]; // hoof first, up the leg until the bone above branches (the spine)
+    while (chain.length < 8 && chain.at(-1).parent && chain.at(-1).parent.isBone && boneKids(chain.at(-1).parent) === 1)
+      chain.push(chain.at(-1).parent);
+    if (chain.length < 5) continue;
+    legs.push({
+      front: wp(h).z > midZ,
+      x: wp(chain.at(-1)).x,
+      hoof: h,
+      top: joint(chain.at(-1)),
+      knee: joint(chain[3]),
     });
-  // walk: diagonal pairs move together, each side half a stride apart
+  }
+  // stand straight: rotating a bone by +angle about SIDE swings what hangs below it backwards (-z)
+  const lean = (from, to) => {
+    const a = wp(from),
+      b = wp(to);
+    return Math.atan2(b.z - a.z, a.y - b.y);
+  };
+  const q = new THREE.Quaternion();
+  for (const l of legs) {
+    l.top.base = lean(l.top.b, l.hoof);
+    l.top.b.quaternion.copy(l.top.q0).multiply(q.setFromAxisAngle(l.top.ax, l.top.base));
+    root.updateMatrixWorld(true);
+    l.knee.base = lean(l.knee.b, l.hoof);
+    l.knee.b.quaternion.copy(l.knee.q0).multiply(q.setFromAxisAngle(l.knee.ax, l.knee.base));
+    root.updateMatrixWorld(true);
+  }
+  // a walk: each hind leg leads the front leg on its side by a quarter stride; the two sides half a stride apart
   for (const pair of [legs.filter((l) => l.front), legs.filter((l) => !l.front)]) {
     pair.sort((a, b) => a.x - b.x);
-    pair.forEach((l, i) => (l.off = (l.front ? 0 : 0.5) + i * 0.5));
+    pair.forEach((l, i) => (l.off = (l.front ? 0 : 0.25) + i * 0.5));
   }
   return legs;
+}
+
+// pose the legs at phase ph (0..1 = one stride). The leg swings forward for the last 40% of its cycle, folding at
+// the knee (front: the cannon folds back) or the hock (hind: the cannon folds forward), and pushes back on the
+// ground for the rest.
+function poseLegs(legs, ph) {
+  const q = new THREE.Quaternion();
+  for (const l of legs) {
+    const p = (((ph + l.off) % 1) + 1) % 1;
+    let swing, fold;
+    if (p < 0.6) {
+      swing = -0.3 + (0.6 * p) / 0.6; // planted: from forward (-) to back (+)
+      fold = 0;
+    } else {
+      const u = (p - 0.6) / 0.4;
+      swing = 0.3 - 0.6 * (0.5 - 0.5 * Math.cos(PI * u)); // lifted: back to forward
+      fold = Math.sin(PI * u);
+    }
+    l.top.b.quaternion.copy(l.top.q0).multiply(q.setFromAxisAngle(l.top.ax, l.top.base + swing));
+    l.knee.b.quaternion
+      .copy(l.knee.q0)
+      .multiply(q.setFromAxisAngle(l.knee.ax, l.knee.base + (l.front ? 1.1 : -0.9) * fold));
+  }
 }
 
 export async function startMeshyTest() {
@@ -124,18 +170,11 @@ export async function startMeshyTest() {
     'meshy',
     `Left: Meshy, rigged (10k triangles), legs moved by code\nMiddle: the game's own bull (second-largest size)\nRight: Meshy, high detail (457k triangles, no rig)\nAll three the same length: ${len.toFixed(2)} m nose to tail`,
   );
-  if (Q.has('still')) return;
+  if (Q.has('still')) return; // standing straight
+  if (Q.has('phase')) return poseLegs(legs, +Q.get('phase')); // frozen at one moment of the stride
   const t0 = performance.now();
-  const q = new THREE.Quaternion();
   const tick = () => {
-    const t = (performance.now() - t0) / 1000,
-      ph = t / 1.4; // one stride every 1.4 s
-    for (const l of legs) {
-      const a = (ph + l.off) * 2 * PI;
-      l.hip.b.quaternion.copy(l.hip.q0).multiply(q.setFromAxisAngle(l.hip.ax, 0.32 * Math.sin(a)));
-      const lift = Math.max(0, Math.sin(a + PI / 2)); // bend while the leg swings forward
-      l.knee.b.quaternion.copy(l.knee.q0).multiply(q.setFromAxisAngle(l.knee.ax, (l.front ? -0.7 : 0.7) * lift));
-    }
+    poseLegs(legs, (performance.now() - t0) / 1000 / 1.4); // one stride every 1.4 s
     requestAnimationFrame(tick);
   };
   tick();

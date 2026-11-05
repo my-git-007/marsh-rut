@@ -244,6 +244,14 @@ function setupTest() {
   V.started = true;
   UI.helpOn = false;
   if (TEST !== '1' && TEST !== 'solo') NET.host.scenario(TEST, q);
+  if (TEST === 'meshy')
+    import('./views/meshy-test.js') // the Meshy bull beside ours
+      .then((m) => m.startMeshyTest())
+      .catch((err) => {
+        console.warn('Meshy test failed', err);
+        const el = document.getElementById('testcap');
+        if (el) el.textContent = 'The Meshy test failed: ' + err.message;
+      });
   if (TEST === 'fight') {
     V.yaw = 0;
     V.pitch = Math.atan2(groundAt(PLAYER.x, PLAYER.z - 80) + 1.2 - PLAYER.eye, 80);

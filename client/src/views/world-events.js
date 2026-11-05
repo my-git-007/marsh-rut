@@ -35,9 +35,9 @@ export function updateViews(dt, states) {
   for (const [id, v] of VIEWS) v.update(dt, states.get(id));
 }
 
-// test scenes (?test=moves): one line per animal naming the move it is playing
+// test scenes (?test=moves, ?test=meshy): a box of captions, one line (or block) per key
 const CAPS = new Map();
-function showCaption(k, text) {
+export function showCaption(k, text) {
   let el = document.getElementById('testcap');
   if (!el) {
     el = document.createElement('div');

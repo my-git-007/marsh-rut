@@ -64,7 +64,10 @@ function buildTerrain() {
       .replace('#include <common>', '#include <common>\nattribute float aM;\nvarying float vM;\nvarying vec2 vW;')
       .replace('#include <begin_vertex>', '#include <begin_vertex>\nvM=aM;vW=(modelMatrix*vec4(position,1.0)).xz;');
     sh.fragmentShader = sh.fragmentShader
-      .replace('#include <common>', '#include <common>\nuniform sampler2D tForest;\nvarying float vM;\nvarying vec2 vW;')
+      .replace(
+        '#include <common>',
+        '#include <common>\nuniform sampler2D tForest;\nvarying float vM;\nvarying vec2 vW;',
+      )
       .replace(
         '#include <map_fragment>',
         `

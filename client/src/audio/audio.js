@@ -9,7 +9,11 @@ import { vaporFrom } from '../render/fx.js';
 import { ANIMALS, PLAYER } from '../state.js';
 
 // every recording under client/assets/sounds, as cacheable files (Vite gives each a hashed URL)
-const SOUND_URLS = import.meta.glob('../../assets/sounds/**/*.{m4a,mp3,wav,ogg,aac}', { query: '?url', import: 'default', eager: true });
+const SOUND_URLS = import.meta.glob('../../assets/sounds/**/*.{m4a,mp3,wav,ogg,aac}', {
+  query: '?url',
+  import: 'default',
+  eager: true,
+});
 import onsetsUrl from '../../assets/sounds/bull-replies/onsets.json?url';
 let SND_META = {};
 
@@ -86,7 +90,8 @@ function makeIR(ctx, sec) {
       [3.6 + ch * 0.1, 0.1],
     ]) {
       const s = Math.floor(et * sr);
-      for (let i = 0; i < sr * 0.3 && s + i < len; i++) d[s + i] += (Math.random() * 2 - 1) * ea * Math.exp(-i / (sr * 0.06)) * 0.45;
+      for (let i = 0; i < sr * 0.3 && s + i < len; i++)
+        d[s + i] += (Math.random() * 2 - 1) * ea * Math.exp(-i / (sr * 0.06)) * 0.45;
     }
   }
   return b;
@@ -486,7 +491,7 @@ let SB_READY = false;
 // the same names the old single-file build used: ucowL_/ucowC_ (my long/coaxing calls), ubull_ (bull replies),
 // amb_<species>_ and fx_<kind>_ (ambient and effects folders), and the wild recordings by file name
 function soundKey(path) {
-  const p = path.split('/assets/sounds/')[1];   // glob keys always use forward slashes
+  const p = path.split('/assets/sounds/')[1]; // glob keys always use forward slashes
   if (!p) return null;
   const parts = p.split('/'),
     base = parts[parts.length - 1].replace(/\.[^.]+$/, '');
@@ -498,7 +503,12 @@ function soundKey(path) {
   return null;
 }
 async function loadSamples() {
-  fetch(onsetsUrl).then((r) => r.json()).then((j) => { SND_META = j; }).catch(() => {});
+  fetch(onsetsUrl)
+    .then((r) => r.json())
+    .then((j) => {
+      SND_META = j;
+    })
+    .catch(() => {});
   await Promise.all(
     Object.entries(SOUND_URLS).map(async ([path, url]) => {
       const k = soundKey(path);
@@ -517,7 +527,14 @@ async function loadSamples() {
 function playOtherCall(h, key) {
   if (!A_ok() || !SB[key]) return;
   const b = SB[key];
-  const d = spatial(h.x, h.eye || 6, h.z, { ref: 60, life: b.duration + 3, wet: 0.55, air: 700, roll: 0.9, bus: 'others' });
+  const d = spatial(h.x, h.eye || 6, h.z, {
+    ref: 60,
+    life: b.duration + 3,
+    wet: 0.55,
+    air: 700,
+    roll: 0.9,
+    bus: 'others',
+  });
   playBuf(b, d, A.ctx.currentTime + 0.02, { gain: fullLevel(key) * 1.6 });
 }
 function playOtherPour(h) {
@@ -644,7 +661,13 @@ function bullGrunts(an, n, voice) {
     const k = pick(ub),
       b = SB[k];
     const rate = clamp(voice.rate, 0.94, 1.06);
-    const dest = spatial(an.x, groundAt(an.x, an.z) + 2, an.z, { ref: 30, life: b.duration / rate + 3, wet: 0.42, air: 340, bus: 'moose' });
+    const dest = spatial(an.x, groundAt(an.x, an.z) + 2, an.z, {
+      ref: 30,
+      life: b.duration / rate + 3,
+      wet: 0.42,
+      air: 340,
+      bus: 'moose',
+    });
     const t = A.ctx.currentTime + 0.05;
     playBuf(b, dest, t, { rate, gain: voice.vol * 0.95 * BULL_GAIN });
     const on = (SND_META[k] || {}).onsets || [0];
@@ -666,7 +689,13 @@ function bullGrunts(an, n, voice) {
     return;
   }
   const main = [all[0], all[1], all[5]].filter(Boolean);
-  const dest = spatial(an.x, groundAt(an.x, an.z) + 2, an.z, { ref: 30, life: n * 2 + 3, wet: 0.42, air: 340, bus: 'moose' });
+  const dest = spatial(an.x, groundAt(an.x, an.z) + 2, an.z, {
+    ref: 30,
+    life: n * 2 + 3,
+    wet: 0.42,
+    air: 340,
+    bus: 'moose',
+  });
   let t = A.ctx.currentTime + 0.05;
   for (let i = 0; i < n; i++) {
     const b = chance(0.65) ? pick(main) : pick(all);
@@ -733,7 +762,13 @@ function cowMoan(an, calf) {
   const uc = UCOWS();
   if (uc.length) {
     const b = SB[pick(uc)];
-    const dest = spatial(an.x, groundAt(an.x, an.z) + 1.7, an.z, { ref: 22, life: b.duration + 3, wet: 0.45, air: 320, bus: 'moose' });
+    const dest = spatial(an.x, groundAt(an.x, an.z) + 1.7, an.z, {
+      ref: 22,
+      life: b.duration + 3,
+      wet: 0.45,
+      air: 320,
+      bus: 'moose',
+    });
     const len = Math.min(b.duration, rand(3, 7));
     playBuf(b, dest, A.ctx.currentTime + 0.05, { dur: len, gain: 0.95 * COW_GAIN, fade: 0.2 });
     return;
@@ -755,7 +790,7 @@ function waterPour() {
   if (!ks.length) return;
   const k = pick(ks);
   playBuf(SB[k], A.bus.calls, A.ctx.currentTime + 0.02, { gain: fullLevel(k) * 0.75, fade: 0.08 });
-  return true;   // the host tells the animals (calls.js)
+  return true; // the host tells the animals (calls.js)
 }
 function startAmbience() {
   const c = A.ctx;

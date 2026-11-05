@@ -5,6 +5,7 @@
 //   site('create-account') the create-account page, and so on
 export function site(page = '') {
   const root = new URL((document.body && document.body.dataset.root) || './', location.href);
-  root.search = ''; root.hash = '';
+  root.search = '';
+  root.hash = '';
   return new URL(page ? page + '/' : '', root).href;
 }

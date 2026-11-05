@@ -1,6 +1,6 @@
 // ?test=meshy: the bull moose made in Meshy, shown beside the game's own second-largest bull (built by the sim,
 // in the middle), at the same length, side-on. Left: the rigged Meshy model (about 10,000 triangles), walking in
-// place with its legs driven by code, to show the rig bends the mesh (&still: standing; &phase=0..1: frozen). Right: the high-detail
+// place with its legs driven by code, to show the rig bends the mesh (&still: as Meshy made him; &phase=0..1: frozen). Right: the high-detail
 // Meshy model (about 457,000 triangles, no rig). Loaded only for this test.
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
@@ -62,8 +62,9 @@ function place(root, x, z, len) {
 }
 
 // the rig: four legs, each a chain of bones from the hoof up to where it joins the spine (shoulder blade or hip).
-// Meshy rigged the bull mid-stride, so first stand each leg straight: the hoof under the top of the leg, the cannon
-// (knee or hock down to the hoof) upright. The walk then adds to that.
+// Meshy modelled the bull with one hind leg raised. To stand him on four legs, that leg takes the shape of the
+// other hind leg, mirrored, joint by joint. The other three keep the shape Meshy gave them. For the walk each leg
+// first swings as a whole (from its top) so the hoof is under the top of the leg.
 const SIDE = new THREE.Vector3(1, 0, 0); // the model's sideways axis (it is long along z): legs swing about it
 const boneKids = (b) => b.children.filter((c) => c.isBone).length;
 function legRig(root) {
@@ -71,45 +72,55 @@ function legRig(root) {
   root.traverse((b) => b.isBone && bones.push(b));
   root.updateMatrixWorld(true);
   const wp = (b) => b.getWorldPosition(new THREE.Vector3());
-  // the hooves: the four lowest bone tips (one hind hoof is raised mid-stride, so not all are on the ground)
+  // the hooves: the four lowest bone tips (the raised hind hoof is off the ground)
   const hooves = bones
     .filter((b) => !boneKids(b))
     .sort((a, b) => wp(a).y - wp(b).y)
     .slice(0, 4);
   const midZ = hooves.reduce((s, b) => s + wp(b).z, 0) / (hooves.length || 1);
-  const joint = (b) => ({
-    b,
-    q0: b.quaternion.clone(),
-    ax: SIDE.clone().applyQuaternion(b.getWorldQuaternion(new THREE.Quaternion()).invert()),
-  });
   const legs = [];
   for (const h of hooves) {
     const chain = [h]; // hoof first, up the leg until the bone above branches (the spine)
     while (chain.length < 8 && chain.at(-1).parent && chain.at(-1).parent.isBone && boneKids(chain.at(-1).parent) === 1)
       chain.push(chain.at(-1).parent);
-    if (chain.length < 5) continue;
-    legs.push({
-      front: wp(h).z > midZ,
-      x: wp(chain.at(-1)).x,
-      hoof: h,
-      top: joint(chain.at(-1)),
-      knee: joint(chain[3]),
-    });
+    if (chain.length >= 5) legs.push({ front: wp(h).z > midZ, x: wp(chain.at(-1)).x, hoof: h, down: chain.reverse() });
   }
-  // stand straight: rotating a bone by +angle about SIDE swings what hangs below it backwards (-z)
-  const lean = (from, to) => {
-    const a = wp(from),
-      b = wp(to);
-    return Math.atan2(b.z - a.z, a.y - b.y);
-  };
-  const q = new THREE.Quaternion();
+  // a raised leg copies its partner's shape: each bone, top down, turned so it points the way the partner's does
+  // (mirrored side to side)
+  const q = new THREE.Quaternion(),
+    qw = new THREE.Quaternion();
+  for (const pair of [legs.filter((l) => l.front), legs.filter((l) => !l.front)]) {
+    if (pair.length !== 2 || pair[0].down.length !== pair[1].down.length) continue;
+    const [low, high] = wp(pair[0].hoof).y <= wp(pair[1].hoof).y ? pair : [pair[1], pair[0]];
+    if (wp(high.hoof).y - wp(low.hoof).y < 0.05) continue; // both on the ground
+    for (let i = 0; i < high.down.length - 1; i++) {
+      const b = high.down[i];
+      const cur = wp(high.down[i + 1])
+        .sub(wp(b))
+        .normalize();
+      const want = wp(low.down[i + 1])
+        .sub(wp(low.down[i]))
+        .normalize();
+      want.x = -want.x;
+      b.getWorldQuaternion(qw);
+      q.setFromUnitVectors(cur, want.normalize()); // the turn in world space, then in the bone's own frame
+      b.quaternion.multiply(qw.clone().invert().multiply(q).multiply(qw));
+      root.updateMatrixWorld(true);
+    }
+  }
+  const joint = (b) => ({
+    b,
+    q0: b.quaternion.clone(),
+    ax: SIDE.clone().applyQuaternion(b.getWorldQuaternion(new THREE.Quaternion()).invert()),
+    base: 0,
+  });
   for (const l of legs) {
-    l.top.base = lean(l.top.b, l.hoof);
-    l.top.b.quaternion.copy(l.top.q0).multiply(q.setFromAxisAngle(l.top.ax, l.top.base));
-    root.updateMatrixWorld(true);
-    l.knee.base = lean(l.knee.b, l.hoof);
-    l.knee.b.quaternion.copy(l.knee.q0).multiply(q.setFromAxisAngle(l.knee.ax, l.knee.base));
-    root.updateMatrixWorld(true);
+    l.top = joint(l.down[0]);
+    l.knee = joint(l.down.at(-4)); // the knee (front) or hock (hind): the 4th bone up from the hoof
+    // rotating the top by +angle about SIDE swings the leg backwards (-z): this puts the hoof under it
+    const a = wp(l.down[0]),
+      b = wp(l.hoof);
+    l.top.base = Math.atan2(b.z - a.z, a.y - b.y);
   }
   // a walk: each hind leg leads the front leg on its side by a quarter stride; the two sides half a stride apart
   for (const pair of [legs.filter((l) => l.front), legs.filter((l) => !l.front)]) {
@@ -163,14 +174,15 @@ export async function startMeshyTest() {
   }
   furMaterials(rig.scene);
   furMaterials(hires.scene);
-  const legs = legRig(rig.scene);
+  // &still: exactly as Meshy made him (one hind leg raised mid-step); otherwise the legs are set up for the walk
+  const legs = Q.has('still') ? [] : legRig(rig.scene);
   place(rig.scene, bull.x - GAP, bull.z, len);
   place(hires.scene, bull.x + GAP, bull.z, len);
   showCaption(
     'meshy',
     `Left: Meshy, rigged (10k triangles), legs moved by code\nMiddle: the game's own bull (second-largest size)\nRight: Meshy, high detail (457k triangles, no rig)\nAll three the same length: ${len.toFixed(2)} m nose to tail`,
   );
-  if (Q.has('still')) return; // standing straight
+  if (Q.has('still')) return;
   if (Q.has('phase')) return poseLegs(legs, +Q.get('phase')); // frozen at one moment of the stride
   const t0 = performance.now();
   const tick = () => {

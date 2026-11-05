@@ -457,6 +457,17 @@ export class Sim {
       clear();
       this.frozen = true;
       this.moves = setupMoves(this, H, q);
+    } else if (name === 'meshy') {
+      // the game's second-largest bull side-on in front of the stand; the browser stands the Meshy models
+      // beside him (client/src/views/meshy-test.js)
+      clear();
+      this.frozen = true;
+      const b = new Bull(this, { tier: BULL_TIERS.length - 2, focus: H });
+      b.a.place(H.x, H.z - num('dist', 22), num('h', 0));
+      b.hold(1e9);
+      b.dispT = 1e9;
+      b.a.look = null;
+      this.bulls.push(b);
     } else if (name === 'antlers') {
       // size check: one line at the same distance (so perspective doesn't skew it), side-on: the bear sizes,
       // then one cow of each type, smallest to largest, then one bull of each size. ?cows=0 / ?bears=0 hide those;

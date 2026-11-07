@@ -14,12 +14,12 @@
 <link rel="stylesheet" href="../src/styles/forms.css">
 <link rel="stylesheet" href="../src/styles/game.css">
 <script>
-// Online, the game needs a logged-in player: without one, go straight to the log-in page (the site root) instead of
+// Online, the game needs a logged-in player: without one, go straight to the log-in page (/sign-in/) instead of
 // building the marsh first. src/main.js checks properly once Firebase has loaded.
 (function () {
   var online = '%VITE_SERVER_URL%';
   if (!online || online.charAt(0) === '%' || /[?&](solo|test|showcase|server)\b/.test(location.search)) return;
-  try { if (!localStorage.getItem('hl-in')) location.replace('../'); } catch (e) {}
+  try { if (!localStorage.getItem('hl-in')) location.replace('../sign-in/'); } catch (e) {}
 })();
 </script>
 </head>

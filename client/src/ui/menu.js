@@ -105,8 +105,8 @@ window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); inst
 window.addEventListener('appinstalled', () => { installed = true; installEvt = null; if (view === 'm-icon') prepIcon(); });
 const inApp = () => matchMedia('(display-mode: standalone)').matches || matchMedia('(display-mode: minimal-ui)').matches || navigator.standalone === true;
 
-// the site's front door (the log-in page sends logged-in players on to the game)
-function gameUrl() { return site(''); }
+// the log-in page, which sends logged-in players on to the game (the site's root is the "Coming early 2027" page in beta)
+function gameUrl() { return site('sign-in'); }
 export function shortcutFile(os = DEVICE.os, url = gameUrl()) {
   if (os === 'windows') return { name: NAME + '.url', type: 'application/internet-shortcut', text: ['[InternetShortcut]', 'URL=' + url, ''].join('\r\n') };
   if (os === 'mac') return { name: NAME + '.webloc', type: 'application/x-webloc',

@@ -3,53 +3,49 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Hunting LTD</title>
+<title>Hunting LTD · Coming early 2027</title>
+<meta name="description" content="Hunting LTD, the most realistic hunting game ever made. Coming early 2027.">
 <link rel="icon" href="./icon.ico" sizes="any">
 <link rel="icon" href="./icon-32.png" type="image/png" sizes="32x32">
 <link rel="apple-touch-icon" href="./apple-touch-icon.png">
 <link rel="manifest" href="./manifest.webmanifest">
 <meta name="theme-color" content="#0b0c0a">
-<meta name="apple-mobile-web-app-title" content="Hunting LTD">
 <link rel="stylesheet" href="./src/styles/base.css">
 <link rel="stylesheet" href="./src/styles/forms.css">
 <link rel="stylesheet" href="./src/styles/account.css">
+<link rel="stylesheet" href="./src/styles/soon.css">
 <script>
-// Before anything is drawn: old email links (?mode=...&oobCode=...) and test/solo links go to their own pages, and
-// a player who is already logged in sees nothing until we know where to send them (src/pages/account-pages.js).
+// Before anything is drawn: old email links (?mode=...&oobCode=...) and test/solo links still go to their own pages,
+// and a tester who is logged in in this browser (an old shortcut or installed app opens the root) goes to the
+// log-in page, which sends them on to the game.
 (function () {
   var q = location.search, p = new URLSearchParams(q), m = p.get('mode');
   if (/[?&](solo|test|showcase|server)\b/.test(q)) return location.replace('hunting/' + q + location.hash);
   if (p.get('oobCode') && m === 'resetPassword') return location.replace('reset-password/' + q);
   if (p.get('oobCode') && (m === 'verifyEmail' || m === 'recoverEmail')) return location.replace('confirm-email/' + q);
-  try { if (localStorage.getItem('hl-in')) document.documentElement.className = 'checking'; } catch (e) {}
+  try { if (localStorage.getItem('hl-in')) return location.replace('sign-in/'); } catch (e) {}
 })();
 </script>
 </head>
-<body data-root="./" data-acct data-page="login">
-<!-- One of the account pages (the root = log in, /create-account/, /forgot-password/, /reset-password/, /confirm-email/). They share
-     src/styles/{base,forms,account}.css and src/pages/account-pages.js; the game itself is /hunting/. -->
+<body data-root="./" data-acct data-page="soon">
+<!-- The front page while the game is in beta: "Coming early 2027" and a "notify me" form (src/pages/soon.js, which
+     posts to the server's /notify). Log in is at /sign-in/ for testing. -->
 <div id="start"><div class="card">
   <h1 class="brand"><picture><source srcset="./badge.webp" type="image/webp"><img src="./badge.jpg" alt="Hunting LTD" width="920" height="460"></picture></h1>
   <div id="acct">
-    <form id="f-login" class="af" novalidate aria-labelledby="h-login">
-      <h2 id="h-login">Log in</h2>
-      <div class="field">
-        <label for="li-email" id="li-email-label">Email</label>
-        <input type="email" id="li-email" placeholder="Email" autocomplete="username" inputmode="email" autocapitalize="off" spellcheck="false" required>
-        <p class="ferr" id="li-email-err"></p>
+    <p class="welcome">Welcome to Hunting LTD, the most realistic hunting game ever made.</p>
+    <p class="when">Coming early 2027</p>
+    <form id="f-notify" novalidate>
+      <label for="n-email">Add your email to be notified:</label>
+      <div class="row">
+        <input type="email" id="n-email" name="email" placeholder="Email address" autocomplete="email" inputmode="email" autocapitalize="off" spellcheck="false" maxlength="254" required aria-describedby="n-email-err">
+        <button type="submit" data-busy="Sending…">Submit</button>
       </div>
-      <div class="field fb-only">
-        <div class="lrow"><label for="li-pass">Password</label><a href="forgot-password/" id="to-forgot">Forgot password?</a></div>
-        <div class="pw"><input type="password" id="li-pass" placeholder="Password" autocomplete="current-password" required><button type="button" class="reveal" aria-controls="li-pass" aria-pressed="false">Show</button></div>
-        <p class="caps" hidden>Caps Lock is on</p>
-        <p class="ferr" id="li-pass-err"></p>
-      </div>
-      <button type="submit" class="primary" data-busy="Logging in…">Log in</button>
-      <p class="switch or fb-only"><span class="pre">New to Hunting LTD?</span> <a href="create-account/">Create an account</a></p>
+      <p class="ferr" id="n-email-err" role="alert"></p>
     </form>
-    <div id="acctmsg" role="alert" aria-live="assertive"></div>
+    <p id="n-thanks" class="thanks" tabindex="-1" hidden>Thank you. We will email you when Hunting LTD goes live.</p>
   </div>
 </div></div>
-<script type="module" src="./src/pages/account-pages.js"></script>
+<script type="module" src="./src/pages/soon.js"></script>
 </body>
 </html>

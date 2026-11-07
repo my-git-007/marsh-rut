@@ -18,6 +18,13 @@ primary_region = "yyz"
   CONTACT_TO = "support@hunting.ltd"                 # Contact form messages go here (Cloudflare forwards it to the owner)
   CONTACT_FROM = "Hunting LTD <contact@hunting.ltd>"  # sender; hunting.ltd is verified with Resend
   # RESEND_API_KEY is a Fly secret (flyctl secrets set RESEND_API_KEY=...), never in this file
+  NOTIFY_DB = "/data/notify.db"   # the front page's "notify me" list (server/notify.js), on the volume below
+
+# A 1 GB volume for the "notify me" list, so it survives deploys and restarts. Create it once before deploying:
+#   flyctl volumes create hl_data --region yyz --size 1 -a marsh-rut
+[mounts]
+  source = "hl_data"
+  destination = "/data"
 
 [http_service]
   internal_port = 8080

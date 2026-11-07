@@ -53,7 +53,7 @@ const devView = () => (devUser ? { name: devUser, email: '', verified: true } : 
 // Firebase's own emails link to its plain page on marsh-rut.firebaseapp.com (this project isn't allowed to point
 // them at the game), so the game's server sends these emails itself (server/mail.js), with links that open the
 // game's own screens. If the server can't (not set up yet, or unreachable), Firebase sends them as before.
-const BACK = () => ({ url: new URL((document.body.dataset.root || './'), location.href).href.split(/[?#]/)[0] });   // Firebase's page offers a link back to the log-in page
+const BACK = () => ({ url: new URL((document.body.dataset.root || './') + 'sign-in/', location.href).href.split(/[?#]/)[0] });   // Firebase's page offers a link back to the log-in page
 const MAILER = (import.meta.env.VITE_SERVER_URL || '').replace(/^ws(s?):/, 'http$1:').replace(/\/+$/, '');
 async function gameMail(path, body, idToken) {   // -> true when the game's server sent it
   if (!MAILER) return false;

@@ -21,10 +21,15 @@ export default defineConfig({
       input: Object.fromEntries(
         [
           ['home', 'index.html'],
-          ...['sign-in', 'create-account', 'forgot-password', 'reset-password', 'confirm-email', 'hunting'].map((n) => [
-            n,
-            n + '/index.html',
-          ]),
+          ...[
+            'sign-in',
+            'notify',
+            'create-account',
+            'forgot-password',
+            'reset-password',
+            'confirm-email',
+            'hunting',
+          ].map((n) => [n, n + '/index.html']),
         ].map(([k, f]) => [k, resolve(__dirname, 'client', f)]),
       ),
     },

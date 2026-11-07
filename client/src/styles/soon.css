@@ -152,3 +152,11 @@ body[data-acct][data-page='soon'] .thanks:focus {
     font-size: 19px;
   }
 }
+/* the email link page (client/notify/): one centred button, and a quiet link back to the front page */
+body[data-acct][data-page='soon'] #f-notify .row.solo {
+  justify-content: center;
+}
+body[data-acct][data-page='soon'] .back {
+  margin: 34px 0 0;
+  font-size: 15px;
+}

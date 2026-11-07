@@ -97,7 +97,7 @@ const server = http.createServer((req, res) => {
     handleMail(req, res, ip, ORIGINS);
     return;
   } // account emails (server/mail.js)
-  if (req.url === '/notify') {
+  if (req.url === '/notify' || req.url.startsWith('/notify/')) {
     handleNotify(req, res, ip, ORIGINS);
     return;
   } // the front page's "notify me" list (server/notify.js)

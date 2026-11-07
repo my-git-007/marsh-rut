@@ -95,7 +95,7 @@ setInterval(() => {
 // ---- the emails ----
 const esc = (s) =>
   String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
-function page({ title, lines, button, link, after }) {
+function page({ title, lines, button, link, after, extra = '' }) {
   const p = (t) => `<p style="margin:0 0 16px;font:16px/1.55 Helvetica,Arial,sans-serif;color:#3a2a1a">${t}</p>`;
   return `<!doctype html><html><body style="margin:0;padding:0;background:#13120e">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#13120e"><tr><td align="center" style="padding:28px 12px">
@@ -106,7 +106,7 @@ function page({ title, lines, button, link, after }) {
 ${lines.map(p).join('\n')}
 <table role="presentation" cellpadding="0" cellspacing="0" style="margin:6px 0 22px"><tr><td style="border-radius:10px;background:#3b2716">
 <a href="${esc(link)}" style="display:inline-block;padding:14px 26px;font:bold 16px Helvetica,Arial,sans-serif;color:#f2cf9d;text-decoration:none;border-radius:10px">${esc(button)}</a></td></tr></table>
-${p(esc(after))}
+${p(esc(after))}${extra}
 <p style="margin:0 0 22px;font:13px/1.5 Helvetica,Arial,sans-serif;color:#6e5a44">If the button doesn't work, copy this link into your browser:<br><a href="${esc(link)}" style="color:#8f5d2e;word-break:break-all">${esc(link)}</a></p>
 </td></tr>
 <tr><td style="padding:14px 30px 22px;border-top:1px solid #e3d3b5;font:12px/1.5 Helvetica,Arial,sans-serif;color:#8a7458">Hunting LTD · <a href="${esc(GAME)}" style="color:#8f5d2e">hunting.ltd</a> · Questions? Just reply to this email.</td></tr>
@@ -142,8 +142,27 @@ export const EMAILS = {
     }),
     text: `We got a request to reset the password for ${email}.\n\nOpen this link to choose a new one (it works once and expires in an hour):\n\n${link}\n\nIf you didn't ask for this, you can ignore this email. Your password won't change.\n\nHunting LTD · ${GAME}`,
   }),
+  // the front page's "notify me" list (server/notify.js): confirm the address, or take it off the list
+  notifyConfirm: (email, link, removeLink) => ({
+    subject: 'Confirm your email for Hunting LTD launch news',
+    html: page({
+      title: 'Confirm your email',
+      lines: [
+        `Someone (we hope you) asked us to email <b>${esc(email)}</b> when Hunting LTD goes live.`,
+        'Click the button below to confirm. We’ll only use this address to tell you about the launch.',
+      ],
+      button: 'Confirm my email',
+      link,
+      after: 'If you didn’t ask for this, ignore this email and you won’t hear from us again.',
+      extra: `<p style="margin:0 0 16px;font:14px/1.55 Helvetica,Arial,sans-serif;color:#6e5a44">Changed your mind later? <a href="${esc(removeLink)}" style="color:#8f5d2e">Remove my email from the list</a>.</p>`,
+    }),
+    text: `Someone (we hope you) asked us to email ${email} when Hunting LTD goes live.\n\nOpen this link to confirm. We'll only use this address to tell you about the launch:\n\n${link}\n\nIf you didn't ask for this, ignore this email and you won't hear from us again.\n\nChanged your mind later? Remove your email from the list:\n${removeLink}\n\nHunting LTD · ${GAME}`,
+  }),
 };
-async function deliver(to, { subject, html, text }) {
+// where links in emails point: the site the request came from when it's one of the game's own, else GAME_URL
+export const linkBase = (origin) => (GAME_ORIGINS.includes(origin) ? origin + '/' : GAME);
+export const MAIL_SEND_ON = !!RESEND_KEY;
+export async function deliver(to, { subject, html, text }) {
   const r = await fetch(RESEND_URL, {
     method: 'POST',
     headers: { Authorization: `Bearer ${RESEND_KEY}`, 'Content-Type': 'application/json' },
@@ -206,7 +225,7 @@ export async function handleMail(req, res, ip, origins) {
   if (!MAIL_ON) return out(503, { ok: false, reason: 'off' });
   const b = await readBody(req);
   if (!b || typeof b !== 'object') return out(400, { ok: false, reason: 'invalid' });
-  const base = GAME_ORIGINS.includes(origin) ? origin + '/' : GAME;
+  const base = linkBase(origin);
   try {
     if (kind === 'verifyEmail') {
       let who;

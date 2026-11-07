@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Your email · Hunting LTD</title>
+    <meta name="robots" content="noindex" />
+    <!-- the link's code is in the address: don't send it to anything this page loads -->
+    <meta name="referrer" content="no-referrer" />
+    <link rel="icon" href="../icon.ico" sizes="any" />
+    <link rel="icon" href="../icon-32.png" type="image/png" sizes="32x32" />
+    <link rel="apple-touch-icon" href="../apple-touch-icon.png" />
+    <meta name="theme-color" content="#0b0c0a" />
+    <link rel="stylesheet" href="../src/styles/base.css" />
+    <link rel="stylesheet" href="../src/styles/forms.css" />
+    <link rel="stylesheet" href="../src/styles/account.css" />
+    <link rel="stylesheet" href="../src/styles/soon.css" />
+  </head>
+  <!-- Where the "notify me" confirmation email's links land: ?a=confirm|remove&t=<code> (src/pages/notify-link.js).
+       Nothing happens until the button is pressed, so email scanners that open links can't confirm or remove.
+       Styled like the front page (data-page="soon", src/styles/soon.css). -->
+  <body data-root="../" data-acct data-page="soon">
+    <div id="start">
+      <div class="card">
+        <h1 class="brand">
+          <picture
+            ><source srcset="../badge.webp" type="image/webp" />
+            <img src="../badge.jpg" alt="Hunting LTD" width="920" height="460"
+          /></picture>
+        </h1>
+        <div id="acct">
+          <p class="welcome" id="l-title">Hunting LTD launch news</p>
+          <p class="when" id="l-lead"></p>
+          <form id="f-notify" novalidate hidden>
+            <div class="row solo"><button type="submit" id="l-go" data-busy="One moment…"></button></div>
+            <p class="ferr" id="l-err" role="alert"></p>
+          </form>
+          <p id="l-done" class="thanks" tabindex="-1" hidden></p>
+          <p class="back"><a href="../">Back to hunting.ltd</a></p>
+        </div>
+      </div>
+    </div>
+    <script type="module" src="../src/pages/notify-link.js"></script>
+  </body>
+</html>

@@ -19,6 +19,7 @@ const DENIED = {
   busy: 'The marsh server is full right now. Try again in a few minutes.',
   version: 'The game has been updated. Reload the page.',
   full: 'Every stand is taken.',
+  beta: 'Hunting LTD is in private beta, and this account isn’t on the tester list. Add your email on hunting.ltd to hear when the game opens.',
 };
 const rowState = (r) => ({ x: r[1], z: r[2], h: r[3], speed: r[4], mode: MODES[r[5]] || 'walk', flags: r[6], look: r[7] == null ? null : { x: r[7], z: r[8] }, shuffle: r[9] });
 

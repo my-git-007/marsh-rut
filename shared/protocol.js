@@ -15,7 +15,8 @@
 // server -> browser
 //   { t: 'welcome', you, hunters, spawns, snap, rate }   you = your hunter record (stand, position)
 //   { t: 'denied', reason }                              'login' (token not accepted), 'verify' (email not confirmed),
-//                                                        'limit' (too many new marshes from this address), 'busy', 'version', 'full'
+//                                                        'limit' (too many new marshes from this address), 'busy', 'version', 'full',
+//                                                        'beta' (private beta: the account isn't on ALLOWED_PLAYERS)
 //   { t: 'moved', you } | { t: 'moved', error }          after 'stand'
 //   { t: 'contact', ok, reason?, field? }                after 'contact'
 //   { t: 'idle' }                                        closed after IDLE_MINUTES without activity

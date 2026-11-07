@@ -15,7 +15,16 @@ concurrency:
   group: pages
   cancel-in-progress: true
 jobs:
+  # Lint, tests and security scan. If any of them fails, nothing below runs and the live game stays as it is.
+  checks:
+    uses: ./.github/workflows/security-and-quality.yml
+    permissions:
+      contents: read
+      actions: read
+      security-events: write
+    secrets: inherit
   build:
+    needs: checks
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -24,7 +33,7 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
-      - run: npm run check            # the shared simulation runs headless
+      - run: npm run check # the shared simulation runs headless
       # Testing phase: the BBC archive recordings are published on purpose until permission is obtained or they
       # are replaced (see SOUNDS.md). The check still lists them in the log but no longer stops the deploy.
       # Remove continue-on-error to make it blocking again before a real public launch.

@@ -58,11 +58,13 @@ function rangeFind() {
 }
 function updateHUD(dt) {
   const heading = ((((-V.yaw * 180) / PI) % 360) + 360) % 360;
-  document.getElementById('compass').textContent = compassName(heading) + '  ' + String(Math.round(heading) % 360).padStart(3, '0') + '°';
+  document.getElementById('compass').textContent =
+    compassName(heading) + '  ' + String(Math.round(heading) % 360).padStart(3, '0') + '°';
   const toDeg = (WIND.from + 180) % 360;
   document.getElementById('windarrow').setAttribute('transform', `rotate(${(toDeg - heading).toFixed(1)})`);
   document.getElementById('windtxt').textContent = 'wind from ' + compassName(WIND.from);
-  document.getElementById('windsub').textContent = Math.round(WIND.speed * WIND.gust) + ' km/h' + (WIND.swirl > 0.3 ? ' · swirling' : '');
+  document.getElementById('windsub').textContent =
+    Math.round(WIND.speed * WIND.gust) + ' km/h' + (WIND.swirl > 0.3 ? ' · swirling' : '');
   const bo = smoothstep(24, 15, V.fov);
   binocEl.style.opacity = bo.toFixed(3);
   const rg = document.getElementById('range');

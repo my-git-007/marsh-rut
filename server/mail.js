@@ -24,8 +24,11 @@ const TOKEN_URL = env.GOOGLE_TOKEN_URL || 'https://oauth2.googleapis.com/token';
 const IDTK = env.IDTK_URL || 'https://identitytoolkit.googleapis.com/v1';
 const RESEND_URL = env.RESEND_URL || 'https://api.resend.com/emails';
 let SA = null;
-try { if (env.FIREBASE_SA_B64) SA = JSON.parse(Buffer.from(env.FIREBASE_SA_B64, 'base64').toString('utf8')); }
-catch (e) { console.error('mail: FIREBASE_SA_B64 is not a base64-encoded service account key'); }
+try {
+  if (env.FIREBASE_SA_B64) SA = JSON.parse(Buffer.from(env.FIREBASE_SA_B64, 'base64').toString('utf8'));
+} catch (e) {
+  console.error('mail: FIREBASE_SA_B64 is not a base64-encoded service account key');
+}
 const PROJECT = env.FIREBASE_PROJECT_ID || (SA && SA.project_id) || '';
 export const MAIL_ON = !!(SA && SA.client_email && SA.private_key && RESEND_KEY && PROJECT);
 
@@ -33,13 +36,21 @@ export const MAIL_ON = !!(SA && SA.client_email && SA.private_key && RESEND_KEY 
 let token = null;
 async function googleToken() {
   if (token && token.until > Date.now()) return token.value;
-  const key = await importPKCS8(SA.private_key, 'RS256'), now = Math.floor(Date.now() / 1000);
+  const key = await importPKCS8(SA.private_key, 'RS256'),
+    now = Math.floor(Date.now() / 1000);
   const assertion = await new SignJWT({ scope: 'https://www.googleapis.com/auth/cloud-platform' })
     .setProtectedHeader({ alg: 'RS256', typ: 'JWT', ...(SA.private_key_id ? { kid: SA.private_key_id } : {}) })
-    .setIssuer(SA.client_email).setSubject(SA.client_email).setAudience(TOKEN_URL).setIssuedAt(now).setExpirationTime(now + 3600).sign(key);
+    .setIssuer(SA.client_email)
+    .setSubject(SA.client_email)
+    .setAudience(TOKEN_URL)
+    .setIssuedAt(now)
+    .setExpirationTime(now + 3600)
+    .sign(key);
   const r = await fetch(TOKEN_URL, {
-    method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({ grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer', assertion }), signal: AbortSignal.timeout(10000),
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({ grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer', assertion }),
+    signal: AbortSignal.timeout(10000),
   });
   const j = await r.json().catch(() => ({}));
   if (!r.ok || !j.access_token) throw new Error('Google token: ' + r.status + ' ' + JSON.stringify(j).slice(0, 200));
@@ -49,8 +60,10 @@ async function googleToken() {
 // -> the one-time code, or null when there is no account with that email
 async function oobCode(requestType, email) {
   const r = await fetch(`${IDTK}/projects/${PROJECT}/accounts:sendOobCode`, {
-    method: 'POST', headers: { Authorization: 'Bearer ' + (await googleToken()), 'Content-Type': 'application/json' },
-    body: JSON.stringify({ requestType, email, returnOobLink: true }), signal: AbortSignal.timeout(10000),
+    method: 'POST',
+    headers: { Authorization: 'Bearer ' + (await googleToken()), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ requestType, email, returnOobLink: true }),
+    signal: AbortSignal.timeout(10000),
   });
   const j = await r.json().catch(() => ({}));
   if (!r.ok) {
@@ -67,16 +80,21 @@ async function oobCode(requestType, email) {
 
 // ---- limits (per account, email and address) ----
 const hits = new Map();
-export function allow(rules) {   // rules: [[key, n, ms]]; counts only if every rule allows it
+export function allow(rules) {
+  // rules: [[key, n, ms]]; counts only if every rule allows it
   const now = Date.now();
   for (const [k, n, ms] of rules) if ((hits.get(k) || []).filter((t) => now - t < ms).length >= n) return false;
   for (const [k] of rules) hits.set(k, [...(hits.get(k) || []).filter((t) => now - t < 86400000), now]);
   return true;
 }
-setInterval(() => { const now = Date.now(); for (const [k, ts] of hits) if (!ts.some((t) => now - t < 86400000)) hits.delete(k); }, 3600000).unref();
+setInterval(() => {
+  const now = Date.now();
+  for (const [k, ts] of hits) if (!ts.some((t) => now - t < 86400000)) hits.delete(k);
+}, 3600000).unref();
 
 // ---- the emails ----
-const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+const esc = (s) =>
+  String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 function page({ title, lines, button, link, after }) {
   const p = (t) => `<p style="margin:0 0 16px;font:16px/1.55 Helvetica,Arial,sans-serif;color:#3a2a1a">${t}</p>`;
   return `<!doctype html><html><body style="margin:0;padding:0;background:#13120e">
@@ -94,24 +112,43 @@ ${p(esc(after))}
 <tr><td style="padding:14px 30px 22px;border-top:1px solid #e3d3b5;font:12px/1.5 Helvetica,Arial,sans-serif;color:#8a7458">Hunting LTD · <a href="${esc(GAME)}" style="color:#8f5d2e">hunting.ltd</a> · Questions? Just reply to this email.</td></tr>
 </table></td></tr></table></body></html>`;
 }
-export const EMAILS = {   // exported for previews
+export const EMAILS = {
+  // exported for previews
   verifyEmail: (name, link) => ({
     subject: 'Confirm your email for Hunting LTD',
-    html: page({ title: 'Confirm your email', lines: [`Hi ${esc(name)},`, 'Welcome to Hunting LTD! Click the button below to confirm your email address. Then sign in and head for the marsh.'],
-      button: 'Confirm my email', link, after: 'If you didn’t create a Hunting LTD account, you can ignore this email.' }),
+    html: page({
+      title: 'Confirm your email',
+      lines: [
+        `Hi ${esc(name)},`,
+        'Welcome to Hunting LTD! Click the button below to confirm your email address. Then sign in and head for the marsh.',
+      ],
+      button: 'Confirm my email',
+      link,
+      after: 'If you didn’t create a Hunting LTD account, you can ignore this email.',
+    }),
     text: `Hi ${name},\n\nWelcome to Hunting LTD! Open this link to confirm your email address, then sign in and head for the marsh:\n\n${link}\n\nIf you didn't create a Hunting LTD account, you can ignore this email.\n\nHunting LTD · ${GAME}`,
   }),
   resetPassword: (email, link) => ({
     subject: 'Reset your Hunting LTD password',
-    html: page({ title: 'Reset your password', lines: [`We got a request to reset the password for <b>${esc(email)}</b>.`, 'Click the button below to choose a new one. The link works once and expires in an hour.'],
-      button: 'Choose a new password', link, after: 'If you didn’t ask for this, you can ignore this email. Your password won’t change.' }),
+    html: page({
+      title: 'Reset your password',
+      lines: [
+        `We got a request to reset the password for <b>${esc(email)}</b>.`,
+        'Click the button below to choose a new one. The link works once and expires in an hour.',
+      ],
+      button: 'Choose a new password',
+      link,
+      after: 'If you didn’t ask for this, you can ignore this email. Your password won’t change.',
+    }),
     text: `We got a request to reset the password for ${email}.\n\nOpen this link to choose a new one (it works once and expires in an hour):\n\n${link}\n\nIf you didn't ask for this, you can ignore this email. Your password won't change.\n\nHunting LTD · ${GAME}`,
   }),
 };
 async function deliver(to, { subject, html, text }) {
   const r = await fetch(RESEND_URL, {
-    method: 'POST', headers: { Authorization: `Bearer ${RESEND_KEY}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ from: FROM, to: [to], reply_to: REPLY_TO, subject, html, text }), signal: AbortSignal.timeout(10000),
+    method: 'POST',
+    headers: { Authorization: `Bearer ${RESEND_KEY}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ from: FROM, to: [to], reply_to: REPLY_TO, subject, html, text }),
+    signal: AbortSignal.timeout(10000),
   });
   if (!r.ok) throw new Error('Resend: ' + r.status + ' ' + (await r.text()).slice(0, 200));
 }
@@ -120,21 +157,47 @@ async function deliver(to, { subject, html, text }) {
 export const EMAIL_RE = /^[^\s@<>()",;:]+@[^\s@<>()",;:]+\.[^\s@<>()",;:]+$/;
 export function readBody(req) {
   return new Promise((resolve) => {
-    let b = '', big = false;
-    req.on('data', (d) => { b += d; if (b.length > 2048 && !big) { big = true; resolve(null); req.destroy(); } });   // too big: drop the connection
-    req.on('end', () => { try { resolve(big ? null : JSON.parse(b || '{}')); } catch (e) { resolve(null); } });
+    let b = '',
+      big = false;
+    req.on('data', (d) => {
+      b += d;
+      if (b.length > 2048 && !big) {
+        big = true;
+        resolve(null);
+        req.destroy();
+      }
+    }); // too big: drop the connection
+    req.on('end', () => {
+      try {
+        resolve(big ? null : JSON.parse(b || '{}'));
+      } catch (e) {
+        resolve(null);
+      }
+    });
     req.on('error', () => resolve(null));
-    req.on('close', () => resolve(null));   // no-op if already answered
+    req.on('close', () => resolve(null)); // no-op if already answered
   });
 }
 export async function handleMail(req, res, ip, origins) {
   const origin = req.headers.origin || '';
   const okOrigin = !origins.length || origins.includes(origin);
-  const head = { 'Content-Type': 'application/json', Vary: 'Origin', ...(okOrigin && origin ? { 'Access-Control-Allow-Origin': origin } : {}) };
-  const out = (status, o) => { res.writeHead(status, head); res.end(JSON.stringify(o)); };
+  const head = {
+    'Content-Type': 'application/json',
+    Vary: 'Origin',
+    ...(okOrigin && origin ? { 'Access-Control-Allow-Origin': origin } : {}),
+  };
+  const out = (status, o) => {
+    res.writeHead(status, head);
+    res.end(JSON.stringify(o));
+  };
   if (!okOrigin) return out(403, { ok: false, reason: 'origin' });
   if (req.method === 'OPTIONS') {
-    res.writeHead(204, { ...head, 'Access-Control-Allow-Methods': 'POST', 'Access-Control-Allow-Headers': 'Authorization, Content-Type', 'Access-Control-Max-Age': '600' });
+    res.writeHead(204, {
+      ...head,
+      'Access-Control-Allow-Methods': 'POST',
+      'Access-Control-Allow-Headers': 'Authorization, Content-Type',
+      'Access-Control-Max-Age': '600',
+    });
     return res.end();
   }
   if (req.method !== 'POST') return out(405, { ok: false });
@@ -146,21 +209,54 @@ export async function handleMail(req, res, ip, origins) {
   const base = GAME_ORIGINS.includes(origin) ? origin + '/' : GAME;
   try {
     if (kind === 'verifyEmail') {
-      let who; try { who = await whoIs(String(req.headers.authorization || '').replace(/^Bearer /, '')); } catch (e) { return out(401, { ok: false, reason: 'login' }); }
+      let who;
+      try {
+        who = await whoIs(String(req.headers.authorization || '').replace(/^Bearer /, ''));
+      } catch (e) {
+        return out(401, { ok: false, reason: 'login' });
+      }
       if (who.verified) return out(200, { ok: true });
-      const email = who.email || (AUTH_OFF ? String(b.email || '') : '');   // tests run without real logins
+      const email = who.email || (AUTH_OFF ? String(b.email || '') : ''); // tests run without real logins
       if (!EMAIL_RE.test(email)) return out(400, { ok: false, reason: 'invalid' });
-      if (!allow([['v:' + who.uid, 3, 3600000], ['v:' + who.uid, 8, 86400000], ['vi:' + ip, 10, 3600000]])) return out(429, { ok: false, reason: 'limit' });
+      if (
+        !allow([
+          ['v:' + who.uid, 3, 3600000],
+          ['v:' + who.uid, 8, 86400000],
+          ['vi:' + ip, 10, 3600000],
+        ])
+      )
+        return out(429, { ok: false, reason: 'limit' });
       const code = await oobCode('VERIFY_EMAIL', email);
       if (!code) return out(400, { ok: false, reason: 'invalid' });
-      await deliver(email, EMAILS.verifyEmail(cleanName(b.name || who.name), `${base}confirm-email/?mode=verifyEmail&oobCode=${encodeURIComponent(code)}`));
+      await deliver(
+        email,
+        EMAILS.verifyEmail(
+          cleanName(b.name || who.name),
+          `${base}confirm-email/?mode=verifyEmail&oobCode=${encodeURIComponent(code)}`,
+        ),
+      );
       console.log('mail: confirmation sent to account', who.uid.slice(0, 10));
     } else {
-      const email = String(b.email || '').trim().toLowerCase().slice(0, 200);
+      const email = String(b.email || '')
+        .trim()
+        .toLowerCase()
+        .slice(0, 200);
       if (!EMAIL_RE.test(email)) return out(400, { ok: false, reason: 'invalid' });
-      if (!allow([['r:' + email, 3, 3600000], ['ri:' + ip, 6, 3600000]])) return out(429, { ok: false, reason: 'limit' });
+      if (
+        !allow([
+          ['r:' + email, 3, 3600000],
+          ['ri:' + ip, 6, 3600000],
+        ])
+      )
+        return out(429, { ok: false, reason: 'limit' });
       const code = await oobCode('PASSWORD_RESET', email);
-      if (code) { await deliver(email, EMAILS.resetPassword(email, `${base}reset-password/?mode=resetPassword&oobCode=${encodeURIComponent(code)}`)); console.log('mail: reset link sent'); }
+      if (code) {
+        await deliver(
+          email,
+          EMAILS.resetPassword(email, `${base}reset-password/?mode=resetPassword&oobCode=${encodeURIComponent(code)}`),
+        );
+        console.log('mail: reset link sent');
+      }
       // no account with that email: answer the same way, so the form doesn't reveal who has an account
     }
     return out(200, { ok: true });

@@ -9,14 +9,15 @@ function buildRidge(R, hmin, hmax, col, haze, seed, N) {
   const pos = [],
     cols = [],
     idx = [];
-  const top = mix3(col, haze, 0.0),
-    c1 = [];
   for (let i = 0; i <= N; i++) {
     const a = (i / N) * TAU;
     const f =
       0.5 +
-      0.5 * (noise2(Math.cos(a) * 3 + seed, Math.sin(a) * 3 + seed) * 1.25 + noise2(Math.cos(a) * 11 + seed * 2, Math.sin(a) * 11) * 0.3);
-    const h = lerp(hmin, hmax, clamp(f, 0, 1)) + (Math.random() - 0.5) * R * 0.0032 + (Math.random() < 0.12 ? R * 0.0028 : 0);
+      0.5 *
+        (noise2(Math.cos(a) * 3 + seed, Math.sin(a) * 3 + seed) * 1.25 +
+          noise2(Math.cos(a) * 11 + seed * 2, Math.sin(a) * 11) * 0.3);
+    const h =
+      lerp(hmin, hmax, clamp(f, 0, 1)) + (Math.random() - 0.5) * R * 0.0032 + (Math.random() < 0.12 ? R * 0.0028 : 0);
     const x = PLAYER.x + Math.sin(a) * R,
       z = PLAYER.z - Math.cos(a) * R;
     pos.push(x, -80, z, x, h, z);

@@ -89,7 +89,10 @@ function atlasInject(cols, rows) {
 const ALPHA_FIX = `#include <map_fragment>
   {vec2 tdx=dFdx(vUv*TSIZE),tdy=dFdy(vUv*TSIZE);float lod=0.5*log2(max(max(dot(tdx,tdx),dot(tdy,tdy)),1e-6));diffuseColor.a*=1.0+max(lod,0.0)*0.34;}`;
 function alphaFix(sh, size) {
-  sh.fragmentShader = sh.fragmentShader.replace('#include <map_fragment>', ALPHA_FIX.replace(/TSIZE/g, size.toFixed(1)));
+  sh.fragmentShader = sh.fragmentShader.replace(
+    '#include <map_fragment>',
+    ALPHA_FIX.replace(/TSIZE/g, size.toFixed(1)),
+  );
 }
 function atlasMats(tex, cols, rows, alphaTest, side) {
   const m = new THREE.MeshLambertMaterial({ map: tex, alphaTest, side: side || THREE.FrontSide });
@@ -204,4 +207,19 @@ function buildInstanced(items, geo, mat, o = {}) {
   return group;
 }
 
-export { ALPHA_FIX, _col, _e, _m4, _p, _q, _s, alphaFix, atlasInject, atlasMats, buildInstanced, crossGeo, grassGeo, windInject };
+export {
+  ALPHA_FIX,
+  _col,
+  _e,
+  _m4,
+  _p,
+  _q,
+  _s,
+  alphaFix,
+  atlasInject,
+  atlasMats,
+  buildInstanced,
+  crossGeo,
+  grassGeo,
+  windInject,
+};

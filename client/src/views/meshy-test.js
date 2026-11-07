@@ -220,8 +220,7 @@ export async function startMeshyTest() {
   if (!bull || !bull.placed) return showCaption('meshy', 'No bull to compare with.');
   bull.M.root.updateMatrixWorld(true);
   const len = new THREE.Box3().setFromObject(bull.M.root).getSize(new THREE.Vector3()).x;
-  let rig = null,
-    hires = null;
+  let rig, hires;
   try {
     [rig, hires] = await Promise.all([load(riggedUrl), load(hiresUrl)]);
   } catch (err) {

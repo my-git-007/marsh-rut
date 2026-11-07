@@ -1,0 +1,79 @@
+# Cloud checks. They run on every push and pull request to main, and pages.yml runs them before every deploy,
+# so the game can't be published unless they pass.
+name: Security and Code Quality CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    name: Code quality
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run format:check
+      - run: npm run lint
+      - run: npm run check
+      - run: npm run test:mp
+      - run: npm run build
+
+  codeql:
+    name: CodeQL security scan
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: github/codeql-action/init@v4
+        with:
+          languages: javascript-typescript, python, actions
+      - uses: github/codeql-action/analyze@v4
+      # CodeQL reports what it finds but passes either way, so this is what makes a serious finding stop the run.
+      # It asks GitHub for open alerts, so an alert someone reviewed and dismissed as a false alarm doesn't block.
+      - name: Fail on open high or critical alerts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api --paginate "repos/$GITHUB_REPOSITORY/code-scanning/alerts?ref=$GITHUB_REF&state=open&per_page=100" \
+            --jq '.[] | select(.rule.security_severity_level == "high" or .rule.security_severity_level == "critical" or .rule.severity == "error") | "\(.rule.security_severity_level) \(.rule.id) \(.most_recent_instance.location.path):\(.most_recent_instance.location.start_line)"' > serious.txt
+          cat serious.txt
+          echo "Open serious alerts: $(wc -l < serious.txt)"
+          test ! -s serious.txt
+
+  # A second secret scan. GitHub's own secret scanning and push protection are always on for this repo.
+  # This one starts working once the repository secret GITGUARDIAN_API_KEY exists (free account at gitguardian.com).
+  gitguardian:
+    name: GitGuardian secret scan
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event_name == 'pull_request'
+    env:
+      GITGUARDIAN_API_KEY: ${{ secrets.GITGUARDIAN_API_KEY }}
+    steps:
+      - name: Skip when no key is set
+        if: env.GITGUARDIAN_API_KEY == ''
+        run: echo "::notice::GITGUARDIAN_API_KEY is not set, so the GitGuardian scan was skipped."
+      - uses: actions/checkout@v4
+        if: env.GITGUARDIAN_API_KEY != ''
+        with:
+          fetch-depth: 0
+      - uses: GitGuardian/ggshield-action@v1
+        if: env.GITGUARDIAN_API_KEY != ''
+        env:
+          GITHUB_PUSH_BEFORE_SHA: ${{ github.event.before }}
+          GITHUB_PUSH_BASE_SHA: ${{ github.event.base }}
+          GITHUB_PULL_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          GITHUB_DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}

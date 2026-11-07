@@ -18,8 +18,8 @@ const V = {
   ly: 0,
   prevFov: 62,
   started: false,
-  sens: 1,        // look sensitivity (Settings)
-  invert: false,  // invert up and down (Settings)
+  sens: 1, // look sensitivity (Settings)
+  invert: false, // invert up and down (Settings)
 };
 function setLook(dx, dy) {
   const k = 0.0022 * V.sens * (V.fov / 62);
@@ -45,7 +45,7 @@ canvas.addEventListener('mousedown', (e) => {
     if (!V.dragMode) {
       try {
         const r = canvas.requestPointerLock();
-        if (r && r.catch) r.catch(() => {});   // e.g. too soon after Esc: dragging still looks around; the next click tries again
+        if (r && r.catch) r.catch(() => {}); // e.g. too soon after Esc: dragging still looks around; the next click tries again
       } catch (err) {
         V.dragMode = true;
       }
@@ -59,9 +59,9 @@ document.addEventListener('mouseup', () => {
   V.drag = false;
 });
 document.addEventListener('pointerlockchange', () => {
-  V.locked = document.pointerLockElement === canvas;   // losing it while playing opens the pause menu (ui/menu.js)
+  V.locked = document.pointerLockElement === canvas; // losing it while playing opens the pause menu (ui/menu.js)
 });
-document.addEventListener('pointerlockerror', () => {});   // not captured this time; dragging with the button held still looks around
+document.addEventListener('pointerlockerror', () => {}); // not captured this time; dragging with the button held still looks around
 canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 window.addEventListener(
   'wheel',
@@ -85,7 +85,7 @@ window.addEventListener('keydown', (e) => {
     if (!e.repeat) startCall();
   } else if (e.code === 'Digit1' || e.code === 'Numpad1') setCallType('long');
   else if (e.code === 'Digit2' || e.code === 'Numpad2') setCallType('coax');
-  else if (e.code === 'KeyO' && !e.repeat) (UI.openMenu ? UI.openMenu('m-set') : toggleMixer());
+  else if (e.code === 'KeyO' && !e.repeat) UI.openMenu ? UI.openMenu('m-set') : toggleMixer();
   else if (e.code === 'KeyV' && !e.repeat) pour();
   else if (e.code === 'KeyB') toggleBinos();
   else if (e.code === 'KeyH') {
@@ -96,7 +96,7 @@ window.addEventListener('keydown', (e) => {
     UI.debugOn = !UI.debugOn;
     document.getElementById('debug').style.display = UI.debugOn ? 'block' : 'none';
   } else if ((e.code === 'KeyN' || e.code === 'KeyM') && UI.debugOn) {
-    NET.host && NET.host.cmd(e.code === 'KeyN' ? 'newBull' : 'secondBull');   // solo play only
+    NET.host && NET.host.cmd(e.code === 'KeyN' ? 'newBull' : 'secondBull'); // solo play only
   }
 });
 window.addEventListener('keyup', (e) => {

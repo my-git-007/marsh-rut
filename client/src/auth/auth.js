@@ -15,12 +15,15 @@ const CONFIG = {
 };
 export const FIREBASE = !!(CONFIG.apiKey && CONFIG.projectId);
 
-let fb = null, auth = null;
-async function load() {   // Firebase is only downloaded when there is a login screen to show
+let fb = null,
+  auth = null;
+async function load() {
+  // Firebase is only downloaded when there is a login screen to show
   if (auth) return;
   const [app, a] = await Promise.all([import('firebase/app'), import('firebase/auth')]);
-  fb = a; auth = a.getAuth(app.initializeApp(CONFIG));
-  auth.useDeviceLanguage();   // reset emails in the player's language
+  fb = a;
+  auth = a.getAuth(app.initializeApp(CONFIG));
+  auth.useDeviceLanguage(); // reset emails in the player's language
 }
 
 const MESSAGES = {
@@ -42,30 +45,48 @@ const MESSAGES = {
   'auth/invalid-action-code': 'This link has expired or has already been used.',
   'auth/expired-action-code': 'This link has expired.',
 };
-export const authMessage = (e) => MESSAGES[e && e.code] || 'Something went wrong' + (e && e.code ? ` (${e.code.replace('auth/', '')})` : '') + '. Try again.';
+export const authMessage = (e) =>
+  MESSAGES[e && e.code] ||
+  'Something went wrong' + (e && e.code ? ` (${e.code.replace('auth/', '')})` : '') + '. Try again.';
 
 // ---- the user, as the game sees it: { name, email, verified } or null ----
 // verified = they clicked the link in the confirmation email; the server only opens a marsh for them then.
 const DEV_KEY = 'marshrut-devuser';
 let devUser = null;
-const view = (u) => (u ? { name: u.displayName || (u.email || '').split('@')[0], email: u.email, verified: !!u.emailVerified } : null);
+const view = (u) =>
+  u ? { name: u.displayName || (u.email || '').split('@')[0], email: u.email, verified: !!u.emailVerified } : null;
 const devView = () => (devUser ? { name: devUser, email: '', verified: true } : null);
 // Firebase's own emails link to its plain page on marsh-rut.firebaseapp.com (this project isn't allowed to point
 // them at the game), so the game's server sends these emails itself (server/mail.js), with links that open the
 // game's own screens. If the server can't (not set up yet, or unreachable), Firebase sends them as before.
-const BACK = () => ({ url: new URL((document.body.dataset.root || './') + 'sign-in/', location.href).href.split(/[?#]/)[0] });   // Firebase's page offers a link back to the log-in page
+const BACK = () => ({
+  url: new URL((document.body.dataset.root || './') + 'sign-in/', location.href).href.split(/[?#]/)[0],
+}); // Firebase's page offers a link back to the log-in page
 const MAILER = (import.meta.env.VITE_SERVER_URL || '').replace(/^ws(s?):/, 'http$1:').replace(/\/+$/, '');
-async function gameMail(path, body, idToken) {   // -> true when the game's server sent it
+async function gameMail(path, body, idToken) {
+  // -> true when the game's server sent it
   if (!MAILER) return false;
   let r;
   try {
     r = await fetch(MAILER + path, {
-      method: 'POST', body: JSON.stringify(body || {}), signal: AbortSignal.timeout(15000),
+      method: 'POST',
+      body: JSON.stringify(body || {}),
+      signal: AbortSignal.timeout(15000),
       headers: { 'Content-Type': 'application/json', ...(idToken ? { Authorization: 'Bearer ' + idToken } : {}) },
     });
-  } catch (e) { return false; }
-  if (r.status === 429) { const e = new Error('Too many emails'); e.code = 'auth/too-many-requests'; throw e; }
-  if (r.status === 400) { const e = new Error('Bad email'); e.code = 'auth/invalid-email'; throw e; }
+  } catch (e) {
+    return false;
+  }
+  if (r.status === 429) {
+    const e = new Error('Too many emails');
+    e.code = 'auth/too-many-requests';
+    throw e;
+  }
+  if (r.status === 400) {
+    const e = new Error('Bad email');
+    e.code = 'auth/invalid-email';
+    throw e;
+  }
   // only a real 'sent' answer counts (an older server answers any address with a plain 200 page)
   const j = r.ok ? await r.json().catch(() => null) : null;
   return !!(j && j.ok === true);
@@ -73,18 +94,31 @@ async function gameMail(path, body, idToken) {   // -> true when the game's serv
 
 // A flag that this browser has someone logged in, readable before Firebase loads: the pages use it to avoid
 // showing the wrong screen for a moment (the log-in page and /hunting/).
-const flag = (on) => { try { if (on) localStorage.setItem('hl-in', '1'); else localStorage.removeItem('hl-in'); } catch (e) {} };
+const flag = (on) => {
+  try {
+    if (on) localStorage.setItem('hl-in', '1');
+    else localStorage.removeItem('hl-in');
+  } catch (e) {}
+};
 export async function watchUser(cb) {
   if (!FIREBASE) {
-    try { devUser = localStorage.getItem(DEV_KEY); } catch (e) {}
-    flag(!!devUser); cb(devView()); return;
+    try {
+      devUser = localStorage.getItem(DEV_KEY);
+    } catch (e) {}
+    flag(!!devUser);
+    cb(devView());
+    return;
   }
   await load();
-  fb.onAuthStateChanged(auth, (u) => { flag(!!u); cb(view(u)); });
+  fb.onAuthStateChanged(auth, (u) => {
+    flag(!!u);
+    cb(view(u));
+  });
 }
 export async function logIn(email, password) {
   if (!FIREBASE) return devLogIn(email);
-  await load(); await fb.signInWithEmailAndPassword(auth, email.trim(), password);
+  await load();
+  await fb.signInWithEmailAndPassword(auth, email.trim(), password);
 }
 export async function signUp(name, email, password) {
   if (!FIREBASE) return devLogIn(name);
@@ -92,35 +126,53 @@ export async function signUp(name, email, password) {
   const cred = await fb.createUserWithEmailAndPassword(auth, email.trim(), password);
   await fb.updateProfile(cred.user, { displayName: name.trim().slice(0, 24) });
   // they must click the link before they can play
-  if (!(await gameMail('/email/verify', { name: name.trim().slice(0, 24) }, await cred.user.getIdToken()))) await fb.sendEmailVerification(cred.user, BACK());
+  if (!(await gameMail('/email/verify', { name: name.trim().slice(0, 24) }, await cred.user.getIdToken())))
+    await fb.sendEmailVerification(cred.user, BACK());
 }
 // send the confirmation email again
 export async function resendConfirmation() {
   if (!FIREBASE) return;
-  await load(); const u = auth.currentUser; if (!u) return;
-  if (!(await gameMail('/email/verify', { name: u.displayName || '' }, await u.getIdToken()))) await fb.sendEmailVerification(u, BACK());
+  await load();
+  const u = auth.currentUser;
+  if (!u) return;
+  if (!(await gameMail('/email/verify', { name: u.displayName || '' }, await u.getIdToken())))
+    await fb.sendEmailVerification(u, BACK());
 }
 // after the player clicked the link (in another tab): ask Firebase again, and get a token that says so
 export async function recheckConfirmed() {
   if (!FIREBASE) return devView();
-  await load(); const u = auth.currentUser; if (!u) return null;
-  await u.reload(); if (u.emailVerified) await u.getIdToken(true);
+  await load();
+  const u = auth.currentUser;
+  if (!u) return null;
+  await u.reload();
+  if (u.emailVerified) await u.getIdToken(true);
   return view(u);
 }
 export async function resetPassword(email) {
   if (!FIREBASE) return;
   await load();
-  if (!(await gameMail('/email/reset', { email: email.trim() }))) await fb.sendPasswordResetEmail(auth, email.trim(), BACK());
+  if (!(await gameMail('/email/reset', { email: email.trim() })))
+    await fb.sendPasswordResetEmail(auth, email.trim(), BACK());
 }
 export async function logOut() {
   flag(false);
-  if (!FIREBASE) { devUser = null; try { localStorage.removeItem(DEV_KEY); } catch (e) {} return; }
-  await load(); await fb.signOut(auth);
+  if (!FIREBASE) {
+    devUser = null;
+    try {
+      localStorage.removeItem(DEV_KEY);
+    } catch (e) {}
+    return;
+  }
+  await load();
+  await fb.signOut(auth);
 }
 export const currentUser = () => (FIREBASE ? view(auth && auth.currentUser) : devView());
 // what the marsh server checks: a short-lived Firebase ID token (refreshed automatically)
 export async function getToken() {
-  if (!FIREBASE) { if (!devUser) throw new Error('Log in first.'); return devUser; }
+  if (!FIREBASE) {
+    if (!devUser) throw new Error('Log in first.');
+    return devUser;
+  }
   await load();
   const u = auth.currentUser;
   if (!u) throw new Error('Log in first.');
@@ -136,10 +188,13 @@ export async function getToken() {
 // /reset-password/ and /confirm-email/ ?mode=resetPassword|verifyEmail|recoverEmail&oobCode=...
 // (src/pages/account-pages.js handles them; old links to the site's root are forwarded by client/index.html).
 export function emailLink() {
-  const q = new URLSearchParams(location.search), mode = q.get('mode'), code = q.get('oobCode');
+  const q = new URLSearchParams(location.search),
+    mode = q.get('mode'),
+    code = q.get('oobCode');
   return FIREBASE && code && ['verifyEmail', 'resetPassword', 'recoverEmail'].includes(mode) ? { mode, code } : null;
 }
-export function forgetEmailLink() {   // so reloading the page doesn't use the link again
+export function forgetEmailLink() {
+  // so reloading the page doesn't use the link again
   const u = new URL(location.href);
   for (const k of ['mode', 'oobCode', 'apiKey', 'continueUrl', 'lang', 'tenantId']) u.searchParams.delete(k);
   history.replaceState(null, '', u.pathname + (u.search || '') + u.hash);
@@ -153,10 +208,21 @@ export async function useEmailCode(code) {
   if (auth.currentUser) await fb.signOut(auth);
   return (info.data && (info.data.email || info.data.previousEmail)) || '';
 }
-export async function checkResetCode(code) { await load(); return fb.verifyPasswordResetCode(auth, code); }   // -> email
-export async function setNewPassword(code, password) { await load(); await fb.confirmPasswordReset(auth, code, password); }
+export async function checkResetCode(code) {
+  await load();
+  return fb.verifyPasswordResetCode(auth, code);
+} // -> email
+export async function setNewPassword(code, password) {
+  await load();
+  await fb.confirmPasswordReset(auth, code, password);
+}
 function devLogIn(name) {
-  devUser = String(name || '').trim().slice(0, 24) || 'Hunter';
-  try { localStorage.setItem(DEV_KEY, devUser); } catch (e) {}
+  devUser =
+    String(name || '')
+      .trim()
+      .slice(0, 24) || 'Hunter';
+  try {
+    localStorage.setItem(DEV_KEY, devUser);
+  } catch (e) {}
   flag(true);
 }

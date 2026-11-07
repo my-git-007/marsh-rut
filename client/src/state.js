@@ -3,6 +3,9 @@
 import { PI } from '../../shared/util.js';
 
 export const Q = new URLSearchParams(location.search);
+// The published game (built with VITE_SERVER_URL) is online only, so every player logs in and passes the server's
+// private-beta check: ?solo, ?test=… and ?server=… work in local builds only.
+if (import.meta.env.VITE_SERVER_URL) for (const k of ['solo', 'test', 'server']) Q.delete(k);
 export const TEST = Q.get('test');
 
 // this player's stand (set when the host seats us)

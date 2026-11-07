@@ -13,7 +13,8 @@
 //   IDLE_MINUTES without the player touching mouse or keyboard closes their marsh · email must be confirmed
 //
 //   npm run server     PORT (8080), FIREBASE_PROJECT_ID, ALLOWED_ORIGINS, MAX_MARSHES (40), KEEP_MINUTES (5),
-//                      MAX_CONN_PER_IP (3), MAX_NEW_PER_IP (5), HTTP_PER_MIN (30), IDLE_MINUTES (10)
+//                      MAX_CONN_PER_IP (3), MAX_NEW_PER_IP (5), HTTP_PER_MIN (30), IDLE_MINUTES (10),
+//                      ALLOWED_PLAYERS (private beta: the emails that may play; a Fly secret; unset = everyone)
 //   GET /health  -> {"ok":true,"marshes":n,"players":n,...}
 //   MARSH_DEBUG=1 also serves GET /debug (every marsh's spotter readout) — leave it off in public.
 import http from 'http';
@@ -41,6 +42,14 @@ const MAX_NEW_PER_IP = num('MAX_NEW_PER_IP', 5);
 const HTTP_PER_MIN = num('HTTP_PER_MIN', 30);
 const IDLE_MS = num('IDLE_MINUTES', 10) * 60000 + num('IDLE_GRACE_S', 60) * 1000; // the browser logs an idle player out at 10 min; this is the backstop
 const BULL_NOW = env.MARSH_BULL_NOW === '1'; // tests: first bull right away
+// Private beta: only these accounts (emails, comma-separated) may play. Kept as a Fly secret so the addresses stay out
+// of this public repo (flyctl secrets set ALLOWED_PLAYERS=...). Empty or unset = every confirmed account may play.
+const ALLOWED_PLAYERS = new Set(
+  (env.ALLOWED_PLAYERS || '')
+    .split(',')
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean),
+);
 
 // The player's internet address. On Fly.io the proxy passes it in Fly-Client-IP (and the socket address is
 // the proxy's); elsewhere it is the socket address.
@@ -160,6 +169,11 @@ async function hello(c, msg) {
     who = await whoIs(msg.token);
   } catch (e) {
     return deny(c, 'login');
+  }
+  // beta first, so a non-tester isn't asked to confirm an email only to be refused afterwards; both must pass
+  if (ALLOWED_PLAYERS.size && !ALLOWED_PLAYERS.has(String(who.email || '').toLowerCase())) {
+    log(`x beta: refused ${who.uid.slice(0, 10)}`);
+    return deny(c, 'beta');
   }
   if (!who.verified) return deny(c, 'verify');
   if (c.ws.readyState !== 1) return;
@@ -322,6 +336,6 @@ setInterval(() => {
 
 server.listen(PORT, () =>
   log(
-    `Hunting LTD server on :${PORT} — private marshes, up to ${MAX_MARSHES}; login ${AUTH_OFF ? 'OFF (testing)' : 'Firebase'}; contact ${CONTACT_ON ? 'on' : 'off'}; account emails ${MAIL_ON ? 'on' : 'off (Firebase sends them)'}; notify list ${NOTIFY_ON ? 'on' : 'off'}; ${MAX_CONN_PER_IP} conn/address${DEBUG ? '; debug on' : ''}`,
+    `Hunting LTD server on :${PORT} — private marshes, up to ${MAX_MARSHES}; login ${AUTH_OFF ? 'OFF (testing)' : 'Firebase'}; contact ${CONTACT_ON ? 'on' : 'off'}; account emails ${MAIL_ON ? 'on' : 'off (Firebase sends them)'}; notify list ${NOTIFY_ON ? 'on' : 'off'}; beta lock ${ALLOWED_PLAYERS.size ? `ON (${ALLOWED_PLAYERS.size} player(s))` : 'off (everyone may play)'}; ${MAX_CONN_PER_IP} conn/address${DEBUG ? '; debug on' : ''}`,
   ),
 );

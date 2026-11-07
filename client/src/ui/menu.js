@@ -179,9 +179,9 @@ const inApp = () =>
   matchMedia('(display-mode: minimal-ui)').matches ||
   navigator.standalone === true;
 
-// the site's front door (the log-in page sends logged-in players on to the game)
+// the log-in page, which sends logged-in players on to the game (the site's root is the "Coming early 2027" page in beta)
 function gameUrl() {
-  return site('');
+  return site('sign-in');
 }
 export function shortcutFile(os = DEVICE.os, url = gameUrl()) {
   if (os === 'windows')

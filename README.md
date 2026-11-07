@@ -58,8 +58,10 @@ shared/            runs in the browser and on the server; no graphics or sound
 server/server.js   one private marsh per logged-in player, over WebSockets
 server/auth.js     checks the player's Firebase login token
 server/mail.js     account emails (confirm, reset) with links to the game's own pages, sent through Resend
+server/notify.js   the front page's "notify me" list, in SQLite (NOTIFY_DB; on Fly a volume at /data)
 client/            the browser game (Vite)
-  index.html                   log in: hunting.ltd/ (the front door; a logged-in player is sent on to the game)
+  index.html                   hunting.ltd/ while in beta: "Coming early 2027" and the "notify me" form
+  sign-in/index.html           log in: hunting.ltd/sign-in/ (a logged-in player is sent on to the game)
   create-account/index.html    hunting.ltd/create-account/, then /confirm-email/
   forgot-password/index.html   ask for a password reset link
   reset-password/index.html    where the reset email's link lands: choose a new password

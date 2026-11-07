@@ -24,6 +24,7 @@ import { TICK_HZ, SEND_EVERY, PROTOCOL_VERSION } from '../shared/protocol.js';
 import { whoIs, AUTH_OFF } from './auth.js';
 import { sendContact, CONTACT_ON } from './contact.js';
 import { handleMail, MAIL_ON } from './mail.js';
+import { handleNotify, NOTIFY_ON } from './notify.js';
 
 const env = process.env,
   num = (k, d) => (env[k] != null && env[k] !== '' && !isNaN(+env[k]) ? +env[k] : d);
@@ -87,6 +88,10 @@ const server = http.createServer((req, res) => {
     handleMail(req, res, ip, ORIGINS);
     return;
   } // account emails (server/mail.js)
+  if (req.url === '/notify') {
+    handleNotify(req, res, ip, ORIGINS);
+    return;
+  } // the front page's "notify me" list (server/notify.js)
   if (req.url === '/health') {
     let animals = 0;
     for (const m of marshes.values()) animals += m.sim.bodies.size;
@@ -317,6 +322,6 @@ setInterval(() => {
 
 server.listen(PORT, () =>
   log(
-    `Hunting LTD server on :${PORT} — private marshes, up to ${MAX_MARSHES}; login ${AUTH_OFF ? 'OFF (testing)' : 'Firebase'}; contact ${CONTACT_ON ? 'on' : 'off'}; account emails ${MAIL_ON ? 'on' : 'off (Firebase sends them)'}; ${MAX_CONN_PER_IP} conn/address${DEBUG ? '; debug on' : ''}`,
+    `Hunting LTD server on :${PORT} — private marshes, up to ${MAX_MARSHES}; login ${AUTH_OFF ? 'OFF (testing)' : 'Firebase'}; contact ${CONTACT_ON ? 'on' : 'off'}; account emails ${MAIL_ON ? 'on' : 'off (Firebase sends them)'}; notify list ${NOTIFY_ON ? 'on' : 'off'}; ${MAX_CONN_PER_IP} conn/address${DEBUG ? '; debug on' : ''}`,
   ),
 );

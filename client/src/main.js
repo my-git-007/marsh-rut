@@ -131,7 +131,7 @@ async function changedStand(you) {
 function startSession() {
   watchUser((u) => {
     if (!u) {
-      if (!leaving) location.replace(site(''));
+      if (!leaving) location.replace(site('sign-in'));
       return;
     }
     if (!u.verified) {
@@ -160,7 +160,7 @@ async function leaveTo(msg) {
   try {
     await logOut();
   } catch (e) {}
-  location.replace(site(''));
+  location.replace(site('sign-in'));
 }
 // Exit game (pause menu): online, leave the marsh and log out; offline, back to the start
 async function exitGame() {

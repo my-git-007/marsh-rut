@@ -4,6 +4,7 @@ dist/
 .DS_Store
 tools/_old/
 dist-dev/
+data/
 
 # ---- Security: never commit these ----
 # Passwords and API keys in environment files. Keep a blank .env.example instead.

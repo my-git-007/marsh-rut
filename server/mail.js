@@ -80,7 +80,7 @@ async function oobCode(requestType, email) {
 
 // ---- limits (per account, email and address) ----
 const hits = new Map();
-function allow(rules) {
+export function allow(rules) {
   // rules: [[key, n, ms]]; counts only if every rule allows it
   const now = Date.now();
   for (const [k, n, ms] of rules) if ((hits.get(k) || []).filter((t) => now - t < ms).length >= n) return false;
@@ -154,18 +154,19 @@ async function deliver(to, { subject, html, text }) {
 }
 
 // ---- HTTP: POST /email/verify (Authorization: Bearer <Firebase ID token>, body {name}) and POST /email/reset {email} ----
-const EMAIL_RE = /^[^\s@<>()",;:]+@[^\s@<>()",;:]+\.[^\s@<>()",;:]+$/;
-function body(req) {
+export const EMAIL_RE = /^[^\s@<>()",;:]+@[^\s@<>()",;:]+\.[^\s@<>()",;:]+$/;
+export function readBody(req) {
   return new Promise((resolve) => {
     let b = '',
       big = false;
     req.on('data', (d) => {
       b += d;
-      if (b.length > 2048) {
+      if (b.length > 2048 && !big) {
         big = true;
+        resolve(null);
         req.destroy();
       }
-    });
+    }); // too big: drop the connection
     req.on('end', () => {
       try {
         resolve(big ? null : JSON.parse(b || '{}'));
@@ -174,6 +175,7 @@ function body(req) {
       }
     });
     req.on('error', () => resolve(null));
+    req.on('close', () => resolve(null)); // no-op if already answered
   });
 }
 export async function handleMail(req, res, ip, origins) {
@@ -202,7 +204,7 @@ export async function handleMail(req, res, ip, origins) {
   const kind = req.url === '/email/verify' ? 'verifyEmail' : req.url === '/email/reset' ? 'resetPassword' : '';
   if (!kind) return out(404, { ok: false });
   if (!MAIL_ON) return out(503, { ok: false, reason: 'off' });
-  const b = await body(req);
+  const b = await readBody(req);
   if (!b || typeof b !== 'object') return out(400, { ok: false, reason: 'invalid' });
   const base = GAME_ORIGINS.includes(origin) ? origin + '/' : GAME;
   try {

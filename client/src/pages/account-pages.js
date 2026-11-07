@@ -1,5 +1,5 @@
 // The account pages, one folder each with an index.html (the game itself is /hunting/):
-//   /                   log in (client/index.html)
+//   /sign-in/           log in (the site's root is the "Coming early 2027" page while the game is in beta)
 //   /create-account/    create an account, then /confirm-email/
 //   /forgot-password/   ask for a reset link
 //   /reset-password/    the reset email's link lands here: choose a new password
@@ -183,7 +183,7 @@ function note(title, text, button, then) {
   say('');
   setTimeout(() => $('nt-go').focus(), 0);
 }
-const toLogin = (email, msg) => () => go(site(''), { email, msg, kind: 'ok' });
+const toLogin = (email, msg) => () => go(site('sign-in'), { email, msg, kind: 'ok' });
 // the first answer from Firebase about who is logged in on this browser
 const firstUser = () =>
   new Promise((resolve) => {
@@ -284,7 +284,7 @@ const PAGES = {
       if (!check(emailRules('fp-email'))) return;
       const email = $('fp-email').value.trim();
       if (await act(submitBtn(form), () => resetPassword(email), 'f-forgot')) {
-        go(site(''), {
+        go(site('sign-in'), {
           email,
           msg: `If there’s an account for ${email}, we’ve sent a link to choose a new password. Check your spam folder too.`,
           kind: 'ok',
@@ -367,7 +367,7 @@ const PAGES = {
     // waiting for the player to click the link (in this browser, on a phone, anywhere): check every few seconds
     const c = carried(),
       u = await firstUser();
-    if (!u) return location.replace(site(''));
+    if (!u) return location.replace(site('sign-in'));
     if (u.verified) return location.replace(site('hunting'));
     $('vf-email').textContent = u.email;
     show('v-verify');
@@ -391,7 +391,7 @@ const PAGES = {
       if (!me && !leaving) {
         leaving = true;
         clearInterval(poll);
-        go(site(''), { email: u.email, msg: 'Email confirmed? Sign in to play the game.', kind: 'ok' });
+        go(site('sign-in'), { email: u.email, msg: 'Email confirmed? Sign in to play the game.', kind: 'ok' });
       }
     });
     $('vf-resend').addEventListener('click', async (e) => {
@@ -403,7 +403,7 @@ const PAGES = {
       leaving = true;
       clearInterval(poll);
       await logOut();
-      go(site(''));
+      go(site('sign-in'));
     });
   },
 };

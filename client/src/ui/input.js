@@ -66,7 +66,7 @@ canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 window.addEventListener(
   'wheel',
   (e) => {
-    if (!V.started || UI.paused) return;
+    if (!V.started || UI.paused || popupOpen()) return;
     e.preventDefault();
     V.fovT = clamp(V.fovT * Math.pow(1.0016, e.deltaY * (e.deltaMode === 1 ? 33 : 1)), 1.5, 70);
   },
@@ -78,8 +78,13 @@ function toggleBinos() {
     V.fovT = 7;
   } else V.fovT = V.prevFov > 20 ? V.prevFov : 62;
 }
+const popupOpen = () => !!document.querySelector('dialog[open]'); // a start-screen pop-up (ui/start-screen.js)
 window.addEventListener('keydown', (e) => {
   if (!V.started || UI.paused || (e.target && e.target.closest && e.target.closest('input,select,textarea'))) return;
+  if (popupOpen()) {
+    if (e.code === 'KeyH' && UI.toggleHowto) UI.toggleHowto(); // H closes the instructions again
+    return;
+  }
   if (e.code === 'Space') {
     e.preventDefault();
     if (!e.repeat) startCall();
@@ -89,9 +94,7 @@ window.addEventListener('keydown', (e) => {
   else if (e.code === 'KeyV' && !e.repeat) pour();
   else if (e.code === 'KeyB') toggleBinos();
   else if (e.code === 'KeyH') {
-    UI.helpOn = !UI.helpOn;
-    document.getElementById('start').style.display = UI.helpOn ? 'flex' : 'none';
-    document.getElementById('go').textContent = 'Back to the stand';
+    if (UI.toggleHowto) UI.toggleHowto(); // the Game Play Instructions pop-up
   } else if (e.code === 'KeyG') {
     UI.debugOn = !UI.debugOn;
     document.getElementById('debug').style.display = UI.debugOn ? 'block' : 'none';
@@ -129,7 +132,6 @@ function toggleMixer(show) {
   } else el.hidden = true;
 }
 document.getElementById('mixclose').addEventListener('click', () => toggleMixer(false));
-document.getElementById('mixopen').addEventListener('click', () => toggleMixer(true));
 function showMsg(t, ms = 5000) {
   const m = document.getElementById('msg');
   m.textContent = t;

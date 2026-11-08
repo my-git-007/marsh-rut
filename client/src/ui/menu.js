@@ -38,7 +38,7 @@ function show(v) {
   view = v;
   for (const id of VIEWS) $(id).hidden = id !== v;
   if (v === 'm-loc') buildStands();
-  if (v === 'm-set') buildSettings();
+  if (v === 'm-set') prepSettings('set', 'm-mix');
   if (v === 'm-contact') prepContact();
   if (v === 'm-icon') prepIcon();
   const first = $(v).querySelector(
@@ -333,14 +333,16 @@ function saveFile() {
 }
 
 // ---- settings ----
-function buildSettings() {
-  const box = $('m-mix');
+// The settings controls, here in the pause menu (prefix "set") and in the start screen's Game Settings pop-up
+// ("gs", ui/start-screen.js): fill them with the current values, and wire them up once.
+export function prepSettings(p, mixBox) {
+  const box = $(mixBox);
   box.innerHTML = '';
   for (const [k, label] of MIX_KEYS) {
     const v = Math.round(MIX[k] * 100),
       row = document.createElement('div');
     row.className = 'srow';
-    row.innerHTML = `<label for="set-mix-${k}">${label}</label><input type="range" id="set-mix-${k}" min="0" max="150" step="5" value="${v}"><output for="set-mix-${k}">${v}%</output>`;
+    row.innerHTML = `<label for="${p}-mix-${k}">${label}</label><input type="range" id="${p}-mix-${k}" min="0" max="150" step="5" value="${v}"><output for="${p}-mix-${k}">${v}%</output>`;
     const inp = row.querySelector('input'),
       out = row.querySelector('output');
     inp.addEventListener('input', () => {
@@ -349,9 +351,20 @@ function buildSettings() {
     });
     box.appendChild(row);
   }
-  $('set-sens').value = Math.round(V.sens * 100);
-  $('set-sens-out').textContent = Math.round(V.sens * 100) + '%';
-  $('set-invert').checked = !!V.invert;
+  $(p + '-sens').value = Math.round(V.sens * 100);
+  $(p + '-sens-out').textContent = Math.round(V.sens * 100) + '%';
+  $(p + '-invert').checked = !!V.invert;
+}
+export function wireSettings(p) {
+  $(p + '-sens').addEventListener('input', (e) => {
+    V.sens = e.target.value / 100;
+    $(p + '-sens-out').textContent = e.target.value + '%';
+    saveLook();
+  });
+  $(p + '-invert').addEventListener('change', (e) => {
+    V.invert = e.target.checked;
+    saveLook();
+  });
 }
 
 // ---- contact ----
@@ -448,15 +461,7 @@ export function initMenu(o = {}) {
   document.querySelector('#menu [data-go="m-icon"]').addEventListener('click', () => {
     if (installEvt && !DEVICE.phone) install();
   });
-  $('set-sens').addEventListener('input', (e) => {
-    V.sens = e.target.value / 100;
-    $('set-sens-out').textContent = e.target.value + '%';
-    saveLook();
-  });
-  $('set-invert').addEventListener('change', (e) => {
-    V.invert = e.target.checked;
-    saveLook();
-  });
+  wireSettings('set');
   $('f-contact').addEventListener('submit', sendContact);
   for (const id of ['ct-name', 'ct-email', 'ct-message'])
     $(id).addEventListener('input', () => {

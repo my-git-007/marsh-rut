@@ -22,6 +22,7 @@ import { updateCallLabel } from './calls.js';
 import { LocalHost, RemoteHost } from './net/hosts.js';
 import { watchIdle } from './ui/idle.js';
 import { initMenu, note as menuNote } from './ui/menu.js';
+import './ui/start-screen.js'; // builds the start screen, with #go and #pstand, before the code below runs
 import { getToken, watchUser, logOut } from './auth/auth.js';
 import { site } from './site.js';
 import { handleEvent, updateViews } from './views/world-events.js';
@@ -41,8 +42,10 @@ window.__marsh = { NET, PLAYER, ANIMALS, G, V, UI, A }; // for tests and the con
 const SERVER = Q.has('solo') ? '' : Q.get('server') || import.meta.env.VITE_SERVER_URL || '';
 const SHOWCASE = Q.has('showcase') || /showcase/.test(location.hash);
 const go = document.getElementById('go');
+// progress while the marsh builds (#loadmsg), then The Marsh's button: Go hunting, Walking in…, Climb into the stand
 const st = (t) => {
   go.textContent = t;
+  document.getElementById('loadmsg').textContent = t;
 };
 const netMsg = (t) => {
   document.getElementById('netmsg').textContent = t || '';
@@ -84,10 +87,10 @@ async function init() {
   const sel = document.getElementById('pstand');
   sel.innerHTML = STANDS.map((s) => `<option value="${s.i}">${s.name}</option>`).join('');
   try {
-    sel.value = localStorage.getItem('marshrut-stand') || '0';
+    sel.value = Q.has('stand') ? Q.get('stand') : localStorage.getItem('marshrut-stand') || '0';
   } catch (e) {}
   if (SERVER && !TEST) {
-    st('Into the marsh');
+    st('Go hunting');
     go.disabled = false;
     built = true;
     reveal();
@@ -113,7 +116,7 @@ async function init() {
     });
   } else {
     await seat(new LocalHost({ log: !!TEST }), 'You', Q.has('stand') ? +Q.get('stand') : 0);
-    st('Climb into the stand');
+    st('Go hunting');
     go.disabled = false;
     built = true;
     reveal();
@@ -149,7 +152,7 @@ function startSession() {
     }
     USER = u;
     document.getElementById('in-name').textContent = u.name;
-    document.getElementById('in-email').textContent = u.email ? `(${u.email})` : '';
+    document.getElementById('in-email').textContent = u.email || '';
     if (!NET.host) document.getElementById('acct').hidden = false;
     reveal();
   }).catch((e) => {
@@ -245,7 +248,7 @@ async function joinOnline() {
     return true;
   } catch (e) {
     netMsg(e.message);
-    st('Into the marsh');
+    st('Go hunting');
     go.disabled = false;
     return false;
   }
@@ -290,6 +293,25 @@ go.addEventListener('click', async () => {
     st('Climb into the stand');
     go.disabled = false;
     document.getElementById('acct').hidden = true;
+    document.getElementById('pstand').disabled = true; // seated now; the stand is changed from the Esc menu
+    return;
+  }
+  // solo (this tab's own marsh, seated at load): a different stand picked in The Marsh's list is its own step,
+  // like walking in online, so this click doesn't run out before the mouse is captured
+  const pstand = document.getElementById('pstand');
+  const want = +pstand.value || 0;
+  if (NET.host.local && !V.started && want !== PLAYER.stand) {
+    go.disabled = true;
+    st('Walking in…');
+    try {
+      await changedStand(await NET.host.moveTo(want));
+      netMsg(`You are in the ${STANDS[PLAYER.stand].name} stand.`);
+    } catch (e) {
+      netMsg(e.message || 'Couldn’t move to that stand.');
+    }
+    pstand.value = String(PLAYER.stand);
+    st('Climb into the stand');
+    go.disabled = false;
     return;
   }
   audioInit();

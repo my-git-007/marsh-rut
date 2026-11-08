@@ -64,65 +64,105 @@
             <img src="../badge.jpg" alt="Hunting LTD" width="920" height="460"
           /></picture>
         </h1>
+        <p id="loadmsg" role="status">Generating marsh…</p>
         <div id="acct" hidden>
-          <div id="v-in" class="af">
+          <div id="v-in">
             <p class="who">
-              Logged in as <b id="in-name"></b> <span id="in-email"></span> · <a href="#" id="logout">Log out</a>
+              Logged in as <b id="in-name"></b> <span id="in-email"></span> – <a href="#" id="logout">Log out</a>
             </p>
-            <div class="field inline">
-              <label for="pstand">Stand</label
-              ><select id="pstand"></select>
-            </div>
           </div>
         </div>
-        <div id="netmsg"></div>
-        <button id="go" disabled>Generating marsh…</button><button id="mixopen" type="button">Sound levels</button>
-        <div id="howto">
-          <table>
-            <tr>
-              <td>Mouse</td>
-              <td>Look around</td>
-            </tr>
-            <tr>
-              <td>Wheel</td>
-              <td>Zoom; past ~3× you raise the binoculars</td>
-            </tr>
-            <tr>
-              <td>Right click / B</td>
-              <td>Snap binoculars up or down</td>
-            </tr>
-            <tr>
-              <td>1 / 2</td>
-              <td>
-                Choose your call: 1 long cow call (carries far, for a bull you can’t see) · 2 short coaxing call (for a
-                bull you can see)
-              </td>
-            </tr>
-            <tr>
-              <td>Space</td>
-              <td>Make the call: one of your recordings of that type plays start to finish</td>
-            </tr>
-            <tr>
-              <td>O</td>
-              <td>Sound levels: your calls, moose, birds &amp; wildlife, wind, forest, effects</td>
-            </tr>
-            <tr>
-              <td>V</td>
-              <td>Water pour (a cow urinating, a classic close-in trick)</td>
-            </tr>
-            <tr>
-              <td>H / G</td>
-              <td>Toggle this help / spotter debug readout</td>
-            </tr>
-          </table>
-          <p>
-            Reach a far bull with long calls. When he stops on his way in, a coaxing call gets him moving again. Call
-            again within 30 seconds and you’re calling too often. Inside 75 yards, any call or pour gives you away. Keep
-            the wind in your face: the dial is bottom left.
-          </p>
+        <div id="grounds">
+          <h2 class="grounds-h">Choose your hunting grounds</h2>
+          <!-- one section per location, built by src/ui/start-screen.js from src/locations.js -->
+          <div id="locs"></div>
+          <div class="start-foot">
+            <button type="button" class="foot-btn" id="open-howto">Game Play Instructions</button>
+            <button type="button" class="foot-btn" id="open-settings">Game Settings</button>
+          </div>
         </div>
       </div>
     </div>
+    <!-- the start screen's pop-ups (src/ui/start-screen.js); H opens the instructions in the marsh too -->
+    <dialog class="dlg" id="dlg-loc" aria-labelledby="dl-title">
+      <button type="button" class="dlg-x" aria-label="Close">×</button>
+      <h2 id="dl-title"></h2>
+      <img id="dl-img" class="dl-img" alt="" width="133" height="160" />
+      <p id="dl-about"></p>
+      <p id="dl-status" class="dl-status"></p>
+    </dialog>
+    <dialog class="dlg" id="dlg-settings" aria-labelledby="gs-title">
+      <button type="button" class="dlg-x" aria-label="Close">×</button>
+      <h2 id="gs-title">Game Settings</h2>
+      <h3>Sound levels</h3>
+      <div id="gs-mix" class="srows"></div>
+      <h3>Looking around</h3>
+      <div class="srows">
+        <div class="srow">
+          <label for="gs-sens">Look sensitivity</label
+          ><input type="range" id="gs-sens" min="25" max="250" step="5" /><output
+            for="gs-sens"
+            id="gs-sens-out"
+          ></output>
+        </div>
+        <label class="check"><input type="checkbox" id="gs-invert" /> Invert up and down</label>
+      </div>
+      <p class="dlg-foot">
+        Settings are saved on this device. In the marsh, Esc opens the menu, with these settings too.
+      </p>
+    </dialog>
+    <dialog class="dlg" id="dlg-howto" aria-labelledby="hw-title">
+      <button type="button" class="dlg-x" aria-label="Close">×</button>
+      <h2 id="hw-title">Game Play Instructions</h2>
+      <div id="howto">
+        <table>
+          <tr>
+            <td>Mouse</td>
+            <td>Look around</td>
+          </tr>
+          <tr>
+            <td>Wheel</td>
+            <td>Zoom; past ~3× you raise the binoculars</td>
+          </tr>
+          <tr>
+            <td>Right click / B</td>
+            <td>Snap binoculars up or down</td>
+          </tr>
+          <tr>
+            <td>1 / 2</td>
+            <td>
+              Choose your call: 1 long cow call (carries far, for a bull you can’t see) · 2 short coaxing call (for a
+              bull you can see)
+            </td>
+          </tr>
+          <tr>
+            <td>Space</td>
+            <td>Make the call: one of your recordings of that type plays start to finish</td>
+          </tr>
+          <tr>
+            <td>O</td>
+            <td>Sound levels: your calls, moose, birds &amp; wildlife, wind, forest, effects</td>
+          </tr>
+          <tr>
+            <td>V</td>
+            <td>Water pour (a cow urinating, a classic close-in trick)</td>
+          </tr>
+          <tr>
+            <td>H / G</td>
+            <td>Open or close these instructions / spotter debug readout</td>
+          </tr>
+          <tr>
+            <td>Esc</td>
+            <td>Pause menu: change stand, settings, contact, exit</td>
+          </tr>
+        </table>
+        <p>
+          Reach a far bull with long calls. When he stops on his way in, a coaxing call gets him moving again. Call
+          again within 30 seconds and you’re calling too often. Inside 75 yards, any call or pour gives you away. Keep
+          the wind in your face: the dial is bottom left.
+        </p>
+      </div>
+    </dialog>
     <div id="menu" hidden role="dialog" aria-modal="true" aria-labelledby="m-title">
       <div class="mcard">
         <section id="m-main" class="af mview">

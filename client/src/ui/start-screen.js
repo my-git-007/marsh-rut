@@ -1,5 +1,5 @@
-// The game's start screen (client/hunting/): "Choose your hunting grounds", one picture button per location with
-// its details link, stand list and Go hunting button, then Game Play Instructions and Game Settings at the bottom.
+// The game's start screen (client/hunting/): How to play and Game Settings at the top, then "Choose your hunting
+// grounds" with one picture button per location (details link, stand list, Go hunting), then who's logged in.
 // Built when this module loads, before src/main.js looks up #go and #pstand (The Marsh's button and stand list).
 // The pop-ups are <dialog>s in hunting/index.html. In the marsh, H opens the instructions (UI.toggleHowto).
 import { LOCATIONS, SOON_STANDS } from '../locations.js';
@@ -28,7 +28,6 @@ function buildGrid() {
     <p class="loc-detail"><span class="loc-arrow" aria-hidden="true">&gt;</span> <button type="button" class="loc-more">Location details</button></p>
     <label class="loc-lab" for="${sel}">Choose your stand location:</label>
     <div class="loc-row"><select id="${sel}">${stands}</select>${go}</div>
-    ${l.open ? '' : '<p class="loc-soon">Coming soon</p>'}
     ${marsh ? '<div id="netmsg" role="status"></div>' : ''}
   </div>
 </section>`;

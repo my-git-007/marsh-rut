@@ -94,7 +94,7 @@ window.addEventListener('keydown', (e) => {
   else if (e.code === 'KeyV' && !e.repeat) pour();
   else if (e.code === 'KeyB') toggleBinos();
   else if (e.code === 'KeyH') {
-    if (UI.toggleHowto) UI.toggleHowto(); // the Game Play Instructions pop-up
+    if (UI.toggleHowto) UI.toggleHowto(); // the How to play pop-up
   } else if (e.code === 'KeyG') {
     UI.debugOn = !UI.debugOn;
     document.getElementById('debug').style.display = UI.debugOn ? 'block' : 'none';

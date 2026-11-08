@@ -233,7 +233,9 @@ canvas#c {
   text-transform: uppercase;
   color: #e8d9a6;
 }
+/* "Logged in as ... – Log out" at the very bottom */
 #acct .who {
+  margin: 34px 0 0;
   text-align: center;
 }
 #acct #in-email {
@@ -395,19 +397,13 @@ canvas#c {
   opacity: 0.45;
   cursor: not-allowed;
 }
-.loc-soon {
-  margin: 0;
-  font-size: 12px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--dim);
-}
-.start-foot {
+/* How to play and Game Settings, just under the logo */
+.start-btns {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
   gap: 14px;
-  margin: 34px 0 4px;
+  margin: 0 0 4px;
 }
 .foot-btn {
   min-height: 42px;

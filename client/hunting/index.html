@@ -65,20 +65,20 @@
           /></picture>
         </h1>
         <p id="loadmsg" role="status">Generating marsh…</p>
+        <div id="grounds">
+          <div class="start-btns">
+            <button type="button" class="foot-btn" id="open-howto">How to play</button>
+            <button type="button" class="foot-btn" id="open-settings">Game Settings</button>
+          </div>
+          <h2 class="grounds-h">Choose your hunting grounds</h2>
+          <!-- one section per location, built by src/ui/start-screen.js from src/locations.js -->
+          <div id="locs"></div>
+        </div>
         <div id="acct" hidden>
           <div id="v-in">
             <p class="who">
               Logged in as <b id="in-name"></b> <span id="in-email"></span> – <a href="#" id="logout">Log out</a>
             </p>
-          </div>
-        </div>
-        <div id="grounds">
-          <h2 class="grounds-h">Choose your hunting grounds</h2>
-          <!-- one section per location, built by src/ui/start-screen.js from src/locations.js -->
-          <div id="locs"></div>
-          <div class="start-foot">
-            <button type="button" class="foot-btn" id="open-howto">Game Play Instructions</button>
-            <button type="button" class="foot-btn" id="open-settings">Game Settings</button>
           </div>
         </div>
       </div>
@@ -113,7 +113,7 @@
     </dialog>
     <dialog class="dlg" id="dlg-howto" aria-labelledby="hw-title">
       <button type="button" class="dlg-x" aria-label="Close">×</button>
-      <h2 id="hw-title">Game Play Instructions</h2>
+      <h2 id="hw-title">How to play</h2>
       <div id="howto">
         <table>
           <tr>

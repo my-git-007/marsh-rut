@@ -221,14 +221,9 @@ canvas#c {
 #start:not(.loading) #loadmsg {
   display: none;
 }
+/* the card is no wider than the logo, which runs edge to edge across its top */
 #start .card {
-  max-width: 940px;
-}
-/* a smaller badge here than on the account pages, so the locations start higher up */
-#start .brand picture {
-  display: block;
   max-width: 560px;
-  margin: 0 auto;
 }
 #loadmsg {
   margin: 4px 0 8px;
@@ -253,13 +248,12 @@ canvas#c {
   letter-spacing: 0.04em;
   color: #f2cf9d;
 }
-/* one column of locations, centred in the card */
+/* one column of locations, set in from the card's edge */
 #locs {
   display: grid;
   grid-template-columns: 1fr;
   gap: 28px;
-  max-width: 620px;
-  margin: 0 auto;
+  padding-left: 14px;
 }
 .loc {
   display: grid;

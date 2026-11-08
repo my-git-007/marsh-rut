@@ -233,6 +233,12 @@ canvas#c {
   border: 1px solid var(--line);
   margin-left: 8px;
 }
+/* while the marsh builds (hunting/index.html): just the logo and the progress button */
+#start.loading #howto,
+#start.loading #mixopen,
+#start.loading #acct {
+  display: none;
+}
 #paused {
   position: fixed;
   left: 50%;

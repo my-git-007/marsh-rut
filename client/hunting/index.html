@@ -54,7 +54,9 @@
       <div id="help">H · controls &nbsp; O · sound</div>
     </div>
     <div id="paused">CLICK TO RESUME</div>
-    <div id="start">
+    <!-- "loading": only the logo and the progress button show until the marsh is built and (online) the player is
+         known, so the card appears once, complete. src/main.js removes it. -->
+    <div id="start" class="loading">
       <div class="card">
         <h1 class="brand">
           <picture

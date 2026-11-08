@@ -51,7 +51,12 @@ const tick = () => new Promise((r) => setTimeout(r, 0));
 let sky = null,
   grassBuilt = false,
   USER = null,
-  leaving = false;
+  leaving = false,
+  built = false;
+// show the whole start card at once, when the marsh is built and (online) we know who is playing
+const reveal = () => {
+  if (built && (USER || !SERVER || TEST)) document.getElementById('start').classList.remove('loading');
+};
 
 async function init() {
   if (SERVER && !TEST) startSession(); // online: who is playing (checked while the marsh builds)
@@ -84,6 +89,8 @@ async function init() {
   if (SERVER && !TEST) {
     st('Into the marsh');
     go.disabled = false;
+    built = true;
+    reveal();
     watchIdle({
       onWarn: (s) => {
         if (!USER) return;
@@ -108,6 +115,8 @@ async function init() {
     await seat(new LocalHost({ log: !!TEST }), 'You', Q.has('stand') ? +Q.get('stand') : 0);
     st('Climb into the stand');
     go.disabled = false;
+    built = true;
+    reveal();
   }
   initMenu({ online: !!(SERVER && !TEST), user: () => USER, onMoved: changedStand, onExit: exitGame });
   requestAnimationFrame(loop);
@@ -142,7 +151,11 @@ function startSession() {
     document.getElementById('in-name').textContent = u.name;
     document.getElementById('in-email').textContent = u.email ? `(${u.email})` : '';
     if (!NET.host) document.getElementById('acct').hidden = false;
-  }).catch((e) => netMsg(e.message));
+    reveal();
+  }).catch((e) => {
+    netMsg(e.message);
+    document.getElementById('start').classList.remove('loading'); // don't leave the card half-shown
+  });
   document.getElementById('logout').addEventListener('click', (e) => {
     e.preventDefault();
     leaveTo('');

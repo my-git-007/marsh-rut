@@ -109,7 +109,7 @@ ${lines.map(p).join('\n')}
 ${p(esc(after))}${extra}
 <p style="margin:0 0 22px;font:13px/1.5 Helvetica,Arial,sans-serif;color:#6e5a44">If the button doesn't work, copy this link into your browser:<br><a href="${esc(link)}" style="color:#8f5d2e;word-break:break-all">${esc(link)}</a></p>
 </td></tr>
-<tr><td style="padding:14px 30px 22px;border-top:1px solid #e3d3b5;font:12px/1.5 Helvetica,Arial,sans-serif;color:#8a7458">Hunting LTD · <a href="${esc(GAME)}" style="color:#8f5d2e">hunting.ltd</a> · Questions? Just reply to this email.</td></tr>
+<tr><td style="padding:14px 30px 22px;border-top:1px solid #e3d3b5;font:12px/1.5 Helvetica,Arial,sans-serif;color:#8a7458">Hunting LTD · <a href="${esc(GAME)}" style="color:#8f5d2e">hunting.ltd</a> · Questions? Reply to this email or write to <a href="mailto:${esc(REPLY_TO)}" style="color:#8f5d2e">${esc(REPLY_TO)}</a>.</td></tr>
 </table></td></tr></table></body></html>`;
 }
 export const EMAILS = {
@@ -156,7 +156,7 @@ export const EMAILS = {
       after: 'If you didn’t ask for this, ignore this email and you won’t hear from us again.',
       extra: `<p style="margin:0 0 16px;font:14px/1.55 Helvetica,Arial,sans-serif;color:#6e5a44">Changed your mind later? <a href="${esc(removeLink)}" style="color:#8f5d2e">Remove my email from the list</a>.</p>`,
     }),
-    text: `Someone (we hope you) asked us to email ${email} when Hunting LTD goes live.\n\nOpen this link to confirm. We'll only use this address to tell you about the launch:\n\n${link}\n\nIf you didn't ask for this, ignore this email and you won't hear from us again.\n\nChanged your mind later? Remove your email from the list:\n${removeLink}\n\nHunting LTD · ${GAME}`,
+    text: `Someone (we hope you) asked us to email ${email} when Hunting LTD goes live.\n\nOpen this link to confirm. We'll only use this address to tell you about the launch:\n\n${link}\n\nIf you didn't ask for this, ignore this email and you won't hear from us again.\n\nChanged your mind later? Remove your email from the list:\n${removeLink}\n\nHunting LTD · ${GAME} · ${REPLY_TO}`,
   }),
 };
 // where links in emails point: the site the request came from when it's one of the game's own, else GAME_URL

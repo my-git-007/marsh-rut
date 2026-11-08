@@ -241,8 +241,15 @@ canvas#c {
 #acct #in-email {
   color: var(--ink);
 }
+/* the bull moose between the buttons and the heading, about the size of the location pictures */
+#grounds .hero {
+  display: block;
+  width: 150px;
+  height: 150px;
+  margin: 32px auto 0;
+}
 .grounds-h {
-  margin: 36px 0 30px;
+  margin: 28px 0 30px;
   text-align: center;
   font:
     normal 28px/1.2 Georgia,

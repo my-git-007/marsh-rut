@@ -22,11 +22,11 @@ function buildGrid() {
       ? '<button type="button" id="go" class="hunt" disabled>Go hunting</button>'
       : '<button type="button" class="hunt" disabled title="Coming soon">Go hunting</button>';
     return `<section class="loc" data-loc="${l.id}" aria-labelledby="ln-${l.id}">
-  <h3 class="loc-name" id="ln-${l.id}">${esc(l.name)}</h3>
   <button type="button" class="loc-pic" aria-pressed="false" aria-label="Choose ${esc(l.name)}"><img src="${pic(l)}" alt="" width="133" height="160" loading="lazy"></button>
   <div class="loc-side">
-    <button type="button" class="loc-more">Location details</button>
-    <label class="loc-lab" for="${sel}">Stand location</label>
+    <h3 class="loc-name" id="ln-${l.id}">${esc(l.name)}</h3>
+    <p class="loc-detail"><span class="loc-arrow" aria-hidden="true">&gt;</span> <button type="button" class="loc-more">Location details</button></p>
+    <label class="loc-lab" for="${sel}">Choose your stand location:</label>
     <div class="loc-row"><select id="${sel}">${stands}</select>${go}</div>
     ${l.open ? '' : '<p class="loc-soon">Coming soon</p>'}
     ${marsh ? '<div id="netmsg" role="status"></div>' : ''}

@@ -253,15 +253,18 @@ canvas#c {
   letter-spacing: 0.04em;
   color: #f2cf9d;
 }
+/* one column of locations, centred in the card */
 #locs {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 28px 34px;
+  grid-template-columns: 1fr;
+  gap: 28px;
+  max-width: 620px;
+  margin: 0 auto;
 }
 .loc {
   display: grid;
   grid-template-columns: 124px 1fr;
-  grid-template-areas: 'name name' 'pic side';
+  grid-template-areas: 'pic side';
   gap: 10px 16px;
   align-items: start;
   font:
@@ -271,9 +274,9 @@ canvas#c {
     Roboto,
     sans-serif;
 }
+/* the name sits level with the top of the picture, above the details link */
 .loc-name {
-  grid-area: name;
-  margin: 0;
+  margin: -3px 0 2px;
   font:
     normal 19px/1.25 Georgia,
     serif;
@@ -329,7 +332,13 @@ canvas#c {
   text-decoration: underline;
   text-underline-offset: 3px;
   cursor: pointer;
-  margin-bottom: 8px;
+}
+.loc-detail {
+  margin: 0 0 8px;
+  color: #f2cf9d;
+}
+.loc-arrow {
+  margin-right: 2px;
 }
 .loc-more:hover {
   color: #f9e2bc;
@@ -345,7 +354,7 @@ canvas#c {
 }
 .loc-lab {
   font-size: 14px;
-  color: var(--dim);
+  color: #fff;
 }
 .loc-row {
   display: flex;
@@ -423,11 +432,6 @@ canvas#c {
 .foot-btn:hover {
   border-color: #f2cf9d;
   background: rgba(242, 207, 157, 0.08);
-}
-@media (max-width: 760px) {
-  #locs {
-    grid-template-columns: 1fr;
-  }
 }
 /* the pop-ups */
 .dlg {

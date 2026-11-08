@@ -1,0 +1,168 @@
+/* The screen after logging in (client/play/, src/pages/play.js): the lake picture behind, the card as wide as the
+   logo, four small pictures in a row (My Character, Gear, Range, Cabin), a line, then the animals two to a row with
+   Bear centred under them. Every picture has a gold glow on hover, keyboard focus or once picked. */
+body {
+  background: #0b0c0a url(./lake.jpg) center 55% / cover no-repeat;
+}
+#start .card {
+  max-width: 560px;
+}
+/* until we know who is logged in: just the logo */
+#start.loading #hub {
+  display: none;
+}
+
+.tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  text-decoration: none;
+  cursor: pointer;
+}
+.tile .pic {
+  display: block;
+  overflow: hidden;
+  border-radius: 12%;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+  filter: brightness(0.85);
+  transition:
+    box-shadow 0.15s,
+    filter 0.15s,
+    transform 0.15s;
+}
+.tile img {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.tile:hover .pic,
+.tile:focus-visible .pic,
+.tile[aria-pressed='true'] .pic {
+  filter: brightness(1.08);
+  transform: translateY(-2px);
+  box-shadow:
+    0 0 0 2px #ffc93c,
+    0 0 14px 3px rgba(255, 184, 28, 0.75),
+    0 0 30px 6px rgba(255, 160, 0, 0.35);
+}
+.tile:focus-visible {
+  outline: none;
+}
+.tile .lab {
+  text-align: center;
+  font:
+    14px/1.3 system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    sans-serif;
+  color: var(--ink);
+}
+.tile:hover .lab,
+.tile[aria-pressed='true'] .lab {
+  color: #f2cf9d;
+}
+
+/* My Character, Gear, Range, Cabin: one row, small, with room between them */
+.tools {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin: 8px 0 0;
+  justify-items: center;
+}
+.tool .pic {
+  width: 88px;
+  height: 88px;
+}
+.tool .lab {
+  font-size: 13px;
+}
+
+.sep {
+  margin: 34px 0 0;
+  border: 0;
+  border-top: 1px solid rgba(198, 144, 91, 0.45);
+}
+.hub-h {
+  margin: 32px 0 28px;
+  text-align: center;
+  font:
+    normal 28px/1.2 Georgia,
+    serif;
+  letter-spacing: 0.04em;
+  color: #f2cf9d;
+}
+
+/* the animals: two to a row, the size of the hunting-ground pictures; Bear alone and centred on the last row */
+.game {
+  display: grid;
+  grid-template-columns: repeat(2, 124px);
+  justify-content: center;
+  gap: 36px 72px;
+}
+.animal .pic {
+  width: 124px;
+  height: 124px;
+}
+.animal .lab {
+  font:
+    normal 17px/1.25 Georgia,
+    serif;
+}
+.animal.wide {
+  grid-column: 1 / -1;
+  justify-self: center;
+}
+
+.playmsg {
+  margin: 0;
+  text-align: center;
+  font-size: 15px;
+  color: #fbd3c6;
+}
+.playmsg:empty {
+  display: none;
+}
+.soon {
+  min-height: 1.4em;
+  margin: 22px 0 0;
+  text-align: center;
+  font-size: 14px;
+  color: #f2cf9d;
+}
+.who {
+  margin: 30px 0 0;
+  text-align: center;
+  font-size: 15px;
+  color: var(--dim);
+}
+.who b {
+  color: var(--ink);
+  font-weight: 600;
+}
+.who a {
+  color: #f2cf9d;
+}
+
+@media (max-width: 520px) {
+  .tools {
+    gap: 10px;
+  }
+  .tool .pic {
+    width: 64px;
+    height: 64px;
+  }
+  .tool .lab {
+    font-size: 12px;
+  }
+  .game {
+    column-gap: 40px;
+  }
+}

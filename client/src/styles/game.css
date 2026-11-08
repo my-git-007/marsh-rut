@@ -404,6 +404,17 @@ canvas#c {
   opacity: 0.45;
   cursor: not-allowed;
 }
+/* back to the screen before (/play/: what do you want to hunt?) */
+.back-hub {
+  display: inline-block;
+  margin: 0 0 6px;
+  font-size: 14px;
+  color: #f2cf9d;
+  text-underline-offset: 3px;
+}
+.back-hub:hover {
+  color: #f9e2bc;
+}
 /* How to play and Game Settings, just under the logo */
 .start-btns {
   display: flex;

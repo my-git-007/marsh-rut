@@ -15,7 +15,8 @@ export default defineConfig({
     assetsInlineLimit: 0,
     chunkSizeWarningLimit: 2000,
     // one page per screen, each a folder with an index.html (hunting.ltd/create-account/ ...): the account pages
-    // (light, a still picture of the lake) and the game (/hunting/). The root is the "Coming early 2027" page while
+    // (light, a still picture of the lake), the screen after logging in (/play/: what do you want to hunt?) and the
+    // moose game (/hunting/). The root is the "Coming early 2027" page while
     // the game is in beta; log in is /sign-in/.
     rollupOptions: {
       input: Object.fromEntries(
@@ -28,6 +29,7 @@ export default defineConfig({
             'forgot-password',
             'reset-password',
             'confirm-email',
+            'play',
             'hunting',
           ].map((n) => [n, n + '/index.html']),
         ].map(([k, f]) => [k, resolve(__dirname, 'client', f)]),

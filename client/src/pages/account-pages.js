@@ -1,4 +1,4 @@
-// The account pages, one folder each with an index.html (the game itself is /hunting/):
+// The account pages, one folder each with an index.html (after logging in: /play/, then the moose game /hunting/):
 //   /sign-in/           log in (the site's root is the "Coming early 2027" page while the game is in beta)
 //   /create-account/    create an account, then /confirm-email/
 //   /forgot-password/   ask for a reset link
@@ -196,11 +196,12 @@ const firstUser = () =>
     }).catch(() => resolve(null));
   });
 
-// Fetch the game in the background while the player is on the log-in page, so entering the marsh is quick.
+// Fetch the next screen (/play/) in the background while the player is on the log-in page; /play/ in turn fetches
+// the game, so entering the marsh is quick.
 function prefetchGame() {
   setTimeout(async () => {
     try {
-      const game = site('hunting'),
+      const game = site('play'),
         html = await (await fetch(game)).text();
       for (const [, href] of html.matchAll(/(?:src|href)="((?:\.\.?\/)+assets\/[^"]+\.(?:js|css))"/g)) {
         const l = document.createElement('link');
@@ -231,7 +232,7 @@ const PAGES = {
         sessionStorage.setItem(CARRY, JSON.stringify({ email: $('li-email').value.trim() }));
       } catch (e) {}
     });
-    const enter = (u) => location.replace(u.verified ? site('hunting') : site('confirm-email'));
+    const enter = (u) => location.replace(u.verified ? site('play') : site('confirm-email'));
     // already logged in on this browser: straight on (the root page hid the card while we find out)
     const u = await firstUser();
     if (u) return enter(u);
@@ -251,7 +252,7 @@ const PAGES = {
             msg: 'Your email isn’t confirmed yet. Open the link in the email we sent you, or send it again below.',
             kind: 'err',
           });
-        else location.replace(site('hunting'));
+        else location.replace(site('play'));
       }
     });
   },
@@ -368,7 +369,7 @@ const PAGES = {
     const c = carried(),
       u = await firstUser();
     if (!u) return location.replace(site('sign-in'));
-    if (u.verified) return location.replace(site('hunting'));
+    if (u.verified) return location.replace(site('play'));
     $('vf-email').textContent = u.email;
     show('v-verify');
     if (c.msg) say(c.msg, c.kind || 'ok');

@@ -1,7 +1,7 @@
 // The game's start screen (client/hunting/): Back, How to play and Game Settings at the top, then "Choose your
 // hunting grounds" with one picture button per location (details link, Go hunting), then who's logged in.
-// One spot per location for now: The Marsh always starts at the South knoll stand.
-// Built when this module loads, before src/main.js looks up #go (The Marsh's button).
+// One spot per location for now: Grassland Marsh always starts at the South knoll stand.
+// Built when this module loads, before src/main.js looks up #go (Grassland Marsh's button).
 // The pop-ups are <dialog>s in hunting/index.html. In the marsh, H opens the instructions (UI.toggleHowto).
 import { LOCATIONS } from '../locations.js';
 import { canvas } from '../render/core.js';

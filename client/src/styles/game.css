@@ -723,51 +723,6 @@ a.hunt {
   color: #dcefc9;
   background: rgba(185, 221, 154, 0.1);
 }
-.ic-tile {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  margin: 4px auto 0;
-  font:
-    600 14px system-ui,
-    -apple-system,
-    'Segoe UI',
-    Roboto,
-    sans-serif;
-  color: var(--ink);
-}
-.ic-tile img {
-  border-radius: 14px;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
-}
-#ic-desk:not([hidden]),
-#ic-phone:not([hidden]) {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-#ic-desk .lead,
-#ic-phone .lead {
-  margin: 0;
-}
-#ic-desk .secondary {
-  margin-top: 0;
-}
-.steps {
-  margin: 0;
-  padding-left: 22px;
-  font:
-    15px/1.55 system-ui,
-    -apple-system,
-    'Segoe UI',
-    Roboto,
-    sans-serif;
-  color: var(--ink);
-}
-.steps li + li {
-  margin-top: 6px;
-}
 .mmsg.info {
   border-color: var(--sand);
   color: var(--ink);

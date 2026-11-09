@@ -1,7 +1,7 @@
 // The hunting grounds on the game's start screen (client/hunting/), in the order they are shown: two to a row.
 // Only The Marsh is built so far; the others show their picture and details, and open when their map is made.
-// open: true = "Go hunting" works. stands: the choices in its "Stand location" list (The Marsh uses the real
-// stands from shared/world.js instead). Pictures are in client/public/locations/.
+// open: true = "Go hunting" works. One spot per location for now (The Marsh: the South knoll stand).
+// name is also used in messages, e.g. "You’ve left The Marsh." Pictures are in client/public/locations/.
 export const LOCATIONS = [
   {
     id: 'yukon-mountain-valley',

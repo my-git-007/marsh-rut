@@ -25,6 +25,7 @@ import { initMenu, note as menuNote } from './ui/menu.js';
 import './ui/start-screen.js'; // builds the start screen, with #go, before the code below runs
 import { getToken, watchUser, logOut } from './auth/auth.js';
 import { site } from './site.js';
+import { LOCATIONS } from './locations.js';
 import { handleEvent, updateViews } from './views/world-events.js';
 import { ANIMALS, G, NET, PLAYER, Q, TEST, UI, bearingOf } from './state.js';
 
@@ -116,24 +117,10 @@ async function init() {
     built = true;
     reveal();
   }
-  initMenu({ online: !!(SERVER && !TEST), user: () => USER, onMoved: changedStand, onExit: exitGame });
+  initMenu({ online: !!(SERVER && !TEST), user: () => USER, onChangeLocation: changeLocation, onExit: exitGame });
   requestAnimationFrame(loop);
 }
 
-// Change location (pause menu): the host has moved this hunter; move the camera and regrow the grass around the new stand
-async function changedStand(you) {
-  Object.assign(PLAYER, { stand: you.stand, x: you.x, z: you.z, y: you.y, eye: you.eye, yaw: you.yaw });
-  camera.position.set(PLAYER.x, PLAYER.eye, PLAYER.z);
-  V.yaw = PLAYER.yaw;
-  V.pitch = -0.035;
-  try {
-    localStorage.setItem('marshrut-stand', String(you.stand));
-  } catch (e) {}
-  await tick();
-  buildGrass();
-  renderer.shadowMap.needsUpdate = true;
-  UI.redraw = true;
-}
 // The game page needs a logged-in player with a confirmed email; anyone else goes to the account pages.
 function startSession() {
   watchUser((u) => {
@@ -160,6 +147,9 @@ function startSession() {
   });
 }
 // leave the marsh, log out and go to the log-in page, with a message for it
+// the hunting grounds this page is playing, for messages like "You've left The Marsh." (only The Marsh is built so
+// far; when other maps open, this becomes the one picked on the start screen)
+const HERE = LOCATIONS.find((l) => l.id === 'the-marsh').name;
 async function leaveTo(msg) {
   leaving = true;
   try {
@@ -173,9 +163,18 @@ async function leaveTo(msg) {
   } catch (e) {}
   location.replace(site('sign-in'));
 }
+// Change location (pause menu): leave the marsh and reload this page, which opens on its own Choose your hunting
+// grounds (the moose screen here; each animal's screen works the same way). Still logged in.
+function changeLocation() {
+  leaving = true;
+  try {
+    if (NET.host && NET.host.leave) NET.host.leave();
+  } catch (e) {}
+  location.replace(location.pathname);
+}
 // Exit game (pause menu): online, leave the marsh and log out; offline, back to the start
 async function exitGame() {
-  if (SERVER && !TEST) return leaveTo('You’ve left the marsh. Log in to go back.');
+  if (SERVER && !TEST) return leaveTo(`You’ve left ${HERE}. Log in to go back.`);
   location.reload();
 }
 
@@ -225,7 +224,7 @@ async function seat(host, name, stand) {
 // 10 minutes without touching mouse or keyboard: log out, close the marsh, and start over at the login screen
 async function idleLogout() {
   if (leaving) return;
-  leaveTo('You were logged out after 10 minutes without activity. Log in to go back to the marsh.');
+  leaveTo(`You were logged out after 10 minutes without activity. Log in to go back to ${HERE}.`);
 }
 
 async function joinOnline() {

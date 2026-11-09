@@ -36,6 +36,14 @@ body {
     filter 0.15s,
     transform 0.15s;
 }
+/* pictures whose gold frame has rounder (Gear, Range, Cabin) or tighter (Moose) corners: the clip and the hover
+   glow follow the frame, so its corners aren't cut off */
+.tile .pic.round {
+  border-radius: 19%;
+}
+.tile .pic.tight {
+  border-radius: 10%;
+}
 .tile img {
   display: block;
   width: 100%;

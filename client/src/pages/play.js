@@ -1,4 +1,4 @@
-// The screen after logging in (client/play/): My Character, Gear, Range and Cabin, then "What do you want to hunt?".
+// The screen after logging in (client/play/): My Character, Gear, Range and Cabin, then "Choose the animal to hunt.".
 // Only Moose leads anywhere yet (a plain link to /hunting/, the moose screen); the others are picked (gold frame) and
 // say they are coming soon. Needs a logged-in player with a confirmed email, like the game itself.
 import { watchUser, logOut } from '../auth/auth.js';

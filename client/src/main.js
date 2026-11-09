@@ -43,7 +43,7 @@ window.__marsh = { NET, PLAYER, ANIMALS, G, V, UI, A }; // for tests and the con
 const SERVER = Q.has('solo') ? '' : Q.get('server') || import.meta.env.VITE_SERVER_URL || '';
 const SHOWCASE = Q.has('showcase') || /showcase/.test(location.hash);
 const go = document.getElementById('go');
-// The Marsh's button: progress while the marsh builds, then Go hunting (online: Walking in… while it joins).
+// Grassland Marsh's button: progress while the marsh builds, then Go hunting (online: Walking in… while it joins).
 // (Above it, #loadmsg says "Loading moose hunting grounds. Stand by..." until the card appears.)
 const st = (t) => {
   go.textContent = t;
@@ -147,7 +147,7 @@ function startSession() {
   });
 }
 // leave the marsh, log out and go to the log-in page, with a message for it
-// the hunting grounds this page is playing, for messages like "You've left The Marsh." (only The Marsh is built so
+// the hunting grounds this page is playing, for messages like "You've left Grassland Marsh." (only Grassland Marsh is built so
 // far; when other maps open, this becomes the one picked on the start screen)
 const HERE = LOCATIONS.find((l) => l.id === 'the-marsh').name;
 async function leaveTo(msg) {
@@ -229,7 +229,7 @@ async function idleLogout() {
 
 async function joinOnline() {
   if (!USER) return false;
-  const stand = 0; // one spot per location for now: The Marsh's South knoll stand
+  const stand = 0; // one spot per location for now: Grassland Marsh's South knoll stand
   go.disabled = true;
   st('Walking in…');
   netMsg('Opening your marsh…');

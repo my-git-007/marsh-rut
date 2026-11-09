@@ -42,10 +42,10 @@ window.__marsh = { NET, PLAYER, ANIMALS, G, V, UI, A }; // for tests and the con
 const SERVER = Q.has('solo') ? '' : Q.get('server') || import.meta.env.VITE_SERVER_URL || '';
 const SHOWCASE = Q.has('showcase') || /showcase/.test(location.hash);
 const go = document.getElementById('go');
-// progress while the marsh builds (#loadmsg), then The Marsh's button: Go hunting, Walking in…, Climb into the stand
+// The Marsh's button: progress while the marsh builds, then Go hunting, Walking in…, Climb into the stand.
+// (Above it, #loadmsg says "Loading moose hunting grounds. Stand by..." until the card appears.)
 const st = (t) => {
   go.textContent = t;
-  document.getElementById('loadmsg').textContent = t;
 };
 const netMsg = (t) => {
   document.getElementById('netmsg').textContent = t || '';

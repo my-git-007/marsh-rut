@@ -294,7 +294,7 @@ canvas#c {
 }
 .loc {
   display: grid;
-  grid-template-columns: 124px 1fr;
+  grid-template-columns: 150px 1fr;
   grid-template-areas: 'pic side';
   gap: 10px 18px;
   align-items: start;
@@ -305,9 +305,9 @@ canvas#c {
     Roboto,
     sans-serif;
 }
-/* the name sits level with the top of the picture, above the details link */
+/* the name, details link and Go hunting sit a little below the top of the picture */
 .loc-name {
-  margin: -3px 0 2px;
+  margin: 0 0 2px;
   font:
     normal 19px/1.25 Georgia,
     serif;
@@ -317,8 +317,8 @@ canvas#c {
 .loc-pic {
   grid-area: pic;
   display: block;
-  width: 124px;
-  aspect-ratio: 133 / 160;
+  width: 150px;
+  aspect-ratio: 1; /* square: the picture fills the width and loses a little at top and bottom */
   padding: 0;
   border: 3px solid #4a4843;
   border-radius: 16px;
@@ -353,6 +353,7 @@ canvas#c {
   align-items: flex-start;
   gap: 10px;
   min-width: 0;
+  padding-top: 14px;
 }
 .loc-more {
   padding: 0;
@@ -403,6 +404,12 @@ canvas#c {
   cursor: pointer;
   white-space: nowrap;
 }
+/* Go hunting: 10% bigger than the basic gold button */
+.loc-row .hunt {
+  height: 37.4px;
+  padding: 0 15.4px;
+  font-size: 15.4px;
+}
 /* Back is a link that looks like the buttons */
 a.hunt {
   display: inline-flex;
@@ -439,6 +446,20 @@ a.hunt {
   white-space: normal;
 }
 @media (max-width: 520px) {
+  /* phones: smaller squares, so the name and Go hunting still fit beside them */
+  #locs {
+    padding-left: 0;
+  }
+  .loc {
+    grid-template-columns: 112px 1fr;
+    column-gap: 14px;
+  }
+  .loc-pic {
+    width: 112px;
+  }
+  .loc-side {
+    padding-top: 8px;
+  }
   .start-btns {
     gap: 8px;
   }

@@ -22,7 +22,7 @@ import { updateCallLabel } from './calls.js';
 import { LocalHost, RemoteHost } from './net/hosts.js';
 import { watchIdle } from './ui/idle.js';
 import { initMenu, note as menuNote } from './ui/menu.js';
-import './ui/start-screen.js'; // builds the start screen, with #go and #pstand, before the code below runs
+import './ui/start-screen.js'; // builds the start screen, with #go, before the code below runs
 import { getToken, watchUser, logOut } from './auth/auth.js';
 import { site } from './site.js';
 import { handleEvent, updateViews } from './views/world-events.js';
@@ -42,7 +42,7 @@ window.__marsh = { NET, PLAYER, ANIMALS, G, V, UI, A }; // for tests and the con
 const SERVER = Q.has('solo') ? '' : Q.get('server') || import.meta.env.VITE_SERVER_URL || '';
 const SHOWCASE = Q.has('showcase') || /showcase/.test(location.hash);
 const go = document.getElementById('go');
-// The Marsh's button: progress while the marsh builds, then Go hunting, Walking in…, Climb into the stand.
+// The Marsh's button: progress while the marsh builds, then Go hunting (online: Walking in… while it joins).
 // (Above it, #loadmsg says "Loading moose hunting grounds. Stand by..." until the card appears.)
 const st = (t) => {
   go.textContent = t;
@@ -84,11 +84,6 @@ async function init() {
   layoutBinoc();
   onResize();
   updateCallLabel();
-  const sel = document.getElementById('pstand');
-  sel.innerHTML = STANDS.map((s) => `<option value="${s.i}">${s.name}</option>`).join('');
-  try {
-    sel.value = Q.has('stand') ? Q.get('stand') : localStorage.getItem('marshrut-stand') || '0';
-  } catch (e) {}
   if (SERVER && !TEST) {
     st('Go hunting');
     go.disabled = false;
@@ -235,10 +230,7 @@ async function idleLogout() {
 
 async function joinOnline() {
   if (!USER) return false;
-  const stand = +document.getElementById('pstand').value || 0;
-  try {
-    localStorage.setItem('marshrut-stand', String(stand));
-  } catch (e) {}
+  const stand = 0; // one spot per location for now: The Marsh's South knoll stand
   go.disabled = true;
   st('Walking in…');
   netMsg('Opening your marsh…');
@@ -288,32 +280,8 @@ function setupTest() {
 }
 
 go.addEventListener('click', async () => {
-  if (!NET.host) {
-    if (!(await joinOnline())) return;
-    st('Climb into the stand');
-    go.disabled = false;
-    document.getElementById('acct').hidden = true;
-    document.getElementById('pstand').disabled = true; // seated now; the stand is changed from the Esc menu
-    return;
-  }
-  // solo (this tab's own marsh, seated at load): a different stand picked in The Marsh's list is its own step,
-  // like walking in online, so this click doesn't run out before the mouse is captured
-  const pstand = document.getElementById('pstand');
-  const want = +pstand.value || 0;
-  if (NET.host.local && !V.started && want !== PLAYER.stand) {
-    go.disabled = true;
-    st('Walking in…');
-    try {
-      await changedStand(await NET.host.moveTo(want));
-      netMsg(`You are in the ${STANDS[PLAYER.stand].name} stand.`);
-    } catch (e) {
-      netMsg(e.message || 'Couldn’t move to that stand.');
-    }
-    pstand.value = String(PLAYER.stand);
-    st('Climb into the stand');
-    go.disabled = false;
-    return;
-  }
+  // online: join this player's marsh first (Walking in…), then straight into it
+  if (!NET.host && !(await joinOnline())) return;
   audioInit();
   if (A.ctx.state === 'suspended') A.ctx.resume();
   document.getElementById('start').style.display = 'none';
@@ -324,12 +292,10 @@ go.addEventListener('click', async () => {
   }
   try {
     const r = canvas.requestPointerLock();
-    if (r && r.catch)
-      r.catch(() => {
-        V.dragMode = true;
-      });
+    // refused, e.g. joining took too long after the click: the next click on the marsh captures the mouse
+    if (r && r.catch) r.catch(() => showMsg('Click the marsh to look around. Hold Space to call.', 8000));
   } catch (e) {
-    V.dragMode = true;
+    V.dragMode = true; // no mouse capture in this browser: drag to look around
   }
 });
 function onResize() {

@@ -1,8 +1,9 @@
-// The game's start screen (client/hunting/): How to play and Game Settings at the top, then "Choose your hunting
-// grounds" with one picture button per location (details link, stand list, Go hunting), then who's logged in.
-// Built when this module loads, before src/main.js looks up #go and #pstand (The Marsh's button and stand list).
+// The game's start screen (client/hunting/): Back, How to play and Game Settings at the top, then "Choose your
+// hunting grounds" with one picture button per location (details link, Go hunting), then who's logged in.
+// One spot per location for now: The Marsh always starts at the South knoll stand.
+// Built when this module loads, before src/main.js looks up #go (The Marsh's button).
 // The pop-ups are <dialog>s in hunting/index.html. In the marsh, H opens the instructions (UI.toggleHowto).
-import { LOCATIONS, SOON_STANDS } from '../locations.js';
+import { LOCATIONS } from '../locations.js';
 import { canvas } from '../render/core.js';
 import { UI } from '../state.js';
 import { V, showMsg } from './input.js';
@@ -16,8 +17,6 @@ function buildGrid() {
   const box = $('locs');
   box.innerHTML = LOCATIONS.map((l) => {
     const marsh = l.id === 'the-marsh';
-    const sel = marsh ? 'pstand' : `st-${l.id}`;
-    const stands = marsh ? '' : SOON_STANDS.map((s) => `<option>${esc(s)}</option>`).join('');
     const go = marsh
       ? '<button type="button" id="go" class="hunt" disabled>Go hunting</button>'
       : '<button type="button" class="hunt" disabled title="Coming soon">Go hunting</button>';
@@ -26,8 +25,7 @@ function buildGrid() {
   <div class="loc-side">
     <h3 class="loc-name" id="ln-${l.id}">${esc(l.name)}</h3>
     <p class="loc-detail"><span class="loc-arrow" aria-hidden="true">&gt;</span> <button type="button" class="loc-more">Location details</button></p>
-    <label class="loc-lab" for="${sel}">Choose your stand location:</label>
-    <div class="loc-row"><select id="${sel}">${stands}</select>${go}</div>
+    <div class="loc-row">${go}</div>
     ${marsh ? '<div id="netmsg" role="status"></div>' : ''}
   </div>
 </section>`;
@@ -38,19 +36,19 @@ function buildGrid() {
     s.querySelector('.loc-more').addEventListener('click', () => details(l));
   }
 }
-// picking a picture marks that location as chosen (the gold frame stays) and moves to its stand list
+// picking a picture marks that location as chosen (the gold frame stays) and moves to its Go hunting button
 function choose(sec) {
   for (const b of document.querySelectorAll('#locs .loc-pic')) b.setAttribute('aria-pressed', 'false');
   sec.querySelector('.loc-pic').setAttribute('aria-pressed', 'true');
-  const sel = sec.querySelector('select');
-  if (sel && !sel.disabled) sel.focus();
+  const go = sec.querySelector('.hunt');
+  if (go && !go.disabled) go.focus();
 }
 function details(l) {
   $('dl-title').textContent = l.name;
   $('dl-img').src = pic(l);
   $('dl-about').textContent = l.about;
   $('dl-status').textContent = l.open
-    ? 'Open now. Pick a stand and press Go hunting.'
+    ? 'Open now. Press Go hunting.'
     : 'This location is still being built. It will open in a later update.';
   open('dlg-loc');
 }

@@ -376,38 +376,16 @@ canvas#c {
   text-decoration-thickness: 2px;
 }
 .loc-more:focus-visible,
-.loc-side select:focus-visible,
 .hunt:focus-visible,
-.foot-btn:focus-visible,
 .dlg-x:focus-visible {
   outline: 2px solid #f2cf9d;
   outline-offset: 2px;
-}
-.loc-lab {
-  font-size: 14px;
-  color: #fff;
 }
 .loc-row {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
-}
-.loc-side select {
-  height: 34px;
-  min-width: 140px;
-  max-width: 100%;
-  padding: 0 8px;
-  font: inherit;
-  font-size: 14px;
-  color: var(--ink);
-  background: rgba(8, 6, 3, 0.55);
-  border: 1px solid rgba(198, 144, 91, 0.4);
-  border-radius: 5px;
-  cursor: pointer;
-}
-.loc-side select option {
-  background: #16140f;
 }
 .hunt {
   height: 34px;
@@ -425,6 +403,13 @@ canvas#c {
   cursor: pointer;
   white-space: nowrap;
 }
+/* Back is a link that looks like the buttons */
+a.hunt {
+  display: inline-flex;
+  align-items: center;
+  box-sizing: border-box;
+  text-decoration: none;
+}
 .hunt:hover:not([disabled]) {
   background: linear-gradient(180deg, #f9e2bc, #d29d66);
 }
@@ -432,42 +417,13 @@ canvas#c {
   opacity: 0.45;
   cursor: not-allowed;
 }
-/* back to the screen before (/play/: what do you want to hunt?) */
-.back-hub {
-  display: inline-block;
-  margin: 0 0 6px;
-  font-size: 14px;
-  color: #f2cf9d;
-  text-underline-offset: 3px;
-}
-.back-hub:hover {
-  color: #f9e2bc;
-}
-/* How to play and Game Settings, just under the logo */
+/* Back, How to play and Game Settings, just under the logo: the same gold buttons as Go hunting */
 .start-btns {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
   gap: 14px;
   margin: 10px 0 4px;
-}
-.foot-btn {
-  min-height: 42px;
-  padding: 8px 20px;
-  font:
-    14px Georgia,
-    serif;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--ink);
-  background: transparent;
-  border: 1px solid rgba(198, 144, 91, 0.55);
-  border-radius: 5px;
-  cursor: pointer;
-}
-.foot-btn:hover {
-  border-color: #f2cf9d;
-  background: rgba(242, 207, 157, 0.08);
 }
 /* the pop-ups */
 .dlg {

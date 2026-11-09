@@ -53,5 +53,3 @@ export const LOCATIONS = [
       'A stream winding through an alpine valley in fall colour, with mountains on both sides. Bulls follow the water, and the stream masks your sound as you move.',
   },
 ];
-// placeholder stand choices for the grounds that aren't built yet
-export const SOON_STANDS = ['Stand 1', 'Stand 2', 'Stand 3'];

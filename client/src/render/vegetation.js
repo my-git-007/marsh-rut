@@ -15,7 +15,8 @@ import {
   nearestStandDist,
 } from '../../../shared/world.js';
 import { PLAYER, TEST } from '../state.js';
-import { atlasMats, buildInstanced, crossGeo, grassGeo, windInject } from './billboards.js';
+import { atlasMats, buildInstanced, crossGeo, grassGeo, hideInstance, windInject } from './billboards.js';
+import { buildPlants3D, plants3dWanted } from './plants3d.js';
 import { C, SUN_DIR, scene } from './core.js';
 import { T } from './textures.js';
 
@@ -241,14 +242,70 @@ function buildForest() {
     items.push({ x, y: groundAt(x, z) - 0.2, z, rot: rand(0, TAU), sx: h * TT[t].w * rand(1, 1.4), sy: h, tile: t });
   }
   const { m, d } = atlasMats(T.trees, 4, 2, 0.45);
-  buildInstanced(items, crossGeo(3, 0.55), m, { cell: 140, tile: true, cast: true, depth: d });
+  buildInstanced(items, crossGeo(3, 0.55), m, { cell: 140, tile: true, cast: true, depth: d, track: FOREST.track });
+  FOREST.items = items;
+  FOREST.near = near;
   buildNearTrees(near);
 }
+// the card forest, remembered so the 3D plants can take the place of the spruce near the hunter
+const FOREST = { items: [], near: [], track: new Map(), nearTrack: new Map(), shrubTrack: new Map() };
 // willow and alder clumps: the layout is shared and seeded (the bulls thrash these), so every player sees the same bushes
 function buildShrubs() {
   const { m, d } = atlasMats(T.bush, 2, 1, 0.4);
-  buildInstanced(SHRUBS, crossGeo(3, 0.7), m, { cell: 120, tile: true, cast: true, depth: d });
+  buildInstanced(SHRUBS, crossGeo(3, 0.7), m, {
+    cell: 120,
+    tile: true,
+    cast: true,
+    depth: d,
+    track: FOREST.shrubTrack,
+  });
 }
+// Once the hunter is seated: real 3D spruce (the forest's white spruce, tiles 0, 1 and 3) and willow/alder clumps
+// around their stand, in place of the cards (render/plants3d.js). Off in Game Settings, or on any error: cards stay.
+let plantsBuilt = false;
+function buildPlants() {
+  if (plantsBuilt || !plants3dWanted()) return null;
+  plantsBuilt = true;
+  const SPRUCE = new Set([0, 1, 3]);
+  const spruce = [];
+  for (const it of FOREST.items)
+    if (SPRUCE.has(it.tile))
+      spruce.push({
+        x: it.x,
+        y: it.y,
+        z: it.z,
+        h: it.sy,
+        rot: it.rot,
+        hide: (on) => hideInstance(FOREST.track, it, on),
+      });
+  for (const tr of FOREST.near)
+    if (SPRUCE.has(tr.t) && tr.trunk)
+      spruce.push({
+        x: tr.x,
+        y: tr.y,
+        z: tr.z,
+        h: tr.h,
+        rot: hash01(tr.x, tr.z) * TAU,
+        hide: (on) => {
+          tr.trunk.visible = !on;
+          for (const c of tr.cards) hideInstance(FOREST.nearTrack, c, on);
+        },
+      });
+  const shrubs = SHRUBS.map((b) => ({
+    x: b.x,
+    y: b.y,
+    z: b.z,
+    sy: b.sy,
+    rot: b.rot,
+    tile: b.tile,
+    hide: (on) => hideInstance(FOREST.shrubTrack, b, on),
+  }));
+  return buildPlants3D(spruce, shrubs, PLAYER);
+}
+const hash01 = (x, z) => {
+  const v = Math.sin(x * 7.13 + z * 3.71) * 9617.31;
+  return v - Math.floor(v);
+};
 function buildNearTrees(list) {
   const bark = new THREE.MeshLambertMaterial({ map: T.bark });
   const trunkGeo = new THREE.CylinderGeometry(0.55, 1, 1, 10, 1, true);
@@ -268,6 +325,8 @@ function buildNearTrees(list) {
     tm.castShadow = true;
     tm.layers.set(tr.stand ? 1 : 0);
     scene.add(tm);
+    tr.trunk = tm;
+    tr.cards = [];
     const maxR = tr.h * (tr.t === 2 ? 0.1 : 0.16);
     const step = tr.t === 2 ? 0.32 : 0.4;
     for (let y = tr.stand ? tr.eye - tr.y + 2.6 : rand(1.2, 3); y < tr.h - 0.3; y += step * rand(0.8, 1.2)) {
@@ -278,7 +337,7 @@ function buildNearTrees(list) {
       for (let k = 0; k < n; k++) {
         const ang = off + (k / n) * TAU + rand(-0.3, 0.3);
         const L = R * rand(0.75, 1.1);
-        cards.push({
+        tr.cards.push({
           x: tr.x,
           y: tr.y + y,
           z: tr.z,
@@ -291,6 +350,7 @@ function buildNearTrees(list) {
         });
       }
     }
+    cards.push(...tr.cards);
     if (tr.stand) {
       for (let y = 1.5; y < tr.eye - tr.y - 1.6; y += 0.45) {
         for (let k = 0; k < 3; k++)
@@ -323,7 +383,7 @@ function buildNearTrees(list) {
   const bd = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking, map: T.branch, alphaTest: 0.4 });
   const live = cards.filter((c) => !c.dead),
     dead = cards.filter((c) => c.dead);
-  buildInstanced(live, g, bm, { cell: 400, cast: true, depth: bd });
+  buildInstanced(live, g, bm, { cell: 400, cast: true, depth: bd, track: FOREST.nearTrack });
   // swap scale: our items use sx as length, sy/sz as width — handled by buildInstanced (sz)
   if (dead.length) {
     const dm = new THREE.MeshLambertMaterial({ color: C('#5a4c40') });
@@ -381,4 +441,4 @@ function buildOneStand(S) {
   scene.add(grp);
 }
 
-export { TT, buildForest, buildGrass, buildNearTrees, buildShrubs, buildStand, inFrontCorridor };
+export { TT, buildForest, buildGrass, buildNearTrees, buildPlants, buildShrubs, buildStand, inFrontCorridor };

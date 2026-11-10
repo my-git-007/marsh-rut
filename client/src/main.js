@@ -11,7 +11,8 @@ import { buildSky } from './render/sky.js';
 import { buildTerrain } from './render/terrain.js';
 import { buildWater, renderReflection, reflRT } from './render/water.js';
 import { buildRidges } from './render/ridges.js';
-import { buildGrass, buildForest, buildShrubs, buildStand } from './render/vegetation.js';
+import { buildGrass, buildForest, buildPlants, buildShrubs, buildStand } from './render/vegetation.js';
+import { updatePlants3D } from './render/plants3d.js';
 import { updateFx, updateVapor } from './render/fx.js';
 import { spawnBirds, spawnFlock, updateBirds } from './render/birds.js';
 import { loadRefAssets } from './models/ref-bull.js';
@@ -212,6 +213,9 @@ async function seat(host, name, stand) {
     st('Growing grass…');
     await tick();
     buildGrass();
+    st('Growing trees…');
+    await tick();
+    buildPlants();
   }
   if (TEST) setupTest();
   else if (SHOWCASE && host.local) {
@@ -418,6 +422,7 @@ function loop(now) {
     if (frameN % 60 === 0) document.title = 'f' + frameN + ' t' + Math.round(G.time);
     return;
   }
+  updatePlants3D(camera, V.fov);
   renderReflection();
   renderer.render(scene, camera);
 }

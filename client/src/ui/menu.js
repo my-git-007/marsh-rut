@@ -7,6 +7,7 @@
 // and Esc pressed while the menu is open goes back a step or resumes.
 import { A, MIX, MIX_KEYS, setMix } from '../audio/audio.js';
 import { canvas } from '../render/core.js';
+import { plants3dSetting, plants3dSupported, savePlants3dSetting } from '../render/plants3d.js';
 import { NET, UI } from '../state.js';
 import { V } from './input.js';
 
@@ -102,6 +103,9 @@ export function prepSettings(p, mixBox) {
   $(p + '-sens').value = Math.round(V.sens * 100);
   $(p + '-sens-out').textContent = Math.round(V.sens * 100) + '%';
   $(p + '-invert').checked = !!V.invert;
+  const ok3d = plants3dSupported(); // needs WebGL 2; otherwise the box is greyed out and unticked
+  $(p + '-plants3d').checked = ok3d && plants3dSetting();
+  $(p + '-plants3d').disabled = !ok3d;
 }
 export function wireSettings(p) {
   $(p + '-sens').addEventListener('input', (e) => {
@@ -113,6 +117,7 @@ export function wireSettings(p) {
     V.invert = e.target.checked;
     saveLook();
   });
+  $(p + '-plants3d').addEventListener('change', (e) => savePlants3dSetting(e.target.checked));
 }
 
 // ---- contact ----

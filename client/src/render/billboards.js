@@ -150,6 +150,20 @@ const _m4 = new THREE.Matrix4(),
   _p = new THREE.Vector3(),
   _s = new THREE.Vector3(),
   _col = new THREE.Color();
+// hide one item of a tracked buildInstanced() (its spot is taken by something else), or show it again (hidden false)
+const _zero = new THREE.Matrix4().makeScale(0, 0, 0);
+function hideInstance(track, it, hidden = true) {
+  const e = track.get(it);
+  if (!e) return;
+  if (hidden) {
+    if (!e[2]) {
+      e[2] = new THREE.Matrix4();
+      e[0].getMatrixAt(e[1], e[2]);
+    }
+    e[0].setMatrixAt(e[1], _zero);
+  } else if (e[2]) e[0].setMatrixAt(e[1], e[2]);
+  e[0].instanceMatrix.needsUpdate = true;
+}
 function buildInstanced(items, geo, mat, o = {}) {
   const cell = o.cell || 120,
     cells = new Map();
@@ -181,6 +195,7 @@ function buildInstanced(items, geo, mat, o = {}) {
       _s.set(it.sx, it.sy, it.sz || it.sx);
       _m4.compose(_p, _q, _s);
       mesh.setMatrixAt(i, _m4);
+      if (o.track) o.track.set(it, [mesh, i]); // so single items can be hidden later (render/plants3d.js)
       if (it.c) {
         _col.setRGB(it.c[0], it.c[1], it.c[2]);
         mesh.setColorAt(i, _col);
@@ -221,5 +236,6 @@ export {
   buildInstanced,
   crossGeo,
   grassGeo,
+  hideInstance,
   windInject,
 };

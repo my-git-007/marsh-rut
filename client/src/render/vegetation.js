@@ -245,9 +245,11 @@ function buildForest() {
   buildInstanced(items, crossGeo(3, 0.55), m, { cell: 140, tile: true, cast: true, depth: d, track: FOREST.track });
   FOREST.items = items;
   FOREST.near = near;
+  for (const it of items) addObstacle(it.x, it.y, it.z, it.sy, it.tile);
+  for (const tr of near) addObstacle(tr.x, tr.y, tr.z, tr.h, tr.t);
   buildNearTrees(near);
 }
-// the card forest, remembered so the 3D plants can take the place of the spruce near the hunter
+// the card forest, remembered so the 3D plants (render/plants3d.js) can take the place of every tree but the snags
 const FOREST = { items: [], near: [], track: new Map(), nearTrack: new Map(), shrubTrack: new Map() };
 // willow and alder clumps: the layout is shared and seeded (the bulls thrash these), so every player sees the same bushes
 function buildShrubs() {
@@ -259,33 +261,129 @@ function buildShrubs() {
     depth: d,
     track: FOREST.shrubTrack,
   });
+  for (const b of SHRUBS) addObstacle(b.x, b.y, b.z, b.sy * 1.2, b.tile, b.sx * 0.45);
 }
-// Once the hunter is seated: real 3D spruce (the forest's white spruce, tiles 0, 1 and 3) and willow/alder clumps
-// around their stand, in place of the cards (render/plants3d.js). Off in Game Settings, or on any error: cards stay.
+/* ---------------- what the rangefinder hits: the real trees and bushes ---------------- */
+// Each tree is a simple solid the size of its 3D model (a cone for the conifers, a trunk and a round crown for
+// aspen and birch, a pole for a snag); each bush a dome. Kept in a 16 m grid so a sightline only checks nearby ones.
+const OB_CELL = 16,
+  OB = new Map();
+const CONE_R = { 0: 0.17, 1: 0.17, 2: 0.1, 3: 0.14, 6: 0.15 }; // crown radius at the base, as a share of the height
+function addObstacle(x, y, z, h, tile, shrubW) {
+  let o;
+  if (shrubW) o = { x, y, z, h, kind: 2, R: shrubW };
+  else if (tile === 7) o = { x, y, z, h, kind: 3, R: 0.3 };
+  else if (tile === 4 || tile === 5) o = { x, y, z, h, kind: 1, R: h * 0.22 };
+  else o = { x, y, z, h, kind: 0, R: h * (CONE_R[tile] || 0.15) };
+  const r = o.R + 0.5,
+    c0 = Math.floor((x - r) / OB_CELL),
+    c1 = Math.floor((x + r) / OB_CELL),
+    d0 = Math.floor((z - r) / OB_CELL),
+    d1 = Math.floor((z + r) / OB_CELL);
+  for (let i = c0; i <= c1; i++)
+    for (let j = d0; j <= d1; j++) {
+      const k = i + ',' + j;
+      if (!OB.has(k)) OB.set(k, []);
+      OB.get(k).push(o);
+    }
+}
+// the radius of an obstacle at height u above its base (0 = outside it)
+function obRadius(o, u) {
+  if (u < 0 || u > o.h) return 0;
+  const f = u / o.h;
+  if (o.kind === 0) return f < 0.08 ? 0.3 : o.R * (1 - f) + 0.15; // trunk, then the cone
+  if (o.kind === 1) {
+    if (f < 0.45) return 0.3; // the bare trunk
+    const q = (f - 0.725) / 0.275; // a round crown over the top half
+    return o.R * Math.sqrt(Math.max(0, 1 - q * q)) + 0.3;
+  }
+  if (o.kind === 2) return o.R * Math.sqrt(Math.max(0, 1 - f * f)); // a dome
+  return o.R;
+}
+// distance along the sightline (o: start, d: unit direction) to the first tree or bush, or null within tMax
+let obStamp = 0;
+function obstacleHit(o, d, tMax) {
+  const hl = Math.hypot(d.x, d.z);
+  if (hl < 1e-4) return null;
+  obStamp++;
+  let best = null;
+  const step = OB_CELL / 3 / hl; // along the line, a third of a cell at a time (sideways)
+  for (let t = 0; t < tMax + step; t += step) {
+    if (best !== null && t > best + OB_CELL / hl) break;
+    const ci = Math.floor((o.x + d.x * t) / OB_CELL),
+      cj = Math.floor((o.z + d.z * t) / OB_CELL);
+    for (let di = -1; di <= 1; di++)
+      for (let dj = -1; dj <= 1; dj++) {
+        const list = OB.get(ci + di + ',' + (cj + dj));
+        if (list) best = obCheck(list, o, d, hl, tMax, best);
+      }
+  }
+  return best;
+}
+function obCheck(list, o, d, hl, tMax, best) {
+  {
+    for (const b of list) {
+      if (b.stamp === obStamp) continue;
+      b.stamp = obStamp;
+      // where the line passes within b.R of the stem (seen from above)
+      const px = b.x - o.x,
+        pz = b.z - o.z,
+        tc = (px * d.x + pz * d.z) / (hl * hl),
+        mx = o.x + d.x * tc - b.x,
+        mz = o.z + d.z * tc - b.z,
+        m2 = mx * mx + mz * mz,
+        R = b.R + 0.3;
+      if (m2 > R * R) continue;
+      // the hunter's own eye inside it (a big spruce right beside the stand): look past it, not at it
+      const ex = o.x - b.x,
+        ez = o.z - b.z,
+        er = obRadius(b, o.y - b.y);
+      if (er > 0 && ex * ex + ez * ez < er * er) continue;
+      const half = Math.sqrt(R * R - m2) / hl;
+      const ta = Math.max(0.5, tc - half),
+        tb = Math.min(tMax, tc + half);
+      for (let s = 0; s <= 12; s++) {
+        const tt = ta + ((tb - ta) * s) / 12;
+        if (tt > tb || (best !== null && tt >= best)) break;
+        const dx = o.x + d.x * tt - b.x,
+          dz = o.z + d.z * tt - b.z,
+          rr = obRadius(b, o.y + d.y * tt - b.y);
+        if (rr > 0 && dx * dx + dz * dz < rr * rr) {
+          best = tt;
+          break;
+        }
+      }
+    }
+  }
+  return best;
+}
+// Once the hunter is seated: real 3D trees (every kind but the dead snags) and willow/alder clumps
+// in place of the cards (render/plants3d.js). Off in Game Settings, or on any error: the cards stay.
 let plantsBuilt = false;
 function buildPlants() {
   if (plantsBuilt || !plants3dWanted()) return null;
   plantsBuilt = true;
-  const SPRUCE = new Set([0, 1, 3]);
-  const spruce = [];
+  const trees = [];
   for (const it of FOREST.items)
-    if (SPRUCE.has(it.tile))
-      spruce.push({
+    if (it.tile !== 7)
+      trees.push({
         x: it.x,
         y: it.y,
         z: it.z,
         h: it.sy,
         rot: it.rot,
+        tile: it.tile,
         hide: (on) => hideInstance(FOREST.track, it, on),
       });
   for (const tr of FOREST.near)
-    if (SPRUCE.has(tr.t) && tr.trunk)
-      spruce.push({
+    if (tr.trunk)
+      trees.push({
         x: tr.x,
         y: tr.y,
         z: tr.z,
         h: tr.h,
         rot: hash01(tr.x, tr.z) * TAU,
+        tile: tr.t,
         hide: (on) => {
           tr.trunk.visible = !on;
           for (const c of tr.cards) hideInstance(FOREST.nearTrack, c, on);
@@ -300,7 +398,7 @@ function buildPlants() {
     tile: b.tile,
     hide: (on) => hideInstance(FOREST.shrubTrack, b, on),
   }));
-  return buildPlants3D(spruce, shrubs, PLAYER);
+  return buildPlants3D(trees, shrubs, PLAYER);
 }
 const hash01 = (x, z) => {
   const v = Math.sin(x * 7.13 + z * 3.71) * 9617.31;
@@ -441,4 +539,14 @@ function buildOneStand(S) {
   scene.add(grp);
 }
 
-export { TT, buildForest, buildGrass, buildNearTrees, buildPlants, buildShrubs, buildStand, inFrontCorridor };
+export {
+  TT,
+  buildForest,
+  buildGrass,
+  buildNearTrees,
+  buildPlants,
+  buildShrubs,
+  buildStand,
+  inFrontCorridor,
+  obstacleHit,
+};

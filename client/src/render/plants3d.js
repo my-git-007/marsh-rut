@@ -1,10 +1,9 @@
-// render/plants3d.js — real 3D white spruce and willow/alder clumps near the hunter, impostors further out.
-// Everything is built in code from fixed seeds when the marsh loads (about a fifth of a second): no downloads.
-//   spruce (the forest's spruce-type trees): full 3D within FULL_R of the stand, a lighter 3D tree to LIGHT_R,
-//     impostors to IMP_R (pictures of the 3D tree from 16 sides; the game shows the one for your side), then the
-//     old cards. Under the binoculars the impostors in view switch to the lighter 3D tree (they'd look blocky).
-//   willow/alder (the shared, seeded SHRUBS the bulls thrash): full 3D within SHRUB_FULL_R, impostors to
-//     SHRUB_IMP_R (3D under the binoculars), then cards.
+// render/plants3d.js — real 3D trees (white and black spruce, balsam fir, tamarack, aspen, birch) and willow/alder
+// clumps. Everything is built in code from fixed seeds when the marsh loads (about a second): no downloads.
+//   trees: full 3D within FULL_R of the stand, a lighter 3D tree to LIGHT_R, impostors beyond (pictures of the 3D
+//     tree from 16 sides; the game shows the one for your side). Under the binoculars the impostors in view switch
+//     to the lighter 3D tree, nearest first (they'd look blocky). Dead snags stay painted cards.
+//   willow/alder (the shared, seeded SHRUBS the bulls thrash): full 3D within SHRUB_FULL_R, impostors beyond.
 // Off (Game Settings) or on any error, vegetation.js keeps the old cards for everything.
 import * as THREE from 'three';
 import { PI, TAU, clamp, lerp, mulberry32 } from '../../../shared/util.js';
@@ -22,20 +21,53 @@ function shade(r, h, k, j = 8) {
   const c = hex(h);
   return `rgb(${c.map((v) => clamp(v * k + r(-j, j), 0, 255) | 0).join(',')})`;
 }
+// A canvas keeps no colour where it's transparent (it reads back black), and the smaller mipmaps used further off
+// blend that black into the leaf edges: dark blotches. So the clear parts get the average leaf colour (alpha 0).
 function tex(c) {
-  const t = new THREE.CanvasTexture(c);
+  const W = c.width,
+    H = c.height,
+    src = c.getContext('2d').getImageData(0, 0, W, H).data;
+  let r = 0,
+    g = 0,
+    b = 0,
+    n = 0;
+  for (let i = 0; i < src.length; i += 4)
+    if (src[i + 3] > 128) {
+      r += src[i];
+      g += src[i + 1];
+      b += src[i + 2];
+      n++;
+    }
+  n = Math.max(1, n);
+  const data = new Uint8Array(src.length);
+  for (let y = 0; y < H; y++)
+    for (let x = 0; x < W; x++) {
+      const i = (y * W + x) * 4,
+        o = ((H - 1 - y) * W + x) * 4; // rows bottom-up, as a canvas texture would be flipped
+      const a = src[i + 3],
+        k = a < 8 ? 0 : a / 255; // soft edges lean toward the average too, so they don't darken
+      data[o] = src[i] * k + (r / n) * (1 - k);
+      data[o + 1] = src[i + 1] * k + (g / n) * (1 - k);
+      data[o + 2] = src[i + 2] * k + (b / n) * (1 - k);
+      data[o + 3] = a < 8 ? 0 : a;
+    }
+  const t = new THREE.DataTexture(data, W, H, THREE.RGBAFormat);
   t.encoding = THREE.sRGBEncoding;
+  t.magFilter = THREE.LinearFilter;
+  t.minFilter = THREE.LinearMipmapLinearFilter;
+  t.generateMipmaps = true;
   t.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+  t.needsUpdate = true;
   return t;
 }
 // twig along x (u), needles both sides pointing forward; lighter new growth at the tip
-function paintSpray() {
-  const r = rngOf(11),
+function paintSpray(o = {}) {
+  const r = rngOf(o.seed || 11),
     W = 256,
     H = 128,
     c = mkC(W, H),
     g = c.getContext('2d');
-  const cols = ['#24352a', '#2c3f2e', '#33472f', '#203026', '#3a4f36', '#2a3b33'];
+  const cols = o.cols || ['#24352a', '#2c3f2e', '#33472f', '#203026', '#3a4f36', '#2a3b33'];
   const y = (u) => H / 2 + Math.sin(u * 2.2) * 4 - u * 6;
   g.strokeStyle = '#4a3828';
   g.lineWidth = 3;
@@ -44,15 +76,15 @@ function paintSpray() {
   for (let u = 0; u <= 1; u += 0.05) g.lineTo(u * W * 0.97, y(u));
   g.stroke();
   // a dark, soft core first, so the spray stays solid when it's small (far off) instead of breaking up
-  for (let i = 0; i < 220; i++) {
+  for (let i = 0; i < (o.coreN ?? 220); i++) {
     const u = Math.pow(r(), 0.8),
       x = u * W * 0.92;
-    g.fillStyle = shade(r, '#1c2a20', r(0.85, 1.1), 4);
+    g.fillStyle = shade(r, o.core || '#1c2a20', r(0.85, 1.1), 4);
     g.beginPath();
     g.ellipse(x, y(u) + r(-1, 1) * (1 - u * 0.5) * H * 0.18, r(5, 10), r(4, 9) * (1 - u * 0.4), 0, 0, TAU);
     g.fill();
   }
-  for (let i = 0; i < 3200; i++) {
+  for (let i = 0; i < (o.n || 3200); i++) {
     const u = Math.pow(r(), 0.85),
       x = u * W * 0.96,
       s = r() < 0.5 ? -1 : 1,
@@ -61,7 +93,7 @@ function paintSpray() {
       a = s * r(0.45, 1.35);
     const tip = u > 0.86 ? r(0, 1) : 0;
     g.strokeStyle =
-      tip > 0.6 ? shade(r, '#4f6a46', r(0.85, 1.05)) : shade(r, cols[(r() * cols.length) | 0], r(0.8, 1.2));
+      tip > 0.6 ? shade(r, o.tip || '#4f6a46', r(0.85, 1.05)) : shade(r, cols[(r() * cols.length) | 0], r(0.8, 1.2));
     g.lineWidth = r(1.4, 2.4);
     g.beginPath();
     g.moveTo(x, y(u));
@@ -110,6 +142,40 @@ function paintWillow() {
     g.moveTo(1, 0);
     g.quadraticCurveTo(L * 0.6, curl * 0.4, L * 0.92, curl * 0.9);
     g.stroke();
+    g.restore();
+  }
+  return tex(c);
+}
+
+// a cluster of round aspen/birch leaves on fine twigs, square, filling a rough disc; autumn colours
+function paintLeaves(cols, seed) {
+  const r = rngOf(seed),
+    S = 256,
+    c = mkC(S, S),
+    g = c.getContext('2d');
+  g.strokeStyle = '#6a5a48';
+  g.lineWidth = 1.5;
+  for (let k = 0; k < 5; k++) {
+    g.beginPath();
+    g.moveTo(S / 2, S * 0.98);
+    g.quadraticCurveTo(S / 2 + r(-40, 40), S * 0.6, S / 2 + r(-90, 90), S * r(0.1, 0.4));
+    g.stroke();
+  }
+  for (let i = 0; i < 170; i++) {
+    const a = r(0, TAU),
+      d = Math.sqrt(r()) * S * 0.44;
+    const x = S / 2 + Math.cos(a) * d,
+      y = S * 0.48 + Math.sin(a) * d * 0.95;
+    const rad = r(9, 15) * (1 - (d / S) * 0.5);
+    g.save();
+    g.translate(x, y);
+    g.rotate(r(0, TAU));
+    g.fillStyle = shade(r, cols[(r() * cols.length) | 0], r(0.8, 1.12), 10);
+    g.beginPath(); // an aspen leaf: round with a short point
+    g.moveTo(0, -rad);
+    g.bezierCurveTo(rad * 1.1, -rad * 0.9, rad * 1.05, rad * 0.8, 0, rad * 1.25);
+    g.bezierCurveTo(-rad * 1.05, rad * 0.8, -rad * 1.1, -rad * 0.9, 0, -rad);
+    g.fill();
     g.restore();
   }
   return tex(c);
@@ -198,15 +264,26 @@ class Builder {
   }
 }
 
-// White spruce: narrow cone of whorled branches, level to slightly drooping with upturned tips, dense sprays,
-// the inner lower crown bare. detail 1 = close up; ~0.35 = the cheaper version for trees further off.
-function spruce(seed, H, detail = 1) {
+// Conifers. White spruce: narrow cone of whorled branches, level to slightly drooping with upturned tips, dense
+// sprays, the inner lower crown bare. The other conifers are the same tree with other proportions (CONIFERS).
+// detail 1 = close up; ~0.35 = the cheaper version for trees further off.
+const CONIFERS = {
+  white: {},
+  // black spruce: very narrow, drooping short branches, a dense club at the top
+  black: { rad: [0.085, 0.1], prof: 0.8, droop: 0.55, elHi: 0.25, club: 0.9, whorl: [5, 7], spray: 0.85 },
+  // balsam fir: a straight, regular cone with flat, level sprays
+  fir: { rad: [0.13, 0.15], prof: 1.0, droop: 0.12, elLo: -0.04, elHi: 0.35, roll: 0.35, whorl: [5, 7] },
+  // tamarack: open and airy, fewer branches, soft tufts (gold in autumn: its own needle texture)
+  tamarack: { rad: [0.13, 0.16], prof: 0.9, droop: 0.2, whorl: [4, 6], between: 0.3, gap: 1.5, spray: 1.1 },
+};
+function spruce(seed, H, detail = 1, P = CONIFERS.white) {
   const r = rngOf(seed),
     B = new Builder(),
     up = new THREE.Vector3(0, 1, 0);
+  const rad = P.rad || [0.15, 0.18];
   const R0 = 0.24 * (H / 16),
     crownBase = r(1.0, 1.8),
-    maxR = H * r(0.15, 0.18);
+    maxR = H * r(rad[0], rad[1]);
   const lean = new THREE.Vector3(r(-0.02, 0.02), 0, r(-0.02, 0.02));
   const axis = (y) => new THREE.Vector3(lean.x * y, y, lean.z * y);
   const trunk = [];
@@ -229,8 +306,8 @@ function spruce(seed, H, detail = 1) {
   };
   const low = detail < 1;
   const dy = low ? 0.55 : 0.36,
-    spacing = low ? 0.34 : 0.15,
-    sprayL = low ? 0.9 : 0.5;
+    spacing = (low ? 0.34 : 0.15) * (P.gap || 1),
+    sprayL = (low ? 0.9 : 0.5) * (P.spray || 1);
   // one spray card: along U, rolled about it so the sprays don't all lie flat
   const spray = (p, U0, l, rollMax) => {
     const U = U0.clone().normalize();
@@ -246,8 +323,9 @@ function spruce(seed, H, detail = 1) {
   let a0 = r(0, TAU);
   const levels = [];
   for (let y = crownBase; y < H - 0.25; y += dy * r(0.85, 1.15)) {
-    levels.push({ y, n: Math.round(r(6, 8) * (low ? 0.8 : 1)), k: 1 });
-    if (!low && r() < 0.6) levels.push({ y: y + dy * 0.5, n: Math.round(r(1, 2)), k: 0.45 }); // small branches between whorls
+    const wh = P.whorl || [6, 8];
+    levels.push({ y, n: Math.round(r(wh[0], wh[1]) * (low ? 0.8 : 1)), k: 1 });
+    if (!low && r() < (P.between ?? 0.6)) levels.push({ y: y + dy * 0.5, n: Math.round(r(1, 2)), k: 0.45 }); // small branches between whorls
   }
   for (const lv of levels) {
     const y = lv.y,
@@ -257,10 +335,11 @@ function spruce(seed, H, detail = 1) {
     a0 += 2.4;
     for (let k = 0; k < n; k++) {
       const a = a0 + (k / n) * TAU + r(-0.3, 0.3);
-      const L = (maxR * Math.pow(1 - t, 1.05) + 0.22) * r(0.8, 1.12) * lv.k;
+      const club = (P.club || 0) * maxR * Math.exp(-(((t - 0.9) / 0.06) ** 2)); // black spruce's dense top
+      const L = (maxR * Math.pow(1 - t, P.prof || 1.05) + 0.22 + club) * r(0.8, 1.12) * lv.k;
       const h = new THREE.Vector3(Math.cos(a), 0, Math.sin(a));
-      const el = lerp(-0.12, 0.5, Math.pow(t, 1.6)),
-        droop = 0.32 * (1 - t) * L,
+      const el = lerp(P.elLo ?? -0.12, P.elHi ?? 0.5, Math.pow(t, 1.6)),
+        droop = (P.droop ?? 0.32) * (1 - t) * L,
         turn = 0.18 * L;
       const P0 = axis(y).addScaledVector(h, R0 * (1 - y / H));
       const at = (s) =>
@@ -282,7 +361,7 @@ function spruce(seed, H, detail = 1) {
         const side = new THREE.Vector3().crossVectors(tg, up).normalize();
         const tipK = 1 - 0.35 * s;
         // a spray along the branch itself
-        spray(p, tg.clone().addScaledVector(up, r(-0.15, 0.1)), sprayL * tipK * r(0.8, 1.1), 1.0);
+        spray(p, tg.clone().addScaledVector(up, r(-0.15, 0.1)), sprayL * tipK * r(0.8, 1.1), P.roll ?? 1.0);
         if (s > 0.94) continue;
         // secondary branchlets to each side, angled forward and hanging a little, each carrying sprays
         for (const sg of [-1, 1]) {
@@ -314,6 +393,77 @@ function spruce(seed, H, detail = 1) {
     const V = new THREE.Vector3(-Math.sin(a), 0, Math.cos(a));
     B.card(p, U, V, 0.55, 0.3, normalAt, [1, 1, 1]);
   }
+  return { wood: B.geo(B.wood), leaf: B.geo(B.leaf) };
+}
+
+// Aspen / birch: a straight pale trunk, branches angled up in the top half, round clusters of leaves on the outer part.
+// detail 1 = close up; 0.4 = the cheaper version.
+function broadleaf(seed, H, detail = 1) {
+  const r = rngOf(seed),
+    B = new Builder(),
+    up = new THREE.Vector3(0, 1, 0);
+  const low = detail < 1;
+  const R0 = 0.17 * (H / 16),
+    crownBase = H * r(0.42, 0.52),
+    maxR = H * r(0.17, 0.21),
+    cy = (crownBase + H) / 2;
+  const wig = [r(-0.15, 0.15), r(-0.15, 0.15)];
+  const axis = (y) => new THREE.Vector3(Math.sin(y * 0.4) * wig[0], y, Math.cos(y * 0.33) * wig[1] - wig[1]);
+  const trunk = [];
+  for (let i = 0; i <= 10; i++) {
+    const y = (i / 10) * H * 0.94;
+    trunk.push({ p: axis(y - 0.3 * (i === 0)), r: R0 * Math.pow(1 - y / H, 0.8) + 0.02, ao: 0.6 + 0.4 * (y / H) });
+  }
+  B.tube(trunk, low ? 5 : 8);
+  const normalAt = (p) => {
+    const a = axis(p.y),
+      n = new THREE.Vector3(p.x - a.x, (p.y - cy) * 0.6, p.z - a.z);
+    const d = n.length();
+    n.normalize()
+      .add(new THREE.Vector3(0, 0.7, 0))
+      .normalize();
+    n.ao = clamp(0.45 + 0.6 * (d / maxR), 0.42, 1.05);
+    return n;
+  };
+  const cluster = (p, l) => {
+    const a = axis(p.y),
+      outw = new THREE.Vector3(p.x - a.x, 0, p.z - a.z).normalize();
+    for (let k = 0; k < (low ? 2 : 3); k++) {
+      // the clusters face mostly outward and up, so the crown reads as a full mass from any side
+      const U = new THREE.Vector3(r(-1, 1), r(-0.1, 1), r(-1, 1)).addScaledVector(outw, 0.8).normalize();
+      let V = new THREE.Vector3().crossVectors(U, up);
+      if (V.lengthSq() < 1e-4) V.set(1, 0, 0);
+      V.normalize();
+      const g = r(0.85, 1.1);
+      B.card(p.clone().addScaledVector(U, -l * 0.45), U, V, l, l, normalAt, [g, g * r(0.95, 1.03), g * r(0.9, 1.05)]);
+    }
+  };
+  const nb = Math.round(r(12, 17) * (low ? 0.75 : 1));
+  let a0 = r(0, TAU);
+  for (let i = 0; i < nb; i++) {
+    const t = i / nb,
+      y = lerp(crownBase, H * 0.9, t) + r(-0.3, 0.3);
+    a0 += 2.4 + r(-0.3, 0.3);
+    const hdir = new THREE.Vector3(Math.cos(a0), 0, Math.sin(a0));
+    const L = (maxR * (1.05 - 0.55 * t) + 0.4) * r(0.85, 1.15) * 1.25,
+      el = r(0.55, 0.95); // 30-55 degrees up
+    const P0 = axis(y);
+    const at = (s) =>
+      P0.clone()
+        .addScaledVector(hdir, L * s * Math.cos(el))
+        .addScaledVector(up, L * s * Math.sin(el) - 0.12 * L * s * s);
+    B.tube(
+      [0, 0.5, 1].map((s) => ({ p: at(s), r: (0.05 * (L / 3) + 0.01) * (1 - s * 0.8), ao: 0.7 + 0.3 * s })),
+      low ? 3 : 4,
+    );
+    for (let s = 0.3; s <= 1.0001; s += (low ? 0.75 : 0.4) / L) {
+      const p = at(s).add(new THREE.Vector3(r(-0.4, 0.4), r(-0.25, 0.4), r(-0.4, 0.4)));
+      cluster(p, r(1.2, 1.6) * (low ? 1.25 : 1));
+    }
+  }
+  // the top
+  for (let k = 0; k < (low ? 4 : 8); k++)
+    cluster(axis(H * r(0.86, 0.97)).add(new THREE.Vector3(r(-0.7, 0.7), 0, r(-0.7, 0.7))), r(1.2, 1.5));
   return { wood: B.geo(B.wood), leaf: B.geo(B.leaf) };
 }
 
@@ -477,8 +627,7 @@ const _m4 = new THREE.Matrix4(),
   _q = new THREE.Quaternion(),
   _y = new THREE.Vector3(0, 1, 0),
   _p = new THREE.Vector3(),
-  _s = new THREE.Vector3(),
-  ZERO = new THREE.Matrix4().makeScale(0, 0, 0);
+  _s = new THREE.Vector3();
 function instMatrix(it) {
   _q.setFromAxisAngle(_y, it.rot);
   return _m4.compose(_p.set(it.x, it.y, it.z), _q, _s.set(it.s, it.s, it.s));
@@ -538,7 +687,6 @@ function plantPool(g, mats, cap) {
     const im = new THREE.InstancedMesh(geo, mat, cap);
     im.count = 0;
     im.frustumCulled = false;
-    im.castShadow = true;
     if (depth) im.customDepthMaterial = depth;
     return im;
   });
@@ -559,8 +707,11 @@ function plantPool(g, mats, cap) {
 /* ---------------- impostors: the 3D plant photographed from 16 sides into one texture ---------------- */
 // The quad turns to face the camera (in the shadow pass that is the sun, so the shadow has the right outline) and
 // shows the picture taken from that side; it sways like the 3D plant.
-function impostorShader(sh, views, cols, rows, H0, AMT) {
+// colour: the picture pass, where single impostors can be hidden (aHide) while a 3D tree stands in for them under the
+// binoculars; the shadow pass keeps drawing them (the stand-ins cast no shadow).
+function impostorShader(sh, views, cols, rows, H0, AMT, colour) {
   addUniforms(sh);
+  if (colour) sh.vertexShader = 'attribute float aHide;' + '\n' + sh.vertexShader;
   sh.vertexShader = sh.vertexShader
     // the camera's position from the view matrix: three r128 doesn't give MeshBasic/MeshDepth materials cameraPosition
     // (in the shadow pass this is the sun's shadow camera, so the quad turns to the sun)
@@ -594,7 +745,8 @@ function impostorShader(sh, views, cols, rows, H0, AMT) {
   #else
   vec4 mvPosition = modelViewMatrix * vec4(transformed, 1.0);
   #endif
-  gl_Position = projectionMatrix * mvPosition;`,
+  gl_Position = projectionMatrix * mvPosition;
+  ${colour ? 'if (aHide > 0.5) gl_Position = vec4(2.0, 2.0, 2.0, 1.0);' : ''}`,
     );
 }
 function bakeImpostor(group, o = {}) {
@@ -678,7 +830,7 @@ function bakeImpostor(group, o = {}) {
   } catch (e) {}
   mat.onBeforeCompile = (sh) => {
     alphaFix(sh, tileW * cols);
-    impostorShader(sh, views, cols, rows, H0, AMT);
+    impostorShader(sh, views, cols, rows, H0, AMT, true);
   };
   mat.customProgramCacheKey = () => key;
   const depth = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking, map: rt.texture, alphaTest: 0.5 });
@@ -701,6 +853,9 @@ function impostorInstances(imp, items) {
     yaw[i] = it.rot;
   });
   im.geometry.setAttribute('aYaw', new THREE.InstancedBufferAttribute(yaw, 1));
+  const hideA = new THREE.InstancedBufferAttribute(new Float32Array(Math.max(1, items.length)), 1);
+  hideA.setUsage(THREE.DynamicDrawUsage);
+  im.geometry.setAttribute('aHide', hideA);
   im.frustumCulled = false;
   im.castShadow = true;
   im.customDepthMaterial = imp.depth;
@@ -708,27 +863,36 @@ function impostorInstances(imp, items) {
     mesh: im,
     items,
     hide(i) {
-      im.setMatrixAt(i, ZERO);
-      im.instanceMatrix.needsUpdate = true;
+      hideA.array[i] = 1;
+      hideA.needsUpdate = true;
     },
     show(i) {
-      put(i);
-      im.instanceMatrix.needsUpdate = true;
+      hideA.array[i] = 0;
+      hideA.needsUpdate = true;
     },
   };
 }
 
 /* ---------------- the live marsh ---------------- */
-const FULL_R = 32, // full 3D spruce
-  LIGHT_R = 115, // lighter 3D spruce
-  IMP_R = 320, // spruce impostors; cards beyond
-  SHRUB_FULL_R = 35, // 3D willow/alder
-  SHRUB_IMP_R = 160, // their impostors; cards beyond
-  ZOOM_FOV = 24; // narrower than this (binoculars): impostors in view become 3D
-const SP_H = 15, // model heights the plants are built at (instances scale from these)
+const FULL_R = 40, // full 3D trees
+  LIGHT_R = 100, // lighter 3D trees; impostors beyond, all the way out
+  SHRUB_FULL_R = 35, // 3D willow/alder; impostors beyond
+  ZOOM_FOV = 24, // narrower than this (binoculars): impostors in view become 3D
+  POOL_TREES = 100, // at most this many of each tree kind turn 3D under the binoculars (the nearest)
+  POOL_SHRUBS = 120,
+  SWAP_MAX = 700; // and at most this many in all
+const TREE_H = 15, // model heights the plants are built at (instances scale from these)
   WI_H = 3;
-const SPRUCE_SEEDS = [7, 31, 58],
-  WILLOW_SEEDS = [3, 17];
+const WILLOW_SEEDS = [3, 17];
+// the forest's tree kinds (tiles of the card atlas, render/textures.js); tile 7, dead snags, stays a card
+const SPECIES = [
+  { tiles: [0, 1], seeds: [7, 31], P: CONIFERS.white, leaf: 'spray', wood: 0x9a8f84, amt: 0.25 },
+  { tiles: [2], seeds: [13, 44], P: CONIFERS.black, leaf: 'spray', tint: [0.8, 0.86, 0.9], wood: 0x857a70, amt: 0.2 },
+  { tiles: [3], seeds: [5, 61], P: CONIFERS.fir, leaf: 'spray', tint: [0.88, 1.02, 0.9], wood: 0x8f8a80, amt: 0.25 },
+  { tiles: [6], seeds: [9, 27], P: CONIFERS.tamarack, leaf: 'larch', wood: 0x8a7060, amt: 0.3 },
+  { tiles: [4], seeds: [3, 19], broad: true, leaf: 'aspen', tint: [1, 0.84, 0.6], wood: [2.2, 2.2, 2.05], amt: 0.45 },
+  { tiles: [5], seeds: [8, 33], broad: true, leaf: 'birch', tint: [1, 0.86, 0.64], wood: [2.6, 2.55, 2.4], amt: 0.45 },
+];
 const GFX_KEY = 'marshrut-gfx';
 
 // the player's choice (Game Settings), and whether this computer's graphics can do it
@@ -759,12 +923,13 @@ const hash = (x, z) => {
   const v = Math.sin(x * 12.9898 + z * 78.233) * 43758.5453;
   return v - Math.floor(v);
 };
+const colour = (c) => (Array.isArray(c) ? new THREE.Color().setRGB(c[0], c[1], c[2]) : c);
 
 let LIVE = null; // what was built, for the binocular swap
 
-// spruce: [{x, y, z, h, rot, hide()}], shrubs: [{x, y, z, sy, tile, hide()}]; centre = where the hunter sits.
-// Builds everything first and only then hides the cards it replaces, so a failure leaves the old forest intact.
-function buildPlants3D(spruceList, shrubList, centre) {
+// trees: [{x, y, z, h, rot, tile, hide(on)}], shrubs: [{x, y, z, sy, rot, tile, hide(on)}]; centre = the hunter's
+// stand. Builds everything first and only then hides the cards it replaces, so a failure leaves the old forest.
+function buildPlants3D(trees, shrubs, centre) {
   const t0 = performance.now();
   const added = [],
     hidden = [];
@@ -773,84 +938,116 @@ function buildPlants3D(spruceList, shrubList, centre) {
     added.push(o);
   };
   try {
-    const sprayTex = paintSpray(),
-      willowTex = paintWillow();
-    const spMats = { wood: woodMat(0x9a8f84, SP_H, 0.25), leaf: leafMat(sprayTex, SP_H, 0.25) };
+    const texs = {
+      spray: paintSpray(),
+      larch: paintSpray({
+        seed: 12,
+        cols: ['#c99a3a', '#d9ad4a', '#b88a30', '#a87a2a', '#e0bc5a'],
+        tip: '#e8c868',
+        core: '#7a5a24',
+        coreN: 120,
+        n: 2400,
+      }),
+      aspen: paintLeaves(['#e3b53a', '#d79a28', '#f0cd5a', '#c4862a', '#e8c24a', '#9aa53a'], 5),
+      birch: paintLeaves(['#d9a830', '#e6bd45', '#c98a26', '#b0762a', '#efd06a'], 6),
+      willow: paintWillow(),
+    };
+    // one entry per tree kind and seed: its full and light 3D models, materials and impostor
+    const kinds = [],
+      kindOfTile = new Map();
+    for (const sp of SPECIES) {
+      const mats = {
+        wood: woodMat(colour(sp.wood), TREE_H, sp.amt),
+        leaf: leafMat(texs[sp.leaf], TREE_H, sp.amt, sp.tint ? colour(sp.tint) : null),
+      };
+      const list = sp.seeds.map((seed) => {
+        const make = (d) => (sp.broad ? broadleaf(seed, TREE_H, d) : spruce(seed, TREE_H, d, sp.P));
+        const light = make(sp.broad ? 0.4 : 0.35);
+        return {
+          mats,
+          makeFull: () => make(1), // only built if a tree of this kind stands within FULL_R
+          light,
+          imp: bakeImpostor(plantMeshes(light, mats), { tileH: 256, H0: TREE_H, AMT: sp.amt }),
+          items: { full: [], light: [], imp: [] },
+          pool: POOL_TREES,
+          shrub: false,
+          H: TREE_H,
+        };
+      });
+      kinds.push(...list);
+      for (const t of sp.tiles) kindOfTile.set(t, list);
+    }
     const wiMats = [
       {
         wood: woodMat(0x8a7a64, WI_H, 0.12),
-        leaf: leafMat(willowTex, WI_H, 0.12, new THREE.Color().setRGB(1.5, 1.35, 0.95)),
+        leaf: leafMat(texs.willow, WI_H, 0.12, colour([0.8, 0.72, 0.46])),
       }, // willow, autumn gold
       {
         wood: woodMat(0x6f6458, WI_H, 0.12),
-        leaf: leafMat(willowTex, WI_H, 0.12, new THREE.Color().setRGB(1.2, 1.2, 0.8)),
+        leaf: leafMat(texs.willow, WI_H, 0.12, colour([0.64, 0.68, 0.42])),
       }, // alder, a little greener
     ];
-    const spFull = SPRUCE_SEEDS.map((s) => spruce(s, SP_H, 1)),
-      spLight = SPRUCE_SEEDS.map((s) => spruce(s, SP_H, 0.35)),
-      wiGeo = WILLOW_SEEDS.map((s) => willow(s, WI_H));
-    const spImp = spLight.map((g) => bakeImpostor(plantMeshes(g, spMats), { tileH: 512, H0: SP_H, AMT: 0.25 }));
-    const wiImp = [0, 1].map((tint) =>
-      wiGeo.map((g) => bakeImpostor(plantMeshes(g, wiMats[tint]), { tileH: 256, H0: WI_H, AMT: 0.12 })),
+    const wiGeo = WILLOW_SEEDS.map((s) => willow(s, WI_H));
+    const shrubKinds = [0, 1].map((tint) =>
+      wiGeo.map((g) => ({
+        mats: wiMats[tint],
+        makeFull: () => g,
+        light: g,
+        imp: bakeImpostor(plantMeshes(g, wiMats[tint]), { tileH: 128, H0: WI_H, AMT: 0.12 }),
+        items: { full: [], light: [], imp: [] },
+        pool: POOL_SHRUBS,
+        shrub: true,
+        H: WI_H,
+      })),
     );
 
     // sort the plants by distance from the stand
-    const sp = { full: SPRUCE_SEEDS.map(() => []), light: SPRUCE_SEEDS.map(() => []), imp: SPRUCE_SEEDS.map(() => []) };
-    const wi = { full: [[], []].map(() => [[], []]), imp: [[], []].map(() => [[], []]) };
     const hides = [];
-    for (const t of spruceList) {
+    for (const t of trees) {
+      const list = kindOfTile.get(t.tile);
+      if (!list) continue;
       const d = Math.hypot(t.x - centre.x, t.z - centre.z);
-      if (d > IMP_R) continue;
-      const v = Math.floor(hash(t.x, t.z) * SPRUCE_SEEDS.length) % SPRUCE_SEEDS.length;
-      const it = { x: t.x, y: t.y, z: t.z, rot: t.rot, s: t.h / SP_H, v };
-      (d < FULL_R ? sp.full : d < LIGHT_R ? sp.light : sp.imp)[v].push(it);
+      const k = list[Math.floor(hash(t.x, t.z) * list.length) % list.length];
+      const it = { x: t.x, y: t.y, z: t.z, rot: t.rot, s: t.h / TREE_H };
+      k.items[d < FULL_R ? 'full' : d < LIGHT_R ? 'light' : 'imp'].push(it);
       hides.push(t.hide);
     }
-    for (const b of shrubList) {
+    for (const b of shrubs) {
       const d = Math.hypot(b.x - centre.x, b.z - centre.z);
-      if (d > SHRUB_IMP_R) continue;
-      const tint = b.tile === 1 ? 1 : 0,
-        v = Math.floor(hash(b.x, b.z) * WILLOW_SEEDS.length) % WILLOW_SEEDS.length;
-      const it = { x: b.x, y: b.y, z: b.z, rot: b.rot, s: (b.sy / WI_H) * 1.2, v, tint };
-      (d < SHRUB_FULL_R ? wi.full : wi.imp)[tint][v].push(it);
+      const list = shrubKinds[b.tile === 1 ? 1 : 0];
+      const k = list[Math.floor(hash(b.x, b.z) * list.length) % list.length];
+      const it = { x: b.x, y: b.y, z: b.z, rot: b.rot, s: (b.sy / WI_H) * 1.2 };
+      k.items[d < SHRUB_FULL_R ? 'full' : 'imp'].push(it);
       hides.push(b.hide);
     }
     let n3d = 0,
       nImp = 0;
-    SPRUCE_SEEDS.forEach((_, v) => {
-      for (const m of plantInstances(spFull[v], spMats, sp.full[v], { height: SP_H, receive: true })) add(m);
-      for (const m of plantInstances(spLight[v], spMats, sp.light[v], { height: SP_H })) add(m);
-      n3d += sp.full[v].length + sp.light[v].length;
-    });
-    for (const tint of [0, 1])
-      WILLOW_SEEDS.forEach((_, v) => {
-        for (const m of plantInstances(wiGeo[v], wiMats[tint], wi.full[tint][v], {
-          height: WI_H,
-          cell: 40,
-          receive: true,
-        }))
-          add(m);
-        n3d += wi.full[tint][v].length;
-      });
-    // impostors, each with a pool of 3D plants that take over under the binoculars
     const groups = [];
-    SPRUCE_SEEDS.forEach((_, v) => {
-      const I = impostorInstances(spImp[v], sp.imp[v]);
-      const pool = plantPool(spLight[v], spMats, 500);
+    for (const k of [...kinds, ...shrubKinds.flat()]) {
+      const H = k.H;
+      // The nearest trees receive shadows (their impostors further out can't, so the light ones don't either).
+      // The bushes don't: the shadow map's half-metre texels left dark blotches on them.
+      if (k.items.full.length)
+        for (const m of plantInstances(k.makeFull(), k.mats, k.items.full, { height: H, cell: 40, receive: !k.shrub }))
+          add(m);
+      for (const m of plantInstances(k.light, k.mats, k.items.light, { height: H })) add(m);
+      n3d += k.items.full.length + k.items.light.length;
+      // impostors, with a pool of 3D plants that take over under the binoculars
+      const I = impostorInstances(k.imp, k.items.imp);
+      const pool = plantPool(k.light, k.mats, k.pool);
       add(I.mesh);
       pool.meshes.forEach(add);
-      groups.push({ I, pool, swapped: [] });
-      nImp += sp.imp[v].length;
-    });
-    for (const tint of [0, 1])
-      WILLOW_SEEDS.forEach((_, v) => {
-        const I = impostorInstances(wiImp[tint][v], wi.imp[tint][v]);
-        const pool = plantPool(wiGeo[v], wiMats[tint], 150);
-        add(I.mesh);
-        pool.meshes.forEach(add);
-        groups.push({ I, pool, swapped: [] });
-        nImp += wi.imp[tint][v].length;
-      });
+      // each impostor's bearing and distance from the stand (the camera never leaves it), nearest first
+      const near = k.items.imp
+        .map((it, i) => ({
+          i,
+          a: Math.atan2(it.x - centre.x, it.z - centre.z),
+          d: Math.hypot(it.x - centre.x, it.z - centre.z),
+        }))
+        .sort((p, q) => p.d - q.d);
+      groups.push({ I, pool, cap: k.pool, near, swapped: [] });
+      nImp += k.items.imp.length;
+    }
     // all built: now take the old cards away
     for (const h of hides) {
       h(true);
@@ -918,27 +1115,34 @@ function updatePlants3D(camera, fov) {
   const half = Math.atan(Math.tan((fov * Math.PI) / 360) * camera.aspect) + 0.06;
   let dy = Math.abs(yaw - LIVE.yaw);
   if (dy > Math.PI) dy = TAU - dy;
-  if (LIVE.zoomed && dy < half * 0.25 && Math.abs(fov - LIVE.fov) < 1) return; // nothing much changed
+  if (LIVE.zoomed && dy < half * 0.25 && Math.abs(fov - LIVE.fov) < fov * 0.15) return; // nothing much changed
   LIVE.zoomed = true;
   LIVE.yaw = yaw;
   LIVE.fov = fov;
-  const cx = camera.position.x,
-    cz = camera.position.z,
-    wide = half * 1.6; // a margin either side, so turning a little doesn't show impostors at the edge
+  const wide = half * 1.6; // a margin either side, so turning a little doesn't show impostors at the edge
+  // the nearest impostors in view, per kind (its own cap), then the nearest SWAP_MAX of those over all kinds
+  const cand = [];
   for (const g of LIVE.groups) {
-    for (const i of g.swapped) g.I.show(i);
-    const swapped = [],
-      list = [];
-    g.I.items.forEach((it, i) => {
-      let a = Math.atan2(it.x - cx, it.z - cz) - yaw;
+    let n = 0;
+    for (const e of g.near) {
+      if (n >= g.cap) break;
+      let a = e.a - yaw;
       a = Math.abs(((((a + Math.PI) % TAU) + TAU) % TAU) - Math.PI);
       if (a < wide) {
-        swapped.push(i);
-        list.push(it);
+        cand.push([e.d, g, e.i]);
+        n++;
       }
-    });
-    const n = g.pool.set(list);
-    g.swapped = swapped.slice(0, n);
+    }
+  }
+  cand.sort((p, q) => p[0] - q[0]);
+  cand.length = Math.min(cand.length, SWAP_MAX);
+  for (const g of LIVE.groups) {
+    for (const i of g.swapped) g.I.show(i);
+    g.swapped = [];
+  }
+  for (const [, g, i] of cand) g.swapped.push(i);
+  for (const g of LIVE.groups) {
+    g.pool.set(g.swapped.map((i) => g.I.items[i]));
     for (const i of g.swapped) g.I.hide(i);
   }
 }

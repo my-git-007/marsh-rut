@@ -46,6 +46,11 @@ const U = { time: { value: 0 }, wind: { value: new THREE.Vector3(0, 0, 1) } };
 function setMapLook(map) {
   const L = map.look || {};
   if (L.fog) scene.fog.density = L.fog;
+  if (L.far) {
+    // mountains further off than the marsh's horizon
+    camera.far = L.far;
+    camera.updateProjectionMatrix();
+  }
   if (L.sunAt) {
     sun.target.position.set(L.sunAt.x, 0, L.sunAt.z);
     sun.position.copy(SUN_DIR).multiplyScalar(1500).add(sun.target.position);

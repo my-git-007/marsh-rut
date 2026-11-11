@@ -1,7 +1,7 @@
 // render/water.js — split out of the original single-file game (game.src.html)
 import * as THREE from 'three';
 import { PI } from '../../../shared/util.js';
-import { MAP, WATER_Y } from '../../../shared/world.js';
+import { MAP, POND, POOLS, STREAM, WATER_Y, groundAt, pondE, streamDist } from '../../../shared/world.js';
 import { C, FOG_COL, SUN_COL, SUN_DIR, U, camera, renderer, scene } from './core.js';
 import { NOISE_GLSL } from './sky.js';
 
@@ -46,12 +46,57 @@ function buildWater() {
       #include <encodings_fragment>
     }`,
   });
-  // one flat sheet under the whole map's open water (the ground hides it everywhere else)
-  const R = (MAP.look && MAP.look.water) || { x: 0, z: -380, w: 900, d: 1000 };
-  water = new THREE.Mesh(new THREE.PlaneGeometry(R.w, R.d, 1, 1), mat);
-  water.rotation.x = -PI / 2;
-  water.position.set(R.x, WATER_Y, R.z);
+  if (MAP.look && MAP.look.waterNear) {
+    // only over the stream, the pond and the pools: this map has ground lower than the water elsewhere
+    water = new THREE.Mesh(waterNearGeo(), mat);
+    water.position.y = WATER_Y;
+  } else {
+    // one flat sheet under the whole map's open water (the ground hides it everywhere else)
+    const R = (MAP.look && MAP.look.water) || { x: 0, z: -380, w: 900, d: 1000 };
+    water = new THREE.Mesh(new THREE.PlaneGeometry(R.w, R.d, 1, 1), mat);
+    water.rotation.x = -PI / 2;
+    water.position.set(R.x, WATER_Y, R.z);
+  }
   scene.add(water);
+}
+// 2 m cells wherever the ground dips under the water near the stream, the pond or a pool (a cell's margin past
+// the bank is hidden by the ground; generous, since the ground's 5 m mesh dips lower between its points than the
+// exact ground does)
+function waterNeedsCell(x, z) {
+  if (streamDist(x, z) > 12 && pondE(x, z) > 1.6 && !POOLS.some((p) => Math.hypot(x - p.x, z - p.z) < p.r * 1.6))
+    return false;
+  for (const [dx, dz] of [
+    [0, 0],
+    [2, 0],
+    [0, 2],
+    [2, 2],
+  ])
+    if (groundAt(x + dx, z + dz) < WATER_Y + 0.8) return true;
+  return false;
+}
+function waterNearGeo() {
+  const S = 2,
+    pts = [...STREAM, { x: POND.x, z: POND.z }, ...POOLS];
+  let x0 = 1e9,
+    x1 = -1e9,
+    z0 = 1e9,
+    z1 = -1e9;
+  for (const p of pts) {
+    x0 = Math.min(x0, p.x);
+    x1 = Math.max(x1, p.x);
+    z0 = Math.min(z0, p.z);
+    z1 = Math.max(z1, p.z);
+  }
+  const pos = [];
+  for (let z = Math.floor((z0 - 60) / S) * S; z < z1 + 60; z += S)
+    for (let x = Math.floor((x0 - 60) / S) * S; x < x1 + 60; x += S) {
+      if (!waterNeedsCell(x, z)) continue;
+      pos.push(x, 0, z, x, 0, z + S, x + S, 0, z, x + S, 0, z, x, 0, z + S, x + S, 0, z + S);
+    }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  geo.computeBoundingSphere();
+  return geo;
 }
 const _rv = new THREE.Vector3(),
   _rt = new THREE.Vector3(),

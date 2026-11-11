@@ -52,6 +52,6 @@ export const LOCATIONS = [
     name: 'Alpine Valley Stream',
     open: true,
     about:
-      'A wide alpine valley in fall colour under snow-capped peaks. Your stand looks down over red and gold tundra, willow thickets and scattered spruce to a stream winding across the valley floor. Long sightlines: a bull can show up anywhere from a hundred yards to the far timber.',
+      'A wide alpine valley in fall colour under snow-capped peaks. Your stand sits high on a hillside, looking down in steps over red and gold tundra, a frosty meadow, willow thickets and spruce groves to a stream winding across the valley floor, and on down the valley to a river in the distance. Long sightlines: a bull can show up anywhere from a hundred yards to the far timber.',
   },
 ];

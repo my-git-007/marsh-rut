@@ -3,7 +3,7 @@
 // host's description (seeded, so antlers and coat match in every browser) and animates legs, head, ears,
 // jaw and bell, plus splashes, ripples, trampled grass and shaking brush.
 import { PI, TAU, clamp, lerp, rand, wrapA, withSeed } from '../../../shared/util.js';
-import { WATER_Y, groundAt, marshE, outDist } from '../../../shared/world.js';
+import { WATER_Y, groundAt, inWater, marshE, outDist } from '../../../shared/world.js';
 import { FLAG } from '../../../shared/sim/body.js';
 import { camera, scene } from '../render/core.js';
 import { buildMoose2 } from '../models/moose.js';
@@ -151,7 +151,7 @@ export class MooseView {
     M.body.rotation.z = (trot ? 0.025 : 0.012) * ampK * Math.sin(this.phase * TAU * 2) + 0.03 * this.bd;
     M.body.rotation.x = 0.012 * ampK * Math.sin(this.phase * TAU) + Math.sin(this.time * 1.1) * 0.02 * this.sw;
     // water: splashes, ripples
-    if (gy < WATER_Y - 0.05) {
+    if (gy < WATER_Y - 0.05 && inWater(this.x, this.z)) {
       if (this.speed > 0.3) {
         const s = Math.floor(this.phase * 2);
         if (s !== this.stepSide) {

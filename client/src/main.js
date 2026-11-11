@@ -239,6 +239,8 @@ async function seat(host, name, stand) {
     ? { left: (sd.look.left * Math.PI) / 180, right: (sd.look.right * Math.PI) / 180 }
     : marshSpan(PLAYER);
   setLookLimits(PLAYER.yaw, span.left, span.right);
+  // looking a touch down to start with (a map's high stand looks further down, onto the valley below it)
+  V.pitch = sd.look && typeof sd.look.pitch === 'number' ? sd.look.pitch : -0.035;
   if (!host.local) {
     host.onHunters = (list) => {
       const before = new Set(NET.hunters.map((h) => h.id));
@@ -327,7 +329,7 @@ function setupTest() {
   }
   if (Q.has('nograss')) camera.layers.disable(1);
   if (Q.has('yaw')) V.yaw = +Q.get('yaw');
-  if (TEST !== 'fight') V.pitch = +(Q.get('pitch') || -0.035);
+  if (TEST !== 'fight' && Q.has('pitch')) V.pitch = +Q.get('pitch');
   V.fov = V.fovT = +(Q.get('fov') || 62);
   if (Q.has('debug')) {
     UI.debugOn = true;

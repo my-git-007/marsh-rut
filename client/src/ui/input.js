@@ -20,7 +20,22 @@ const V = {
   started: false,
   sens: 1, // look sensitivity (Settings)
   invert: false, // invert up and down (Settings)
+  lim: null, // how far the hunter can turn: {yaw0, left, right} (radians either side of the stand's facing)
 };
+// The hunter can turn as far as the marsh reaches on each side (setLookLimits, worked out per stand) and no further:
+// the edge of the picture stops a few degrees past the marsh. Zoomed in, the middle of the view can reach the edge.
+function setLookLimits(yaw0, left, right) {
+  V.lim = { yaw0, left, right };
+}
+function clampLook(aspect) {
+  if (!V.lim) return;
+  const half = Math.atan(Math.tan((V.fov * Math.PI) / 360) * aspect),
+    past = 0.1; // about 6 degrees of woods past the marsh
+  let lo = V.lim.yaw0 - V.lim.right - past + half,
+    hi = V.lim.yaw0 + V.lim.left + past - half;
+  if (lo > hi) lo = hi = (lo + hi) / 2;
+  V.yaw = clamp(V.yaw, lo, hi);
+}
 function setLook(dx, dy) {
   const k = 0.0022 * V.sens * (V.fov / 62);
   V.yaw -= dx * k;
@@ -142,4 +157,4 @@ function showMsg(t, ms = 5000) {
   }, ms);
 }
 
-export { V, buildMixer, setLook, showMsg, toggleBinos, toggleMixer };
+export { V, buildMixer, clampLook, setLook, setLookLimits, showMsg, toggleBinos, toggleMixer };

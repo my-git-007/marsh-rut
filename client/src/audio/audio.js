@@ -2,6 +2,7 @@
 import * as THREE from 'three';
 import { TAU, chance, clamp, noise1, pick, rand, randi } from '../../../shared/util.js';
 import { WIND } from '../../../shared/wind.js';
+import { LULL } from '../lull.js';
 import { POND, groundAt, marshE } from '../../../shared/world.js';
 import { spawnFlock } from '../render/birds.js';
 import { camera } from '../render/core.js';
@@ -825,7 +826,7 @@ const AMB = {
   'white-throated-sparrow': { t: rand(10, 30), every: [25, 80], bands: { near: 0.2, mid: 0.5, far: 0.3 }, gain: 1.0 },
   'red-squirrel': { t: rand(15, 45), every: [40, 110], bands: { near: 0.55, mid: 0.4, far: 0.05 }, gain: 0.9 },
   'pileated-woodpecker': { t: rand(30, 90), every: [60, 160], bands: { mid: 0.3, far: 0.5, veryfar: 0.2 }, gain: 1.3 },
-  'blue-jay': { t: rand(25, 70), every: [50, 140], bands: { near: 0.2, mid: 0.5, far: 0.3 }, gain: 0.9 },
+  'blue-jay': { t: rand(8, 25), every: [35, 90], bands: { near: 0.35, mid: 0.5, far: 0.15 }, gain: 1.1 },
   'common-loon': { t: rand(30, 80), every: [100, 240], where: 'pond', gain: 1.4, ref: 45 },
   'sandhill-cranes': { t: rand(150, 400), every: [300, 700], where: 'sky', gain: 1.3, ref: 70 },
   'canada-geese': { t: rand(90, 260), every: [240, 520], where: 'skymove', gain: 1.4, ref: 60 },
@@ -888,14 +889,21 @@ function startBeds() {
   A.beds = [];
   for (const [cat, g] of [
     ['forest-bed', 0.6],
-    ['wind', 0.5],
+    ['wind', 0.4],
   ]) {
     const keys = ambClips(cat);
     if (!keys.length) continue;
     const bus = gainN(0);
-    bus.connect(cat === 'wind' ? A.bus.wind : A.bus.forest);
-    bus.gain.setTargetAtTime(g, A.ctx.currentTime, 3);
-    A.beds.push({ cat, keys, bus, next: 0, g });
+    let lp = null;
+    if (cat === 'wind') {
+      // The recording is a steady, bright roar: as it is, it sounds like rushing water. Darkened and swelling with
+      // the gusts (and falling away in the lulls, lull.js) it is wind moving through the trees.
+      lp = filt('lowpass', 500, 0.5);
+      bus.connect(lp);
+      lp.connect(A.bus.wind);
+    } else bus.connect(A.bus.forest);
+    bus.gain.setTargetAtTime(cat === 'wind' ? 0 : g, A.ctx.currentTime, 3);
+    A.beds.push({ cat, keys, bus, lp, next: 0, g });
   }
   if (A.beds.some((b) => b.cat === 'wind')) A.synthWindOff = true;
 }
@@ -905,8 +913,9 @@ function updateAmbience(dt) {
   for (const bed of A.beds || []) {
     bedTick(bed);
     if (bed.cat === 'wind') {
-      const l = clamp(WIND.gust * (WIND.speed / 9), 0.15, 1.6);
-      bed.bus.gain.setTargetAtTime(bed.g * (0.45 + 0.55 * l), now, 0.6);
+      const l = clamp(WIND.gust * (WIND.speed / 9), 0.1, 1.6) * LULL.k;
+      bed.bus.gain.setTargetAtTime(bed.g * Math.min(1.3, 0.04 + 0.9 * l), now, 0.8);
+      bed.lp.frequency.setTargetAtTime(260 + 900 * Math.min(1, l * l), now, 0.8);
     }
   }
   for (const a of A.amb) {
@@ -916,7 +925,7 @@ function updateAmbience(dt) {
       continue;
     }
     a.ph += dt;
-    const l = clamp(WIND.gust * (0.7 + 0.3 * noise1(a.ph * 0.3)), 0.05, 1.5);
+    const l = clamp(WIND.gust * (0.7 + 0.3 * noise1(a.ph * 0.3)), 0.05, 1.5) * LULL.k;
     a.g.gain.setTargetAtTime(0.11 * l * (WIND.speed / 9), now, 0.3);
     a.g2.gain.setTargetAtTime(0.024 * l * l * (WIND.speed / 9), now, 0.3);
     a.lp.frequency.setTargetAtTime(280 + l * 280, now, 0.3);

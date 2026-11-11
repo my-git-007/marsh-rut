@@ -10,8 +10,12 @@ import { build as buildMarsh } from './maps/marsh.js';
 import { build as buildAlpine } from './maps/alpine.js';
 export { WATER_Y } from './maps/common.js';
 
-const BUILDERS = { 'the-marsh': buildMarsh, 'alpine-valley-stream': buildAlpine };
-export const MAP_IDS = Object.keys(BUILDERS);
+// (a Map, so an id from a player's message can only ever reach one of these two)
+const BUILDERS = new Map([
+  ['the-marsh', buildMarsh],
+  ['alpine-valley-stream', buildAlpine],
+]);
+export const MAP_IDS = [...BUILDERS.keys()];
 export const DEFAULT_MAP = 'the-marsh';
 
 let W = null;
@@ -29,12 +33,13 @@ export let MARSH = null, // the open ground's middle and size: { cx, cz, a, b }
 
 // pick the map (built the first time it is used); returns its id. An unknown id gets the default map.
 export function useWorld(id) {
-  if (!Object.hasOwn(BUILDERS, id)) id = DEFAULT_MAP;
-  if (W && W.id === id) return id;
-  W = BUILDERS[id]();
+  const build = BUILDERS.get(id) || BUILDERS.get(DEFAULT_MAP);
+  if (W && W.build === build) return W.id;
+  W = build();
+  W.build = build;
   ({ MARSH, POND, STREAM, STREAM_CP, POOLS, STANDS, MAIN_STAND, WATER_PTS, SHRUBS, SHRUB_PTS } = W);
   MAP = W;
-  return id;
+  return W.id;
 }
 // (older callers) make sure some map is in use
 export function buildWorld() {

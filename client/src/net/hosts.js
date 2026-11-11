@@ -35,7 +35,7 @@ const rowState = (r) => ({
 export class LocalHost {
   constructor(opt = {}) {
     this.local = true;
-    this.sim = new Sim({ log: !!opt.log });
+    this.sim = new Sim({ log: !!opt.log, map: opt.map });
     this.me = 'me';
   }
   async join(name, stand) {
@@ -99,8 +99,10 @@ export class LocalHost {
 }
 
 export class RemoteHost {
-  constructor(url, getToken) {
+  // map: which hunting grounds (shared/world.js MAP_IDS); the server opens this player's marsh there
+  constructor(url, getToken, map) {
     this.local = false;
+    this.map = map;
     this.url = url;
     this.getToken = getToken;
     this.snaps = [];
@@ -124,7 +126,7 @@ export class RemoteHost {
         return;
       }
       const timer = setTimeout(() => reject(new Error('no answer from ' + this.url)), 8000);
-      ws.onopen = () => ws.send(JSON.stringify({ t: 'hello', v: PROTOCOL_VERSION, token, stand }));
+      ws.onopen = () => ws.send(JSON.stringify({ t: 'hello', v: PROTOCOL_VERSION, token, stand, map: this.map }));
       ws.onerror = () => {
         clearTimeout(timer);
         reject(new Error('could not reach ' + this.url));
@@ -142,6 +144,12 @@ export class RemoteHost {
         const msg = JSON.parse(m.data);
         if (msg.t === 'welcome') {
           clearTimeout(timer);
+          if (this.map && msg.map !== this.map) {
+            // a server that doesn't know this map yet opened another one: don't play on the wrong ground
+            reject(new Error('These hunting grounds aren’t open on the server yet. Try again later.'));
+            ws.close();
+            return;
+          }
           this.me = msg.you.id;
           this.hunters = msg.hunters;
           for (const a of msg.spawns) this.queue.push({ t: -1e9, ev: { e: 'spawn', a } });

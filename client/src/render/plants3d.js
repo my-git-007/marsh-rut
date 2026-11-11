@@ -929,7 +929,8 @@ let LIVE = null; // what was built, for the binocular swap
 
 // trees: [{x, y, z, h, rot, tile, hide(on)}], shrubs: [{x, y, z, sy, rot, tile, hide(on)}]; centre = the hunter's
 // stand. Builds everything first and only then hides the cards it replaces, so a failure leaves the old forest.
-function buildPlants3D(trees, shrubs, centre) {
+// shrubTints: the two bush kinds' leaf colours, if the map has its own (Alpine Valley: gold willow, red dwarf birch).
+function buildPlants3D(trees, shrubs, centre, shrubTints) {
   const t0 = performance.now();
   const added = [],
     hidden = [];
@@ -977,15 +978,13 @@ function buildPlants3D(trees, shrubs, centre) {
       kinds.push(...list);
       for (const t of sp.tiles) kindOfTile.set(t, list);
     }
+    const ST = shrubTints || [
+      [0.8, 0.72, 0.46], // willow, autumn gold
+      [0.64, 0.68, 0.42], // alder, a little greener
+    ];
     const wiMats = [
-      {
-        wood: woodMat(0x8a7a64, WI_H, 0.12),
-        leaf: leafMat(texs.willow, WI_H, 0.12, colour([0.8, 0.72, 0.46])),
-      }, // willow, autumn gold
-      {
-        wood: woodMat(0x6f6458, WI_H, 0.12),
-        leaf: leafMat(texs.willow, WI_H, 0.12, colour([0.64, 0.68, 0.42])),
-      }, // alder, a little greener
+      { wood: woodMat(0x8a7a64, WI_H, 0.12), leaf: leafMat(texs.willow, WI_H, 0.12, colour(ST[0])) },
+      { wood: woodMat(0x6f6458, WI_H, 0.12), leaf: leafMat(texs.willow, WI_H, 0.12, colour(ST[1])) },
     ];
     const wiGeo = WILLOW_SEEDS.map((s) => willow(s, WI_H));
     const shrubKinds = [0, 1].map((tint) =>

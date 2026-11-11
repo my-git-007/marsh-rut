@@ -2,7 +2,7 @@
 // snapshots (where everything is) and events (sounds and splashes the browsers should play).
 // The same code runs in the multiplayer server and, for solo play, inside the browser tab.
 import { PI, rand, chance, newSeed } from '../util.js';
-import { buildWorld, STANDS, groundAt } from '../world.js';
+import { useWorld, STANDS, groundAt } from '../world.js';
 import { newWind, initWind, updateWind, windState } from '../wind.js';
 import { MODES } from './body.js';
 import { Bull, updateRivals } from './bull.js';
@@ -30,8 +30,9 @@ const r1 = (v) => Math.round(v * 10) / 10,
   r3 = (v) => Math.round(v * 1000) / 1000;
 
 export class Sim {
+  // opt.map: which hunting grounds (shared/world.js MAP_IDS; the default map if not given or unknown)
   constructor(opt = {}) {
-    buildWorld();
+    this.map = useWorld(opt.map);
     this.wind = initWind(newWind()); // this marsh's own wind
     this.time = 0;
     this.ids = 0;
@@ -84,7 +85,7 @@ export class Sim {
   // ---- hunters ----
   freeStands() {
     const used = new Set([...this.hunters.values()].map((h) => h.stand));
-    return STANDS.filter((s) => !used.has(s.i));
+    return this.stands.filter((s) => !used.has(s.i));
   }
   addHunter(id, name = 'Hunter', want) {
     const free = this.freeStands();
@@ -116,7 +117,7 @@ export class Sim {
   // climb down and walk to another stand (the animals keep going; a bull working toward this hunter follows him)
   moveHunter(id, want) {
     const H = this.hunters.get(id),
-      s = STANDS[want];
+      s = this.stands[want];
     if (!H || !s) return null;
     if ([...this.hunters.values()].some((h) => h !== H && h.stand === s.i)) return null; // taken by someone else
     Object.assign(H, {
@@ -404,7 +405,7 @@ export class Sim {
   }
   // ---- test scenes and the showcase (q(name) reads a URL parameter) ----
   scenario(name, q = () => null) {
-    const H = this.hunters.values().next().value || STANDS[0];
+    const H = this.hunters.values().next().value || this.stands[0];
     const num = (k, d) => (q(k) != null ? +q(k) : d);
     const clear = () => {
       for (const b of this.bulls) b.dispose();
@@ -709,3 +710,24 @@ export class Sim {
   }
 }
 export { groundAt };
+
+// Several marshes, each on its own map, can share one process (the server): whatever a marsh does from outside,
+// it first makes its own map the one in use (shared/world.js useWorld; cheap when it already is).
+for (const k of [
+  'addHunter',
+  'removeHunter',
+  'moveHunter',
+  'hunterCall',
+  'hunterPour',
+  'update',
+  'snapshot',
+  'spawnList',
+  'debugText',
+  'scenario',
+]) {
+  const f = Sim.prototype[k];
+  Sim.prototype[k] = function (...a) {
+    useWorld(this.map);
+    return f.apply(this, a);
+  };
+}

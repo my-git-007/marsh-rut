@@ -87,14 +87,14 @@ const dev = startServer(8091, {
 });
 const idle = startServer(8093, { MARSH_AUTH: 'off', IDLE_MINUTES: '0', IDLE_GRACE_S: '4' });
 const real = startServer(8092, { FIREBASE_PROJECT_ID: 'marsh-rut-test' });
-await wait(1200);
+await wait(3500); // the servers build every map as they start
 
-function hunter(port, token, stand) {
+function hunter(port, token, stand, map) {
   // with MARSH_AUTH=off the token is the user's name
   return new Promise((resolve) => {
     const ws = new WebSocket(`ws://localhost:${port}`);
     const h = { ws, ticks: new Map(), events: [], token, msgs: [] };
-    ws.on('open', () => ws.send(JSON.stringify({ t: 'hello', v: PROTOCOL_VERSION, token, stand })));
+    ws.on('open', () => ws.send(JSON.stringify({ t: 'hello', v: PROTOCOL_VERSION, token, stand, map })));
     ws.on('message', (d) => {
       const m = JSON.parse(d);
       h.msgs.push(m.t);
@@ -405,6 +405,25 @@ await wait(7000);
 clearInterval(keep);
 ok(sleepy.msgs.includes('idle') && sleepy.closed, 'an inactive player is told "idle" and disconnected');
 ok(!busy.closed, 'an active player stays connected');
+
+// 7. maps: a player can pick the alpine valley; their one marsh moves there and back
+const ann = await hunter(8093, 'Ann', 0, 'alpine-valley-stream');
+ok(
+  ann.you && ann.you.x === 0 && ann.you.z === 0 && ann.you.y > 5,
+  `a player who picks Alpine Valley Stream sits in its stand (${ann.you && [ann.you.x, ann.you.z, ann.you.y.toFixed(1)]})`,
+);
+const annMv = await answer(ann, 'moved', { t: 'stand', stand: 3 });
+ok(annMv.error && !annMv.you, 'the valley has one stand: moving to a marsh stand is refused');
+ann.ws.close();
+await wait(300);
+const annBack = await hunter(8093, 'Ann', 0);
+ok(
+  annBack.you && annBack.you.z === 10,
+  `the same player back on Grassland Marsh sits at the South knoll (z ${annBack.you && annBack.you.z})`,
+);
+const annOdd = await hunter(8093, 'Ann', 0, 'no-such-place');
+ok(annOdd.you && annOdd.you.z === 10, 'an unknown map name gets Grassland Marsh');
+annOdd.ws.close();
 
 for (const h of [bobBack, busy]) h.ws.close();
 dev.kill();

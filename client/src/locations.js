@@ -1,6 +1,7 @@
 // The hunting grounds on the game's start screen (client/hunting/), in the order they are shown: two to a row.
-// Only Grassland Marsh is built so far; the others show their picture and details, and open when their map is made.
-// open: true = "Go hunting" works. One spot per location for now (Grassland Marsh: the South knoll stand).
+// Grassland Marsh and Alpine Valley Stream are built; the others show their picture and details, and open when their
+// map is made. open: true = "Go hunting" works (the id is the map's, shared/world.js). One spot per location for now
+// (each map's first stand).
 // name is also used in messages, e.g. "You’ve left Grassland Marsh." Pictures are in client/public/locations/.
 export const LOCATIONS = [
   {
@@ -49,7 +50,8 @@ export const LOCATIONS = [
   {
     id: 'alpine-valley-stream',
     name: 'Alpine Valley Stream',
+    open: true,
     about:
-      'A stream winding through an alpine valley in fall colour, with mountains on both sides. Bulls follow the water, and the stream masks your sound as you move.',
+      'A wide alpine valley in fall colour under snow-capped peaks. Your stand looks down over red and gold tundra, willow thickets and scattered spruce to a stream winding across the valley floor. Long sightlines: a bull can show up anywhere from a hundred yards to the far timber.',
   },
 ];

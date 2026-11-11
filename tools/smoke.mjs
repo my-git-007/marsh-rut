@@ -32,7 +32,7 @@ await page.goto(url, { waitUntil: 'load', timeout: 120000 });
 await new Promise((r) => setTimeout(r, +wait * 1000));
 const info = await page.evaluate(() => ({
   err: document.getElementById('err').textContent,
-  go: document.getElementById('go').textContent,
+  go: document.querySelector('#locs .go').textContent,
   debug: document.getElementById('debug').textContent,
   others: document.getElementById('others').textContent,
   log: (window.__log || []).slice(-8),

@@ -1,7 +1,8 @@
 // render/terrain.js — split out of the original single-file game (game.src.html)
 import * as THREE from 'three';
 import { PI, clamp, lin, mix3, noise2, smoothstep } from '../../../shared/util.js';
-import { WATER_Y, canopyAt, groundAt, marshE } from '../../../shared/world.js';
+import { MAP, WATER_Y, canopyAt, groundAt, marshE } from '../../../shared/world.js';
+import { buildAlpineFar, buildAlpineNear } from './alpine.js';
 import { scene } from './core.js';
 import { T } from './textures.js';
 
@@ -28,6 +29,10 @@ function groundColor(x, z, h, e) {
   return lin(mix3(f, m, 1 - smoothstep(-0.005, 0.025, e)));
 }
 function buildTerrain() {
+  if (MAP.id === 'alpine-valley-stream') {
+    buildAlpineFar(scene);
+    return buildAlpineNear(terrainMat(), scene);
+  }
   const X0 = -720,
     X1 = 720,
     Z0 = -1120,
@@ -57,6 +62,13 @@ function buildTerrain() {
   geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
   geo.setAttribute('aM', new THREE.BufferAttribute(am, 1));
   geo.computeVertexNormals();
+  const mesh = new THREE.Mesh(geo, terrainMat());
+  mesh.receiveShadow = true;
+  scene.add(mesh);
+  return mesh;
+}
+// the ground's material: vertex colours times two detail textures, the meadow's (aM = 1) and the forest floor's
+function terrainMat() {
   const mat = new THREE.MeshLambertMaterial({ vertexColors: true, map: T.marsh });
   mat.onBeforeCompile = (sh) => {
     sh.uniforms.tForest = { value: T.forest };
@@ -78,10 +90,7 @@ function buildTerrain() {
       );
   };
   mat.customProgramCacheKey = () => 'terrain';
-  const mesh = new THREE.Mesh(geo, mat);
-  mesh.receiveShadow = true;
-  scene.add(mesh);
-  return mesh;
+  return mat;
 }
 
 export { buildTerrain, groundColor };

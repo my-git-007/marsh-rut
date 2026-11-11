@@ -34,15 +34,18 @@ async function player(name, stand, shots) {
   if (shots) await page.screenshot({ path: `${out}/login.png` });
   await page.type('#li-email', name);
   await page.$eval('#f-login button.primary', (b) => b.click());
-  await page.waitForFunction(visible('#v-in') + ' && ' + visible('#go'), { timeout: 20000 });
+  await page.waitForFunction(visible('#v-in') + ' && ' + visible('.go[data-map="the-marsh"]'), { timeout: 20000 });
   await page.select('#pstand', String(stand));
   if (shots) await page.screenshot({ path: `${out}/logged-in.png` });
-  await page.$eval('#go', (el) => el.click());
-  await page.waitForFunction(() => document.getElementById('go').textContent === 'Climb into the stand', {
-    timeout: 60000,
-  });
-  const netmsg = await page.$eval('#netmsg', (e) => e.textContent);
-  await page.$eval('#go', (el) => el.click());
+  await page.$eval('.go[data-map="the-marsh"]', (el) => el.click());
+  await page.waitForFunction(
+    () => document.querySelector('.go[data-map="the-marsh"]').textContent === 'Climb into the stand',
+    {
+      timeout: 60000,
+    },
+  );
+  const netmsg = await page.$eval('.netmsg', (e) => e.textContent);
+  await page.$eval('.go[data-map="the-marsh"]', (el) => el.click());
   return { page, errs, name, netmsg };
 }
 const a = await player('Alice', 0, true),

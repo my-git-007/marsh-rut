@@ -1,7 +1,8 @@
 // The game's start screen (client/hunting/): Back, How to play and Game Settings at the top, then "Choose your
 // hunting grounds" with one picture button per location (details link, Go hunting), then who's logged in.
-// One spot per location for now: Grassland Marsh always starts at the South knoll stand.
-// Built when this module loads, before src/main.js looks up #go (Grassland Marsh's button).
+// One spot per location for now (each map's first stand). Every open location has a Go hunting button
+// (.go, data-map = its id) and a status line (.netmsg); src/main.js builds that map when its button is pressed.
+// Built when this module loads, before src/main.js looks up the buttons.
 // The pop-ups are <dialog>s in hunting/index.html. In the marsh, H opens the instructions (UI.toggleHowto).
 import { LOCATIONS } from '../locations.js';
 import { canvas } from '../render/core.js';
@@ -16,9 +17,8 @@ const pic = (l) => `../locations/${l.id}.webp`;
 function buildGrid() {
   const box = $('locs');
   box.innerHTML = LOCATIONS.map((l) => {
-    const marsh = l.id === 'the-marsh';
-    const go = marsh
-      ? '<button type="button" id="go" class="hunt" disabled>Go hunting</button>'
+    const go = l.open
+      ? `<button type="button" class="hunt go" data-map="${l.id}" disabled>Go hunting</button>`
       : '<button type="button" class="hunt" disabled title="Coming soon">Go hunting</button>';
     return `<section class="loc" data-loc="${l.id}" aria-labelledby="ln-${l.id}">
   <button type="button" class="loc-pic" aria-pressed="false" aria-label="Choose ${esc(l.name)}"><img src="${pic(l)}" alt="" width="133" height="160" loading="lazy"></button>
@@ -26,7 +26,7 @@ function buildGrid() {
     <h3 class="loc-name" id="ln-${l.id}">${esc(l.name)}</h3>
     <p class="loc-detail"><span class="loc-arrow" aria-hidden="true">&gt;</span> <button type="button" class="loc-more">Location details</button></p>
     <div class="loc-row">${go}</div>
-    ${marsh ? '<div id="netmsg" role="status"></div>' : ''}
+    ${l.open ? '<div class="netmsg" role="status"></div>' : ''}
   </div>
 </section>`;
   }).join('');

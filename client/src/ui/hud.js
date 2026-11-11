@@ -2,8 +2,9 @@
 import * as THREE from 'three';
 import { PI, clamp, compassName, smoothstep } from '../../../shared/util.js';
 import { WIND } from '../../../shared/wind.js';
-import { canopyAt, groundAt, marshE, outDist } from '../../../shared/world.js';
+import { canopyAt, groundAt, marshE } from '../../../shared/world.js';
 import { camera } from '../render/core.js';
+import { obstacleHit } from '../render/vegetation.js';
 import { ANIMALS, G, NET, UI } from '../state.js';
 import { V } from './input.js';
 
@@ -49,11 +50,14 @@ function rangeFind() {
     const x = o.x + dir.x * t,
       y = o.y + dir.y * t,
       z = o.z + dir.z * t;
-    const top = groundAt(x, z) + canopyAt(x, z) + (marshE(x, z) < 0 ? 0.8 : outDist(x, z) > 4 ? 14 : 0);
+    // the ground and its grass (deep in the woods, the canopy); the trees and bushes themselves are checked below
+    const top = groundAt(x, z) + canopyAt(x, z) + (marshE(x, z) < 0 ? 0.8 : 0.3);
     if (y < top) break;
     t += 0.5 + t * 0.008;
   }
   if (t < 1900 && (!best || t < best)) best = t;
+  const tree = obstacleHit(o, dir, best || 1900);
+  if (tree !== null && (!best || tree < best)) best = tree;
   return best;
 }
 function updateHUD(dt) {

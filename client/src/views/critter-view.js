@@ -2,7 +2,7 @@
 // Its coat and size come from the host (vis.coat, vis.scale: rolled from shared/sim/catalog.js).
 import * as THREE from 'three';
 import { PI, TAU, clamp, rand, wrapA, withSeed } from '../../../shared/util.js';
-import { WATER_Y, groundAt, marshE, outDist } from '../../../shared/world.js';
+import { WATER_Y, groundAt, inWater, marshE, outDist } from '../../../shared/world.js';
 import { FLAG } from '../../../shared/sim/body.js';
 import { camera, scene } from '../render/core.js';
 import { CRITTERS, CRITTER_SPEC, CR_BONES, getCritterKind } from '../models/critters.js';
@@ -208,7 +208,7 @@ export class CritterView {
       this.shellVis = sv;
       for (const sh of M.shells) sh.visible = sv;
     }
-    if (gy < WATER_Y - 0.05 && this.speed > 0.3) {
+    if (gy < WATER_Y - 0.05 && inWater(this.x, this.z) && this.speed > 0.3) {
       this.ripT = (this.ripT || 0) - dt;
       if (this.ripT < 0) {
         this.ripT = 0.6;

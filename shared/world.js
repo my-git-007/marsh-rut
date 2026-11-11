@@ -10,12 +10,9 @@ import { build as buildMarsh } from './maps/marsh.js';
 import { build as buildAlpine } from './maps/alpine.js';
 export { WATER_Y } from './maps/common.js';
 
-// (a Map, so an id from a player's message can only ever reach one of these two)
-const BUILDERS = new Map([
-  ['the-marsh', buildMarsh],
-  ['alpine-valley-stream', buildAlpine],
-]);
-export const MAP_IDS = [...BUILDERS.keys()];
+export const MAP_IDS = ['the-marsh', 'alpine-valley-stream'];
+// (fixed comparisons, no lookup by name: an id from a player's message can only ever pick one of these builders)
+const builderFor = (id) => (id === 'alpine-valley-stream' ? buildAlpine : buildMarsh);
 export const DEFAULT_MAP = 'the-marsh';
 
 let W = null;
@@ -33,7 +30,7 @@ export let MARSH = null, // the open ground's middle and size: { cx, cz, a, b }
 
 // pick the map (built the first time it is used); returns its id. An unknown id gets the default map.
 export function useWorld(id) {
-  const build = BUILDERS.get(id) || BUILDERS.get(DEFAULT_MAP);
+  const build = builderFor(id);
   if (W && W.build === build) return W.id;
   W = build();
   W.build = build;

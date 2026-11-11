@@ -1,7 +1,7 @@
 // render/water.js — split out of the original single-file game (game.src.html)
 import * as THREE from 'three';
 import { PI } from '../../../shared/util.js';
-import { WATER_Y } from '../../../shared/world.js';
+import { MAP, WATER_Y } from '../../../shared/world.js';
 import { C, FOG_COL, SUN_COL, SUN_DIR, U, camera, renderer, scene } from './core.js';
 import { NOISE_GLSL } from './sky.js';
 
@@ -46,9 +46,11 @@ function buildWater() {
       #include <encodings_fragment>
     }`,
   });
-  water = new THREE.Mesh(new THREE.PlaneGeometry(900, 1000, 1, 1), mat);
+  // one flat sheet under the whole map's open water (the ground hides it everywhere else)
+  const R = (MAP.look && MAP.look.water) || { x: 0, z: -380, w: 900, d: 1000 };
+  water = new THREE.Mesh(new THREE.PlaneGeometry(R.w, R.d, 1, 1), mat);
   water.rotation.x = -PI / 2;
-  water.position.set(0, WATER_Y, -380);
+  water.position.set(R.x, WATER_Y, R.z);
   scene.add(water);
 }
 const _rv = new THREE.Vector3(),

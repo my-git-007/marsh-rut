@@ -41,5 +41,15 @@ scene.add(sun.target);
 sun.target.position.set(0, 0, -372);
 sun.position.copy(SUN_DIR).multiplyScalar(1500).add(sun.target.position);
 const U = { time: { value: 0 }, wind: { value: new THREE.Vector3(0, 0, 1) } };
+// a map's own air and light: clearer mountain air (the peaks are kilometres away), and the shadows centred on its
+// open ground (map.look, shared/maps/*.js)
+function setMapLook(map) {
+  const L = map.look || {};
+  if (L.fog) scene.fog.density = L.fog;
+  if (L.sunAt) {
+    sun.target.position.set(L.sunAt.x, 0, L.sunAt.z);
+    sun.position.copy(SUN_DIR).multiplyScalar(1500).add(sun.target.position);
+  }
+}
 
-export { C, FOG_COL, SUN_COL, SUN_DIR, U, camera, canvas, hemi, renderer, sc, scene, sun };
+export { C, FOG_COL, SUN_COL, SUN_DIR, U, camera, canvas, hemi, renderer, sc, scene, setMapLook, sun };

@@ -20,7 +20,10 @@
 import http from 'http';
 import { WebSocketServer } from 'ws';
 import { Sim } from '../shared/sim/sim.js';
-import { STANDS } from '../shared/world.js';
+import { MAP_IDS, DEFAULT_MAP, useWorld } from '../shared/world.js';
+
+// build every map now (the valley takes most of a second), not inside some player's hello while every marsh waits
+for (const id of MAP_IDS) useWorld(id);
 import { TICK_HZ, SEND_EVERY, PROTOCOL_VERSION } from '../shared/protocol.js';
 import { whoIs, AUTH_OFF } from './auth.js';
 import { sendContact, CONTACT_ON } from './contact.js';
@@ -60,9 +63,17 @@ const connsByIp = new Map(); // ip -> number of open WebSockets
 const newByIp = new Map(); // ip -> [times a new marsh was opened], last hour
 const httpByIp = new Map(); // ip -> { start, n }
 
-function openMarsh(uid, ip) {
+function openMarsh(uid, ip, map) {
   let m = marshes.get(uid);
-  if (m) return m;
+  if (m) {
+    // the player picked other hunting grounds: their marsh starts over there (it's still their one marsh, so it
+    // doesn't count as a new one)
+    if (m.sim.map !== map) {
+      m.sim = new Sim({ log: DEBUG, map });
+      if (BULL_NOW) m.sim.nextBull = 0.5;
+    }
+    return m;
+  }
   const now = Date.now(),
     recent = (newByIp.get(ip) || []).filter((t) => now - t < 3600000);
   if (recent.length >= MAX_NEW_PER_IP) return 'limit';
@@ -75,7 +86,7 @@ function openMarsh(uid, ip) {
   }
   recent.push(now);
   newByIp.set(ip, recent);
-  m = { uid, sim: new Sim({ log: DEBUG }), conn: null, emptySince: now, step: 0 };
+  m = { uid, sim: new Sim({ log: DEBUG, map }), conn: null, emptySince: now, step: 0 };
   if (BULL_NOW) m.sim.nextBull = 0.5;
   marshes.set(uid, m);
   return m;
@@ -177,7 +188,7 @@ async function hello(c, msg) {
   }
   if (!who.verified) return deny(c, 'verify');
   if (c.ws.readyState !== 1) return;
-  const m = openMarsh(who.uid, c.ip);
+  const m = openMarsh(who.uid, c.ip, MAP_IDS.includes(msg.map) ? msg.map : DEFAULT_MAP);
   if (typeof m === 'string') return deny(c, m);
   if (m.conn) {
     const old = m.conn;
@@ -190,7 +201,7 @@ async function hello(c, msg) {
   const H = m.sim.addHunter(
     hid,
     who.name,
-    Number.isInteger(msg.stand) && msg.stand >= 0 && msg.stand < STANDS.length ? msg.stand : undefined,
+    Number.isInteger(msg.stand) && msg.stand >= 0 && msg.stand < m.sim.stands.length ? msg.stand : undefined,
   );
   if (!H) return deny(c, 'full');
   Object.assign(c, { uid: who.uid, hid, who, marsh: m, active: Date.now() });
@@ -203,9 +214,10 @@ async function hello(c, msg) {
     spawns: m.sim.spawnList(),
     snap: m.sim.snapshot(),
     rate: TICK_HZ / SEND_EVERY,
+    map: m.sim.map,
   });
   log(
-    `+ ${who.name} (${who.uid.slice(0, 10)}) at ${STANDS[H.stand].name} — ${players()} playing, ${marshes.size} marsh(es)`,
+    `+ ${who.name} (${who.uid.slice(0, 10)}) at ${m.sim.stands[H.stand].name} (${m.sim.map}) — ${players()} playing, ${marshes.size} marsh(es)`,
   );
 }
 

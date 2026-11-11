@@ -225,6 +225,12 @@ canvas#c {
 #start .card {
   max-width: 560px;
 }
+/* online, until a location is picked and built there is nothing behind the card: a still of the lake */
+#start.bare {
+  background:
+    linear-gradient(rgba(8, 9, 7, 0.55), rgba(8, 9, 7, 0.55)),
+    url('./lake.jpg') center / cover;
+}
 #loadmsg {
   margin: 4px 0 8px;
   text-align: center;
@@ -792,11 +798,11 @@ body.menu-open #paused {
     padding: 22px 18px;
   }
 }
-#netmsg {
+#start .netmsg {
   color: #e8d9a6;
   font-size: 13px;
 }
-#netmsg:empty {
+#start .netmsg:empty {
   display: none;
 }
 #others {

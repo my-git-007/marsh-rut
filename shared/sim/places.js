@@ -1,7 +1,7 @@
 // Where animals come from and go to: points on the timber edge and out in the marsh, chosen relative to
 // the hunters' stands (bulls show up in front of a hunter, animals leave by edges away from the stands).
 import { TAU, PI, rand, wrapA } from '../util.js';
-import { MARSH, marshE, pondE, streamDist, edgeAt } from '../world.js';
+import { MAP, MARSH, marshE, pondE, streamDist, edgeAt } from '../world.js';
 
 export const SPOT_R = 68.6; // 75 yards: inside this, a call or a pour gives you away
 
@@ -53,13 +53,14 @@ export function edgeAwayFrom(sim, x, z, fx, fz) {
 }
 // a spot out in the marsh, at least minD from every hunter and within maxD of one
 export function marshPoint(sim, minD, maxD) {
+  const B = MAP.openBox;
   for (let i = 0; i < 400; i++) {
-    const x = rand(-220, 220),
-      z = rand(-740, -30);
+    const x = rand(B.x0, B.x1),
+      z = rand(B.z0, B.z1);
     if (marshE(x, z) > -0.06) continue;
     if (pondE(x, z) < 0.7) continue;
     const d = sim.nearestHunter(x, z).d;
     if (d >= minD && d <= maxD) return { x, z };
   }
-  return { x: MARSH.cx, z: -400 };
+  return { x: MARSH.cx, z: (B.z0 + B.z1) / 2 };
 }

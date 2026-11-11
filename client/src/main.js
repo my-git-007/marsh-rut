@@ -3,9 +3,9 @@
 // or the marsh server for multiplayer), then every frame: take the host's snapshot and events, pose the
 // animals, play the sounds, render.
 import { clamp, smoothstep, noise1, rand } from '../../shared/util.js';
-import { buildWorld, STANDS, groundAt, marshE } from '../../shared/world.js';
+import { useWorld, MAP, MAP_IDS, DEFAULT_MAP, STANDS, groundAt, marshE } from '../../shared/world.js';
 import { WIND } from '../../shared/wind.js';
-import { renderer, scene, camera, canvas, U } from './render/core.js';
+import { renderer, scene, camera, canvas, U, setMapLook } from './render/core.js';
 import { makeTextures } from './render/textures.js';
 import { buildSky } from './render/sky.js';
 import { buildTerrain } from './render/terrain.js';
@@ -44,35 +44,40 @@ window.__marsh = { NET, PLAYER, ANIMALS, G, V, UI, A }; // for tests and the con
 // the server runs each player's own marsh. Otherwise (or with ?solo) the marsh runs in this tab, no account.
 const SERVER = Q.has('solo') ? '' : Q.get('server') || import.meta.env.VITE_SERVER_URL || '';
 const SHOWCASE = Q.has('showcase') || /showcase/.test(location.hash);
-const go = document.getElementById('go');
-// Grassland Marsh's button: progress while the marsh builds, then Go hunting (online: Walking in… while it joins).
-// (Above it, #loadmsg says "Loading moose hunting grounds. Stand by..." until the card appears.)
+// Each open location's Go hunting button (ui/start-screen.js). Online, pressing one builds that map (progress on
+// the button), joins the player's marsh there and goes straight in. Offline and in tests the map is built at once:
+// ?at=<map id> picks it (Grassland Marsh if not given).
+const GOS = [...document.querySelectorAll('#locs .go')];
+const AT = MAP_IDS.includes(Q.get('at')) ? Q.get('at') : DEFAULT_MAP;
+let go = GOS.find((b) => b.dataset.map === AT) || GOS[0];
 const st = (t) => {
   go.textContent = t;
 };
 const netMsg = (t) => {
-  document.getElementById('netmsg').textContent = t || '';
+  const el = go && go.closest('.loc').querySelector('.netmsg');
+  if (el) el.textContent = t || '';
 };
 const tick = () => new Promise((r) => setTimeout(r, 0));
 let sky = null,
   grassBuilt = false,
   USER = null,
   leaving = false,
-  built = false;
-// show the whole start card at once, when the marsh is built and (online) we know who is playing
+  ready = false, // textures painted (online: the buttons can be pressed)
+  built = null; // the map that has been built (one per page: Change location reloads the page)
+// show the whole start card at once, when it can be used and (online) we know who is playing
 const reveal = () => {
-  if (built && (USER || !SERVER || TEST)) document.getElementById('start').classList.remove('loading');
+  if (ready && (USER || !SERVER || TEST)) document.getElementById('start').classList.remove('loading');
 };
 
-async function init() {
-  if (SERVER && !TEST) startSession(); // online: who is playing (checked while the marsh builds)
-  st('Painting textures…');
+// build one map's ground, sky, water and timber (the grass and 3D plants come once the hunter is seated)
+async function buildMap(id) {
+  const name = (LOCATIONS.find((l) => l.id === id) || {}).name || 'the hunting grounds';
+  st(id === 'the-marsh' ? 'Shaping the marsh…' : 'Shaping the valley…');
   await tick();
-  makeTextures();
-  await loadRefAssets();
-  st('Shaping the marsh…');
-  await tick();
-  buildWorld();
+  useWorld(id);
+  built = id;
+  HERE = name;
+  setMapLook(MAP);
   Object.assign(PLAYER, { x: STANDS[0].x, z: STANDS[0].z, y: STANDS[0].y, eye: STANDS[0].eye, yaw: STANDS[0].yaw });
   buildTerrain();
   await tick();
@@ -87,10 +92,19 @@ async function init() {
   layoutBinoc();
   onResize();
   updateCallLabel();
+}
+
+async function init() {
+  if (SERVER && !TEST) startSession(); // online: who is playing (checked while the textures are painted)
+  st('Painting textures…');
+  await tick();
+  makeTextures();
+  await loadRefAssets();
   if (SERVER && !TEST) {
-    st('Go hunting');
-    go.disabled = false;
-    built = true;
+    for (const b of GOS) b.disabled = false;
+    for (const b of GOS) b.textContent = 'Go hunting';
+    ready = true;
+    document.getElementById('start').classList.add('bare'); // nothing built behind the card yet
     reveal();
     watchIdle({
       onWarn: (s) => {
@@ -113,10 +127,11 @@ async function init() {
       },
     });
   } else {
-    await seat(new LocalHost({ log: !!TEST }), 'You', Q.has('stand') ? +Q.get('stand') : 0);
+    await buildMap(AT);
+    await seat(new LocalHost({ log: !!TEST, map: AT }), 'You', Q.has('stand') ? +Q.get('stand') : 0);
+    for (const b of GOS) b.disabled = false;
     st('Go hunting');
-    go.disabled = false;
-    built = true;
+    ready = true;
     reveal();
   }
   initMenu({ online: !!(SERVER && !TEST), user: () => USER, onChangeLocation: changeLocation, onExit: exitGame });
@@ -149,9 +164,8 @@ function startSession() {
   });
 }
 // leave the marsh, log out and go to the log-in page, with a message for it
-// the hunting grounds this page is playing, for messages like "You've left Grassland Marsh." (only Grassland Marsh is built so
-// far; when other maps open, this becomes the one picked on the start screen)
-const HERE = LOCATIONS.find((l) => l.id === 'the-marsh').name;
+// the hunting grounds this page is playing, for messages like "You've left Grassland Marsh." (set by buildMap)
+let HERE = LOCATIONS.find((l) => l.id === DEFAULT_MAP).name;
 async function leaveTo(msg) {
   leaving = true;
   try {
@@ -219,7 +233,11 @@ async function seat(host, name, stand) {
   });
   camera.position.set(PLAYER.x, PLAYER.eye, PLAYER.z);
   V.yaw = PLAYER.yaw;
-  const span = marshSpan(PLAYER);
+  // how far the hunter may turn: set by the map for its stand, or as far as the marsh reaches
+  const sd = STANDS[PLAYER.stand] || {};
+  const span = sd.look
+    ? { left: (sd.look.left * Math.PI) / 180, right: (sd.look.right * Math.PI) / 180 }
+    : marshSpan(PLAYER);
   setLookLimits(PLAYER.yaw, span.left, span.right);
   if (!host.local) {
     host.onHunters = (list) => {
@@ -258,18 +276,26 @@ async function idleLogout() {
 
 async function joinOnline() {
   if (!USER) return false;
-  const stand = 0; // one spot per location for now: Grassland Marsh's South knoll stand
-  go.disabled = true;
+  const stand = 0; // one spot per location for now: the map's first stand
+  for (const b of GOS) b.disabled = true;
+  if (built !== go.dataset.map)
+    try {
+      await buildMap(go.dataset.map);
+    } catch (e) {
+      netMsg('Couldn’t build this location: ' + e.message + ' Reload the page to try again.');
+      st('Go hunting');
+      return false;
+    }
   st('Walking in…');
   netMsg('Opening your marsh…');
   try {
-    await seat(new RemoteHost(SERVER, getToken), USER.name, stand);
+    await seat(new RemoteHost(SERVER, getToken, built), USER.name, stand);
     netMsg(`Your marsh is ready. You are in the ${STANDS[PLAYER.stand].name} stand.`);
     return true;
   } catch (e) {
     netMsg(e.message);
     st('Go hunting');
-    go.disabled = false;
+    for (const b of GOS) b.disabled = false; // another location reloads the page first (enter)
     return false;
   }
 }
@@ -310,9 +336,21 @@ function setupTest() {
   if (NET.host.local) window.__log = NET.host.sim.log;
 }
 
-go.addEventListener('click', async () => {
-  // online: join this player's marsh first (Walking in…), then straight into it
+for (const b of GOS) b.addEventListener('click', () => enter(b));
+async function enter(b) {
+  if (b.disabled) return;
+  if (built && b.dataset.map !== built) {
+    // this page already holds another map: load it again (offline straight onto the new one; online back to this
+    // screen, fresh, to press Go hunting again)
+    const u = new URL(location.href);
+    if (!SERVER || TEST) u.searchParams.set('at', b.dataset.map);
+    location.replace(u);
+    return;
+  }
+  if (!NET.host) go = b; // (once seated, only this map's button is live)
+  // online: build the map and join this player's marsh first (Walking in…), then straight into it
   if (!NET.host && !(await joinOnline())) return;
+  document.getElementById('start').classList.remove('bare');
   audioInit();
   if (A.ctx.state === 'suspended') A.ctx.resume();
   document.getElementById('start').style.display = 'none';
@@ -328,7 +366,7 @@ go.addEventListener('click', async () => {
   } catch (e) {
     V.dragMode = true; // no mouse capture in this browser: drag to look around
   }
-});
+}
 function onResize() {
   const w = innerWidth,
     h = innerHeight;
@@ -391,6 +429,10 @@ let last = performance.now(),
 const SPEED = TEST ? +(Q.get('speed') || 1) : 1;
 function loop(now) {
   requestAnimationFrame(loop);
+  if (!built || !sky) {
+    last = now;
+    return; // nothing to draw until a map is built
+  }
   if (UI.paused) {
     // pause menu: nothing moves; draw again only if something changed (a new stand)
     last = now;

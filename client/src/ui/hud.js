@@ -5,6 +5,7 @@ import { WIND } from '../../../shared/wind.js';
 import { canopyAt, groundAt, marshE } from '../../../shared/world.js';
 import { camera } from '../render/core.js';
 import { obstacleHit } from '../render/vegetation.js';
+import { LULL } from '../lull.js';
 import { ANIMALS, G, NET, UI } from '../state.js';
 import { V } from './input.js';
 
@@ -68,7 +69,7 @@ function updateHUD(dt) {
   document.getElementById('windarrow').setAttribute('transform', `rotate(${(toDeg - heading).toFixed(1)})`);
   document.getElementById('windtxt').textContent = 'wind from ' + compassName(WIND.from);
   document.getElementById('windsub').textContent =
-    Math.round(WIND.speed * WIND.gust) + ' km/h' + (WIND.swirl > 0.3 ? ' · swirling' : '');
+    Math.round(WIND.speed * WIND.gust * LULL.k) + ' km/h' + (WIND.swirl > 0.3 ? ' · swirling' : '');
   const bo = smoothstep(24, 15, V.fov);
   binocEl.style.opacity = bo.toFixed(3);
   const rg = document.getElementById('range');

@@ -3,7 +3,7 @@
 // or the marsh server for multiplayer), then every frame: take the host's snapshot and events, pose the
 // animals, play the sounds, render.
 import { clamp, smoothstep, noise1, rand } from '../../shared/util.js';
-import { buildWorld, STANDS, groundAt } from '../../shared/world.js';
+import { buildWorld, STANDS, groundAt, marshE } from '../../shared/world.js';
 import { WIND } from '../../shared/wind.js';
 import { renderer, scene, camera, canvas, U } from './render/core.js';
 import { makeTextures } from './render/textures.js';
@@ -14,10 +14,11 @@ import { buildRidges } from './render/ridges.js';
 import { buildGrass, buildForest, buildPlants, buildShrubs, buildStand } from './render/vegetation.js';
 import { updatePlants3D } from './render/plants3d.js';
 import { updateFx, updateVapor } from './render/fx.js';
-import { spawnBirds, spawnFlock, updateBirds } from './render/birds.js';
+import { spawnBirds, spawnCrossing, spawnFlock, updateBirds } from './render/birds.js';
 import { loadRefAssets } from './models/ref-bull.js';
 import { A, audioInit, updateAmbience, updateListener } from './audio/audio.js';
-import { V, showMsg } from './ui/input.js';
+import { V, clampLook, setLookLimits, showMsg } from './ui/input.js';
+import { LULL, updateLull } from './lull.js';
 import { layoutBinoc, updateHUD } from './ui/hud.js';
 import { updateCallLabel } from './calls.js';
 import { LocalHost, RemoteHost } from './net/hosts.js';
@@ -179,6 +180,28 @@ async function exitGame() {
   location.reload();
 }
 
+// How far the marsh reaches to the left and right of a stand, as angles from where the stand faces: the hunter
+// may turn that far. Looks out along each bearing (1 degree apart) for open marsh within 900 m.
+function marshSpan(st) {
+  const sees = (deg) => {
+    const y = st.yaw + (deg * Math.PI) / 180,
+      fx = -Math.sin(y),
+      fz = -Math.cos(y);
+    for (let d = 15; d < 900; d += 3) if (marshE(st.x + fx * d, st.z + fz * d) < 0) return true;
+    return false;
+  };
+  // the last bearing with marsh, stepping over gaps of up to 4 degrees (a wiggle in the shoreline)
+  const reach = (sign) => {
+    let last = 0;
+    for (let a = 1; a <= 175 && a - last <= 5; a++) if (sees(sign * a)) last = a;
+    return last;
+  };
+  let left = reach(1),
+    right = reach(-1);
+  if (left + right < 40) left = right = 60; // (not facing the marsh: shouldn't happen)
+  return { left: (left * Math.PI) / 180, right: (right * Math.PI) / 180 };
+}
+
 // put this player in a stand and finish the bits of the world that depend on where they sit
 async function seat(host, name, stand) {
   const { you, hunters } = await host.join(name, stand);
@@ -196,6 +219,8 @@ async function seat(host, name, stand) {
   });
   camera.position.set(PLAYER.x, PLAYER.eye, PLAYER.z);
   V.yaw = PLAYER.yaw;
+  const span = marshSpan(PLAYER);
+  setLookLimits(PLAYER.yaw, span.left, span.right);
   if (!host.local) {
     host.onHunters = (list) => {
       const before = new Set(NET.hunters.map((h) => h.id));
@@ -269,6 +294,9 @@ function setupTest() {
   }
   if (Q.has('birds')) {
     spawnBirds('raven');
+    spawnCrossing('jay');
+    spawnCrossing('song');
+    spawnCrossing('hawk');
     spawnFlock('goose', 10, { x: PLAYER.x - 300, y: 120, z: PLAYER.z - 250 }, 30);
   }
   if (Q.has('nograss')) camera.layers.disable(1);
@@ -314,12 +342,26 @@ function onResize() {
 window.addEventListener('resize', onResize);
 
 // birds are scenery: each browser makes its own (nothing in the marsh reacts to them)
-const BIRD_T = { raven: rand(40, 120), duck: rand(180, 420) };
+const BIRD_T = {
+  raven: rand(20, 60),
+  duck: rand(180, 420),
+  jay: rand(15, 45),
+  song: rand(25, 70),
+  hawk: rand(60, 160),
+};
+const BIRD_EVERY = { jay: [45, 120], song: [50, 130], hawk: [150, 360] };
 function updateLocalWildlife(dt) {
   BIRD_T.raven -= dt;
   if (BIRD_T.raven < 0) {
-    BIRD_T.raven = rand(60, 180);
+    BIRD_T.raven = rand(35, 100);
     spawnBirds('raven');
+  }
+  for (const k in BIRD_EVERY) {
+    BIRD_T[k] -= dt;
+    if (BIRD_T[k] < 0) {
+      BIRD_T[k] = rand(BIRD_EVERY[k][0], BIRD_EVERY[k][1]);
+      spawnCrossing(k);
+    }
   }
   BIRD_T.duck -= dt;
   if (BIRD_T.duck < 0) {
@@ -376,7 +418,9 @@ function loop(now) {
     }
   }
   U.time.value += dt;
-  U.wind.value.set(((WIND.tx * WIND.speed) / 9) * WIND.gust, WIND.gust, ((WIND.tz * WIND.speed) / 9) * WIND.gust);
+  updateLull(dt); // the wind dropping away now and then: only for what is heard and seen (lull.js)
+  const felt = WIND.gust * LULL.k;
+  U.wind.value.set(((WIND.tx * WIND.speed) / 9) * felt, felt, ((WIND.tz * WIND.speed) / 9) * felt);
   // view: zoom, and a little hand shake through the binoculars
   const lf = Math.log(V.fov),
     lt = Math.log(V.fovT);
@@ -385,6 +429,8 @@ function loop(now) {
     t = G.time;
   const jy = (noise1(t * 0.55) * 0.0011 + noise1(t * 2.3 + 9) * 0.00025) * zoom,
     jp = (noise1(t * 0.6 + 40) * 0.0009 + noise1(t * 2.1 + 19) * 0.00022) * zoom + Math.sin(t * 0.9) * 0.0005;
+  // no turning past the marsh (test views that aim the camera themselves are left alone)
+  if (!(TEST && (Q.has('free') || Q.has('aim') || Q.has('yaw') || TEST === 'fight'))) clampLook(camera.aspect);
   camera.rotation.set(V.pitch + jp, V.yaw + jy, 0);
   camera.fov = V.fov;
   camera.updateProjectionMatrix();

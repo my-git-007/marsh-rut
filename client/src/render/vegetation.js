@@ -255,12 +255,23 @@ function buildForest() {
     const h = rand(2.5, 9);
     items.push({ x, y: groundAt(x, z) - 0.2, z, rot: rand(0, TAU), sx: h * TT[t].w, sy: h, tile: t });
   }
-  for (let i = 0; i < 30; i++) {
-    const x = rand(-220, 220),
-      z = rand(-720, -60);
-    if (marshE(x, z) > -0.03 || groundAt(x, z) < WATER_Y + 0.1 || inFrontCorridor(x, z, 100)) continue;
-    const h = rand(4, 10);
+  // dead standing spruce out in the marsh: an old, drowned stand. Single snags all over, and groves of them
+  // where the water came up and killed a patch of timber (the first 60 m of the shooting lane stays clear).
+  const snagAt = (x, z, h) => {
+    if (marshE(x, z) > -0.01 || groundAt(x, z) < WATER_Y + 0.1 || inFrontCorridor(x, z, 60)) return;
+    if (nearestStandDist(x, z) < 8) return;
     items.push({ x, y: groundAt(x, z) - 0.2, z, rot: rand(0, TAU), sx: h * 0.3, sy: h, tile: 7 });
+  };
+  for (let i = 0; i < 700; i++) snagAt(rand(-240, 240), rand(-760, -40), rand(4, 13) * (chance(0.25) ? 0.6 : 1));
+  for (let g = 0; g < 16; g++) {
+    const cx = rand(-200, 200),
+      cz = rand(-720, -120),
+      n = randi(10, 26);
+    for (let i = 0; i < n; i++) {
+      const a = rand(0, TAU),
+        r = Math.sqrt(Math.random()) * rand(12, 30);
+      snagAt(cx + Math.cos(a) * r, cz + Math.sin(a) * r, rand(6, 15));
+    }
   }
   // understory: young spruce & brush along the timber edge
   for (let i = 0; i < 6000 && tries < 400000; i++) {
@@ -286,7 +297,7 @@ function plantForest(items, near) {
   for (const tr of near) addObstacle(tr.x, tr.y, tr.z, tr.h, tr.t);
   buildNearTrees(near);
 }
-// the card forest, remembered so the 3D plants (render/plants3d.js) can take the place of every tree but the snags
+// the card forest, remembered so the 3D plants (render/plants3d.js) can take the place of every tree
 const FOREST = { items: [], near: [], track: new Map(), nearTrack: new Map(), shrubTrack: new Map() };
 // willow and alder clumps: the layout is shared and seeded (the bulls thrash these), so every player sees the same bushes
 function buildShrubs() {
@@ -304,15 +315,17 @@ function buildShrubs() {
 }
 /* ---------------- what the rangefinder hits: the real trees and bushes ---------------- */
 // Each tree is a simple solid the size of its 3D model (a cone for the conifers, a trunk and a round crown for
-// aspen and birch, a pole for a snag); each bush a dome. Kept in a 16 m grid so a sightline only checks nearby ones.
+// aspen, birch and lodgepole pine, a pole for a snag); each bush a dome. Kept in a 16 m grid so a sightline only checks nearby ones.
 const OB_CELL = 16,
   OB = new Map();
-const CONE_R = { 0: 0.17, 1: 0.17, 2: 0.1, 3: 0.14, 6: 0.15 }; // crown radius at the base, as a share of the height
+const CONE_R = { 0: 0.17, 2: 0.1, 3: 0.14, 6: 0.15 }; // crown radius at the base, as a share of the height
 function addObstacle(x, y, z, h, tile, shrubW) {
   let o;
   if (shrubW) o = { x, y, z, h, kind: 2, R: shrubW };
   else if (tile === 7) o = { x, y, z, h, kind: 3, R: 0.3 };
   else if (tile === 4 || tile === 5) o = { x, y, z, h, kind: 1, R: h * 0.22 };
+  else if (tile === 1)
+    o = { x, y, z, h, kind: 1, R: h * 0.11 }; // lodgepole pine: a bare bole, the crown up top
   else o = { x, y, z, h, kind: 0, R: h * (CONE_R[tile] || 0.15) };
   const r = o.R + 0.5,
     c0 = Math.floor((x - r) / OB_CELL),
@@ -396,7 +409,7 @@ function obCheck(list, o, d, hl, tMax, best) {
   }
   return best;
 }
-// Once the hunter is seated: real 3D trees (every kind but the dead snags) and willow/alder clumps
+// Once the hunter is seated: real 3D trees (dead snags too) and willow/alder clumps
 // in place of the cards (render/plants3d.js). Off in Game Settings, or on any error: the cards stay.
 let plantsBuilt = false;
 function buildPlants() {
@@ -404,16 +417,15 @@ function buildPlants() {
   plantsBuilt = true;
   const trees = [];
   for (const it of FOREST.items)
-    if (it.tile !== 7)
-      trees.push({
-        x: it.x,
-        y: it.y,
-        z: it.z,
-        h: it.sy,
-        rot: it.rot,
-        tile: it.tile,
-        hide: (on) => hideInstance(FOREST.track, it, on),
-      });
+    trees.push({
+      x: it.x,
+      y: it.y,
+      z: it.z,
+      h: it.sy,
+      rot: it.rot,
+      tile: it.tile,
+      hide: (on) => hideInstance(FOREST.track, it, on),
+    });
   for (const tr of FOREST.near)
     if (tr.trunk)
       trees.push({
@@ -580,6 +592,7 @@ function buildOneStand(S) {
 
 export {
   TT,
+  addObstacle,
   buildForest,
   buildGrass,
   buildNearTrees,

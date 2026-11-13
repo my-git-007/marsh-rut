@@ -1,8 +1,8 @@
-// render/plants3d.js — real 3D trees (white and black spruce, balsam fir, tamarack, aspen, birch) and willow/alder
-// clumps. Everything is built in code from fixed seeds when the marsh loads (about a second): no downloads.
+// render/plants3d.js — real 3D trees (white and black spruce, lodgepole pine, balsam fir, tamarack, aspen, birch,
+// dead snags) and willow/alder clumps. Everything is built in code from fixed seeds when the marsh loads (about a second): no downloads.
 //   trees: full 3D within FULL_R of the stand, a lighter 3D tree to LIGHT_R, impostors beyond (pictures of the 3D
 //     tree from 16 sides; the game shows the one for your side). Under the binoculars the impostors in view switch
-//     to the lighter 3D tree, nearest first (they'd look blocky). Dead snags stay painted cards.
+//     to the lighter 3D tree, nearest first (they'd look blocky). Dead snags and lodgepole pine are 3D too.
 //   willow/alder (the shared, seeded SHRUBS the bulls thrash): full 3D within SHRUB_FULL_R, impostors beyond.
 // Off (Game Settings) or on any error, vegetation.js keeps the old cards for everything.
 import * as THREE from 'three';
@@ -275,6 +275,21 @@ const CONIFERS = {
   fir: { rad: [0.13, 0.15], prof: 1.0, droop: 0.12, elLo: -0.04, elHi: 0.35, roll: 0.35, whorl: [5, 7] },
   // tamarack: open and airy, fewer branches, soft tufts (gold in autumn: its own needle texture)
   tamarack: { rad: [0.13, 0.16], prof: 0.9, droop: 0.2, whorl: [4, 6], between: 0.3, gap: 1.5, spray: 1.1 },
+  // lodgepole pine: a tall straight bole, bare of live branches for half its height (a few dead stubs), a short
+  // open crown of upswept branches with tufts at their ends (its own needle texture)
+  pine: {
+    rad: [0.1, 0.12],
+    prof: 0.55,
+    crown: [0.5, 0.62],
+    droop: 0.04,
+    elLo: 0.2,
+    elHi: 0.75,
+    whorl: [3, 5],
+    between: 0.15,
+    gap: 1.7,
+    spray: 1.35,
+    stubs: true,
+  },
 };
 function spruce(seed, H, detail = 1, P = CONIFERS.white) {
   const r = rngOf(seed),
@@ -282,7 +297,7 @@ function spruce(seed, H, detail = 1, P = CONIFERS.white) {
     up = new THREE.Vector3(0, 1, 0);
   const rad = P.rad || [0.15, 0.18];
   const R0 = 0.24 * (H / 16),
-    crownBase = r(1.0, 1.8),
+    crownBase = P.crown ? H * r(P.crown[0], P.crown[1]) : r(1.0, 1.8),
     maxR = H * r(rad[0], rad[1]);
   const lean = new THREE.Vector3(r(-0.02, 0.02), 0, r(-0.02, 0.02));
   const axis = (y) => new THREE.Vector3(lean.x * y, y, lean.z * y);
@@ -292,6 +307,7 @@ function spruce(seed, H, detail = 1, P = CONIFERS.white) {
     trunk.push({ p: axis(y - 0.3 * (i === 0)), r: R0 * Math.pow(1 - y / H, 0.9) + 0.012, ao: 0.55 + 0.45 * (y / H) });
   }
   B.tube(trunk, detail < 1 ? 5 : 8);
+  if (P.stubs) deadStubs(B, r, axis, R0, H, 1.2, crownBase - 0.4, 0.15, 0.7, detail < 1);
   const normalAt = (p) => {
     const a = axis(p.y),
       n = new THREE.Vector3(p.x - a.x, 0, p.z - a.z);
@@ -393,6 +409,118 @@ function spruce(seed, H, detail = 1, P = CONIFERS.white) {
     const V = new THREE.Vector3(-Math.sin(a), 0, Math.cos(a));
     B.card(p, U, V, 0.55, 0.3, normalAt, [1, 1, 1]);
   }
+  return { wood: B.geo(B.wood), leaf: B.geo(B.leaf) };
+}
+
+// short dead branches broken off along a bole between heights y0 and y1 (lengths L0..L1 m), hanging a little
+function deadStubs(B, r, axis, R0, H, y0, y1, L0, L1, low) {
+  const up = new THREE.Vector3(0, 1, 0);
+  let a0 = r(0, TAU);
+  for (let y = y0; y < y1; y += r(0.35, 0.8) * (low ? 1.6 : 1)) {
+    const n = Math.round(r(1, 3));
+    a0 += 2.4;
+    for (let k = 0; k < n; k++) {
+      const a = a0 + (k / n) * TAU + r(-0.4, 0.4),
+        h = new THREE.Vector3(Math.cos(a), 0, Math.sin(a)),
+        L = r(L0, L1),
+        rb = R0 * Math.pow(1 - y / H, 0.9),
+        dn = r(-0.35, 0.1);
+      const P0 = axis(y).addScaledVector(h, rb * 0.8);
+      const pts = [0, 1].map((s) => ({
+        p: P0.clone()
+          .addScaledVector(h, L * s)
+          .addScaledVector(up, L * s * dn),
+        r: 0.025 * (1 - s * 0.6) + rb * 0.12 * (1 - s),
+        ao: 0.7,
+      }));
+      B.tube(pts, 3);
+    }
+  }
+}
+
+// Dead standing spruce (a snag): a weathered grey bole, the top snapped off or thinning to a dead spike, the branches
+// gone to stubs low down and to bare, drooping dead limbs with a few grey twigs higher up. No needles.
+function snag(seed, H, detail = 1) {
+  const r = rngOf(seed),
+    B = new Builder(),
+    up = new THREE.Vector3(0, 1, 0);
+  const low = detail < 1;
+  const R0 = 0.36 * (H / 14);
+  const broken = r() < 0.6; // snapped top (blunt), else it thins to a dead spike
+  const lean = new THREE.Vector3(r(-0.03, 0.03), 0, r(-0.03, 0.03));
+  const bend = r(-0.25, 0.25);
+  const axis = (y) => new THREE.Vector3(lean.x * y + bend * (y / H) ** 3, y, lean.z * y);
+  const trunk = [];
+  for (let i = 0; i <= 10; i++) {
+    const y = (i / 10) * H,
+      f = y / H;
+    const rr = broken ? R0 * (1 - 0.62 * f) : R0 * Math.pow(1 - f, 0.85) + 0.01;
+    trunk.push({ p: axis(y - 0.3 * (i === 0)), r: rr, ao: 0.6 + 0.4 * f });
+  }
+  B.tube(trunk, low ? 5 : 8);
+  // the snapped top: a few jagged splinters
+  if (broken)
+    for (let k = 0; k < 3; k++) {
+      const a = r(0, TAU),
+        p0 = axis(H).add(new THREE.Vector3(Math.cos(a), 0, Math.sin(a)).multiplyScalar(R0 * 0.2));
+      const tip = p0.clone().add(new THREE.Vector3(r(-0.08, 0.08), r(0.3, 0.9), r(-0.08, 0.08)));
+      B.tube(
+        [
+          { p: p0, r: R0 * 0.16, ao: 1 },
+          { p: tip, r: 0.01, ao: 1 },
+        ],
+        3,
+      );
+    }
+  // stubs low down, longer dead limbs higher up
+  deadStubs(B, r, axis, R0, H, 0.8, H * 0.45, 0.08, 0.45, low);
+  const normalAt = (p) => {
+    const a = axis(p.y),
+      n = new THREE.Vector3(p.x - a.x, 0.6, p.z - a.z).normalize();
+    n.ao = 0.85;
+    return n;
+  };
+  let a0 = r(0, TAU);
+  for (let y = H * 0.45; y < H * 0.95; y += r(0.5, 1.0) * (low ? 1.5 : 1)) {
+    a0 += 2.4;
+    if (r() < 0.35) continue; // many have fallen off
+    const n = Math.round(r(1, 3));
+    for (let k = 0; k < n; k++) {
+      const t = y / H,
+        a = a0 + (k / n) * TAU + r(-0.4, 0.4),
+        h = new THREE.Vector3(Math.cos(a), 0, Math.sin(a)),
+        L = (1.6 * (1 - t) + 0.3) * r(0.5, 1.1),
+        rb = R0 * (1 - 0.62 * t);
+      const P0 = axis(y).addScaledVector(h, rb * 0.8);
+      const at = (s) =>
+        P0.clone()
+          .addScaledVector(h, L * s)
+          .addScaledVector(up, L * (s * 0.15 - 0.45 * s * s));
+      B.tube(
+        [0, 0.5, 1].map((s) => ({ p: at(s), r: (0.03 + rb * 0.1) * (1 - s * 0.75), ao: 0.8 })),
+        3,
+      );
+      // a few grey twigs hanging on the outer part
+      if (!low || r() < 0.5)
+        for (let s = 0.45; s <= 1; s += 0.35) {
+          const p = at(s),
+            U = h.clone().addScaledVector(up, r(-0.6, 0.1)).normalize(),
+            V = new THREE.Vector3().crossVectors(U, up).normalize();
+          B.card(p, U, V, r(0.5, 0.9), r(0.3, 0.45), normalAt, [1, 1, 1]);
+        }
+    }
+  }
+  // (the leaf geometry must not be empty: one twig if every limb happened to be skipped)
+  if (!B.leaf.pos.length)
+    B.card(
+      axis(H * 0.6),
+      new THREE.Vector3(1, -0.3, 0).normalize(),
+      new THREE.Vector3(0, 0, 1),
+      0.3,
+      0.2,
+      normalAt,
+      [1, 1, 1],
+    );
   return { wood: B.geo(B.wood), leaf: B.geo(B.leaf) };
 }
 
@@ -597,11 +725,17 @@ function leafMat(map, H0, AMT, colour) {
   d.customProgramCacheKey = () => key + 'd';
   return { m, d };
 }
-function woodMat(colour, H0, AMT) {
+function woodMat(colour, H0, AMT, grey) {
   const key = 'plantwood' + matN++;
   const m = new THREE.MeshLambertMaterial({ map: T.bark, vertexColors: true, color: colour });
   m.onBeforeCompile = (sh) => {
     addUniforms(sh);
+    // weathered dead wood: pale silver-grey, with a little of the bark texture's pattern (its brown taken out)
+    if (grey)
+      sh.fragmentShader = sh.fragmentShader.replace(
+        '#include <map_fragment>',
+        '#include <map_fragment>\n  diffuseColor.rgb = mix(vec3(0.53, 0.51, 0.48), vec3(dot(diffuseColor.rgb, vec3(0.3, 0.59, 0.11))), 0.4);',
+      );
     sh.vertexShader = sh.vertexShader.replace(
       '#include <begin_vertex>',
       '#include <begin_vertex>' + swayChunk(H0, AMT),
@@ -884,9 +1018,13 @@ const FULL_R = 40, // full 3D trees
 const TREE_H = 15, // model heights the plants are built at (instances scale from these)
   WI_H = 3;
 const WILLOW_SEEDS = [3, 17];
-// the forest's tree kinds (tiles of the card atlas, render/textures.js); tile 7, dead snags, stays a card
+// the forest's tree kinds (tiles of the card atlas, render/textures.js; tile 1's card is a spruce, kept as the
+// fallback for the pine)
 const SPECIES = [
-  { tiles: [0, 1], seeds: [7, 31], P: CONIFERS.white, leaf: 'spray', wood: 0x9a8f84, amt: 0.25 },
+  { tiles: [0], seeds: [7, 31], P: CONIFERS.white, leaf: 'spray', wood: 0x9a8f84, amt: 0.25 },
+  { tiles: [1], seeds: [21, 52], P: CONIFERS.pine, leaf: 'pine', tint: [1.02, 1.0, 0.9], wood: 0xa0785a, amt: 0.22 },
+  // dead standing spruce: silver-grey weathered wood, grey twigs
+  { tiles: [7], seeds: [4, 15, 23], snag: true, leaf: 'dead', wood: [1, 1, 1], amt: 0.06 },
   { tiles: [2], seeds: [13, 44], P: CONIFERS.black, leaf: 'spray', tint: [0.8, 0.86, 0.9], wood: 0x857a70, amt: 0.2 },
   { tiles: [3], seeds: [5, 61], P: CONIFERS.fir, leaf: 'spray', tint: [0.88, 1.02, 0.9], wood: 0x8f8a80, amt: 0.25 },
   { tiles: [6], seeds: [9, 27], P: CONIFERS.tamarack, leaf: 'larch', wood: 0x8a7060, amt: 0.3 },
@@ -952,18 +1090,37 @@ function buildPlants3D(trees, shrubs, centre, shrubTints) {
       aspen: paintLeaves(['#e3b53a', '#d79a28', '#f0cd5a', '#c4862a', '#e8c24a', '#9aa53a'], 5),
       birch: paintLeaves(['#d9a830', '#e6bd45', '#c98a26', '#b0762a', '#efd06a'], 6),
       willow: paintWillow(),
+      // lodgepole pine: longer, yellower needles in looser tufts
+      pine: paintSpray({
+        seed: 21,
+        cols: ['#3d4f2c', '#4a5c32', '#55673a', '#344628', '#5d6e3e'],
+        tip: '#6f7f48',
+        core: '#2a3820',
+        coreN: 140,
+        n: 2200,
+      }),
+      // a snag's last twigs: bare and grey
+      dead: paintSpray({
+        seed: 33,
+        cols: ['#8a847a', '#777065', '#9a948a', '#6a6359'],
+        tip: '#a8a298',
+        core: '#5a544c',
+        coreN: 0,
+        n: 260,
+      }),
     };
     // one entry per tree kind and seed: its full and light 3D models, materials and impostor
     const kinds = [],
       kindOfTile = new Map();
     for (const sp of SPECIES) {
       const mats = {
-        wood: woodMat(colour(sp.wood), TREE_H, sp.amt),
+        wood: woodMat(colour(sp.wood), TREE_H, sp.amt, !!sp.snag),
         leaf: leafMat(texs[sp.leaf], TREE_H, sp.amt, sp.tint ? colour(sp.tint) : null),
       };
       const list = sp.seeds.map((seed) => {
-        const make = (d) => (sp.broad ? broadleaf(seed, TREE_H, d) : spruce(seed, TREE_H, d, sp.P));
-        const light = make(sp.broad ? 0.4 : 0.35);
+        const make = (d) =>
+          sp.broad ? broadleaf(seed, TREE_H, d) : sp.snag ? snag(seed, TREE_H, d) : spruce(seed, TREE_H, d, sp.P);
+        const light = make(sp.broad ? 0.4 : sp.snag ? 0.5 : 0.35);
         return {
           mats,
           makeFull: () => make(1), // only built if a tree of this kind stands within FULL_R
@@ -1002,10 +1159,13 @@ function buildPlants3D(trees, shrubs, centre, shrubTints) {
 
     // sort the plants by distance from the stand
     const hides = [];
+    const nearest = {},
+      testInfo = /[?&]test=/.test(location.search);
     for (const t of trees) {
       const list = kindOfTile.get(t.tile);
       if (!list) continue;
       const d = Math.hypot(t.x - centre.x, t.z - centre.z);
+      if (testInfo && d > 25) (nearest[t.tile] ||= []).push({ x: t.x, y: t.y, z: t.z, h: t.h, d });
       const k = list[Math.floor(hash(t.x, t.z) * list.length) % list.length];
       const it = { x: t.x, y: t.y, z: t.z, rot: t.rot, s: t.h / TREE_H };
       k.items[d < FULL_R ? 'full' : d < LIGHT_R ? 'light' : 'imp'].push(it);
@@ -1053,7 +1213,17 @@ function buildPlants3D(trees, shrubs, centre, shrubTints) {
       hidden.push(h);
     }
     LIVE = { groups, added, hidden, zoomed: false, yaw: 0, fov: 0, frames: [], t0: 0 };
-    const info = { ms: Math.round(performance.now() - t0), plants3d: n3d, impostors: nImp, cardsHidden: hides.length };
+    const info = {
+      ms: Math.round(performance.now() - t0),
+      plants3d: n3d,
+      impostors: nImp,
+      cardsHidden: hides.length,
+      // (in test runs only: how many trees of each kind beyond 25 m, and the eight nearest)
+      counts: Object.fromEntries(Object.entries(nearest).map(([t, l]) => [t, l.length])),
+      nearest: Object.fromEntries(
+        Object.entries(nearest).map(([t, l]) => [t, l.sort((p, q) => p.d - q.d).slice(0, 8)]),
+      ),
+    };
     window.__plants3d = info;
     return info;
   } catch (err) {

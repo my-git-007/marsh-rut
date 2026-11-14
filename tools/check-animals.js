@@ -106,19 +106,22 @@ function scene(name, q = {}, T = 300, each) {
 const N = 12;
 
 // a young bull pesters a lone cow → she bellows → a bigger bull comes → the young one is run off (or they fight)
+// (more tries here: whether the bigger bull runs the young one off is close to a coin toss — about 55-65 % —
+// so with 12 tries an unlucky run fell under the bar about once in a hundred and stopped a deploy)
+const NC = 40;
 let bellowed = 0,
   bigCame = 0,
   youngOff = 0;
-for (let i = 0; i < N; i++) {
+for (let i = 0; i < NC; i++) {
   const s = scene('court', { tier: 0 }, 420);
   const L = s.log.join('\n');
   if (/bellows, fed up/.test(L)) bellowed++;
   if (/comes in to the bellowing cow|heard a cow bellow/.test(L)) bigCame++;
   if (/pushed off by a bigger bull|lost the fight|backed down/.test(L)) youngOff++;
 }
-ok(bellowed >= N * 0.6, `a young bull pestering a lone cow makes her bellow: ${pct(bellowed, N)}`);
-ok(bigCame >= N * 0.3, `her bellows bring in another bull: ${pct(bigCame, N)}`);
-ok(youngOff >= N * 0.2, `... who runs the young one off (or beats him): ${pct(youngOff, N)}`);
+ok(bellowed >= NC * 0.6, `a young bull pestering a lone cow makes her bellow: ${pct(bellowed, NC)}`);
+ok(bigCame >= NC * 0.3, `her bellows bring in another bull: ${pct(bigCame, NC)}`);
+ok(youngOff >= NC * 0.2, `... who runs the young one off (or beats him): ${pct(youngOff, NC)}`);
 
 // a lone cow and a big bull: welcome, he stays close, no bellowing
 let close = 0,

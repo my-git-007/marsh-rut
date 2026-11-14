@@ -27,7 +27,9 @@ export let MARSH = null, // the open ground's middle and size: { cx, cz, a, b }
   WATER_PTS = [],
   SHRUBS = [],
   SHRUB_PTS = [],
-  ROCKS = []; // boulders the animals walk round: { x, z, size, r (footprint radius), m, yaw, tilt }
+  ROCKS = [], // boulders: { x, z, size, r (footprint radius), m, yaw, tilt }
+  DEADWOOD = [], // logs and stumps: { kind, x, z, yaw, s, n } (maps/marsh.js)
+  SOLIDS = []; // what the animals walk round: the rocks, root plates and tall stumps, { x, z, r }
 
 // pick the map (built the first time it is used); returns its id. An unknown id gets the default map.
 export function useWorld(id) {
@@ -37,6 +39,8 @@ export function useWorld(id) {
   W.build = build;
   ({ MARSH, POND, STREAM, STREAM_CP, POOLS, STANDS, MAIN_STAND, WATER_PTS, SHRUBS, SHRUB_PTS } = W);
   ROCKS = W.ROCKS || [];
+  DEADWOOD = W.DEADWOOD || [];
+  SOLIDS = W.SOLIDS || ROCKS;
   MAP = W;
   return W.id;
 }
@@ -62,7 +66,7 @@ export const nearestStandDist = (x, z) => W.nearestStandDist(x, z);
 
 // If (x,z) is inside a rock (grown by pad, the animal's half-width), the nearest point just outside it; else null.
 export function rockOut(x, z, pad) {
-  for (const k of ROCKS) {
+  for (const k of SOLIDS) {
     const dx = x - k.x,
       dz = z - k.z,
       R = k.r + pad,
@@ -74,7 +78,7 @@ export function rockOut(x, z, pad) {
 // Walking from (x,z) toward (tx,tz): if a rock is in the way within `look` metres, a point beside it to head
 // for instead (on the side the walker is already on); else null.
 export function rockDetour(x, z, tx, tz, pad, look) {
-  if (!ROCKS.length) return null;
+  if (!SOLIDS.length) return null;
   const L = Math.hypot(tx - x, tz - z);
   if (L < 0.01) return null;
   const ux = (tx - x) / L,
@@ -84,7 +88,7 @@ export function rockDetour(x, z, tx, tz, pad, look) {
   const reach = Math.min(L, look);
   let best = null,
     bt = Infinity; // the nearest rock in the way wins
-  for (const k of ROCKS) {
+  for (const k of SOLIDS) {
     const cx = k.x - x,
       cz = k.z - z,
       R = k.r + pad,

@@ -1,22 +1,10 @@
 // render/deadwood.js — the old timber lying about the marsh: scanned spruce logs (some blown over with their root
 // plate torn out of the bog), and old stumps, mossy, rotten, sawn low or snapped off high (Megascans, made small by
-// tools/scan-assets/prep.py). A few round every stand (the old cuts from when it was built), the rest out across the
-// marsh. Seeded, so every player sees the same ones. They're low enough for a moose to step over, so the animals
-// don't need to know about them. On any error the marsh has none.
+// tools/scan-assets/prep.py). Where they go is the map's (shared/maps/marsh.js DEADWOOD: seeded, the same for every
+// player; the animals walk round the root plates and tall stumps). On any error the marsh has none.
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { TAU, lerp, mulberry32 } from '../../../shared/util.js';
-import {
-  MAP,
-  ROCKS,
-  STANDS,
-  WATER_Y,
-  groundAt,
-  inStandCorridor,
-  marshE,
-  nearestStandDist,
-  streamDist,
-} from '../../../shared/world.js';
+import { DEADWOOD, MAP, STANDS, groundAt } from '../../../shared/world.js';
 import { camera, scene } from './core.js';
 import logBigUrl from '../../assets/scan/log-spruce-big.glb?url';
 import logBigFarUrl from '../../assets/scan/log-spruce-big-far.glb?url';
@@ -37,8 +25,8 @@ import stumpTallFarUrl from '../../assets/scan/stump-tall-far.glb?url';
 import stumpBrokenUrl from '../../assets/scan/stump-broken.glb?url';
 import stumpBrokenFarUrl from '../../assets/scan/stump-broken-far.glb?url';
 
-// each model and how big it's drawn (the scans are of smaller wood than a marsh's old spruce); lift: how far a log
-// rests above the ground, so the grass doesn't swallow it (the root plates sit down on it)
+// each model (in the order of DEADWOOD's n) and how big it's drawn (the scans are of smaller wood than a marsh's old
+// spruce); lift: how far a log rests above the ground, so the grass doesn't swallow it (the root plates sit down on it)
 const LOGS = [
   { url: logBigUrl, far: logBigFarUrl, k: 1.9, lift: 0.1 }, // 4.7 m -> 9 m
   { url: logUrl, far: logFarUrl, k: 2.2, lift: 0.1 }, // 2.3 m -> 5 m
@@ -77,7 +65,7 @@ async function model(url, farUrl, alongX) {
     m.side = THREE.FrontSide;
     m.metalness = 0;
     m.metalnessMap = null;
-    m.color.setScalar(1.35);
+    m.color.multiplyScalar(1.35);
     out = { geo: o.geometry, mat: o.material, base, L: Math.max(s.x, s.z) };
   });
   // (the far copy has the same node, so the same matrix fits it)
@@ -90,55 +78,6 @@ async function model(url, farUrl, alongX) {
 // the lowest ground under a stump (its middle and four points round it), so it doesn't float on a slope
 const lowGround = (x, z, r) =>
   Math.min(groundAt(x, z), groundAt(x + r, z), groundAt(x - r, z), groundAt(x, z + r), groundAt(x, z - r));
-
-// where they go: [{ kind: 'log' | 'stump', x, z, yaw, s, v }]
-function layout() {
-  const r = mulberry32(6060),
-    R = (a, b) => lerp(a, b, r());
-  const out = [];
-  const clear = (x, z, room) => {
-    if (groundAt(x, z) < WATER_Y + 0.12 || streamDist(x, z) < 2 + room) return false;
-    if (nearestStandDist(x, z) < 4 + room) return false;
-    for (const k of ROCKS) if (Math.hypot(k.x - x, k.z - z) < k.r + room) return false;
-    return true;
-  };
-  const put = (kind, x, z, room) => {
-    if (!clear(x, z, room)) return false;
-    out.push({ kind, x, z, yaw: R(0, TAU), s: R(0.85, 1.2), v: r() }); // (v picks the model)
-    return true;
-  };
-  // round every stand: the stumps of the trees cut to build it and open the lane, and a log or two
-  for (const st of STANDS) {
-    // (in front of it, where the hunter can see them: a bearing is yaw, facing (-sin, -cos))
-    const front = (spread, d) => {
-      const a = st.yaw + R(-spread, spread);
-      return [st.x - Math.sin(a) * d, st.z - Math.cos(a) * d];
-    };
-    for (let n = 0, i = 0; n < 7 && i < 80; i++) {
-      const [x, z] = front(1.5, R(6, 35));
-      if (put('stump', x, z, 0.8)) n++;
-    }
-    for (let n = 0, i = 0; n < 3 && i < 60; i++) {
-      const [x, z] = front(1.4, R(12, 45));
-      if (inStandCorridor(x, z, 60)) continue; // nothing lying across the near lane
-      if (put('log', x, z, 9)) n++; // (room for its whole length, whichever way it lies)
-    }
-  }
-  // out across the marsh and along its edge
-  for (let n = 0, i = 0; n < 220 && i < 3000; i++) {
-    const x = R(-250, 250),
-      z = R(-770, 0);
-    if (marshE(x, z) > 0.05) continue;
-    if (put('stump', x, z, 0.8)) n++;
-  }
-  for (let n = 0, i = 0; n < 110 && i < 3000; i++) {
-    const x = R(-250, 250),
-      z = R(-770, 0);
-    if (marshE(x, z) > 0.05 || inStandCorridor(x, z, 50)) continue;
-    if (put('log', x, z, 9)) n++; // (room for its whole length, whichever way it lies)
-  }
-  return out;
-}
 
 const _m = new THREE.Matrix4(),
   _p = new THREE.Vector3(),
@@ -175,10 +114,9 @@ export async function buildDeadwood() {
     Promise.all(LOGS.map((d) => model(d.url, d.far, true).then((M) => ({ ...d, ...M, log: true, list: [] })))),
     Promise.all(STUMPS.map((d) => model(d.url, d.far, false).then((M) => ({ ...d, ...M, log: false, list: [] })))),
   ]);
-  const items = layout();
+  const items = DEADWOOD;
   for (const it of items) {
-    const kinds = it.kind === 'log' ? logs : stumps,
-      M = kinds[Math.floor(it.v * kinds.length)];
+    const M = (it.kind === 'log' ? logs : stumps)[it.n];
     const s = M.k * it.s;
     let y,
       pitch = 0;
@@ -190,7 +128,8 @@ export async function buildDeadwood() {
       const g1 = groundAt(it.x - dx, it.z - dz),
         g2 = groundAt(it.x + dx, it.z + dz);
       pitch = Math.atan2(g2 - g1, 2 * h);
-      y = Math.min((g1 + g2) / 2, groundAt(it.x, it.z)) + M.lift - 0.05;
+      // (a straight log rests on the highest ground under it: its middle on a hump, its ends across a dip)
+      y = Math.max((g1 + g2) / 2, groundAt(it.x, it.z)) + M.lift - 0.05;
     } else y = lowGround(it.x, it.z, M.L * s * 0.3) - 0.06 * s; // set down into the moss
     _p.set(it.x, y, it.z);
     _q.setFromEuler(_e.set(0, it.yaw, pitch, 'YXZ'));
@@ -218,7 +157,7 @@ export async function buildDeadwood() {
     },
     logs: items.filter((i) => i.kind === 'log').length,
     stumps: items.filter((i) => i.kind === 'stump').length,
-    tris,
+    tris, // (if every copy were drawn from its full scan)
     ms: Math.round(performance.now() - t0),
   };
   // (in test runs: the nearest few of each, to aim at)
@@ -227,7 +166,7 @@ export async function buildDeadwood() {
     info.near = ['log', 'stump'].map((k) =>
       items
         .filter((i) => i.kind === k)
-        .map((i) => ({ x: i.x, z: i.z, y: groundAt(i.x, i.z), d: Math.hypot(i.x - P.x, i.z - P.z), m: i.v }))
+        .map((i) => ({ x: i.x, z: i.z, y: groundAt(i.x, i.z), d: Math.hypot(i.x - P.x, i.z - P.z), m: i.n }))
         .sort((a, b) => a.d - b.d)
         .slice(0, 12),
     );

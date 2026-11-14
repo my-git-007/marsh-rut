@@ -329,6 +329,76 @@ function buildRocks() {
     return out;
   });
 }
+// The old timber lying about the marsh (render/deadwood.js draws it from scanned models): stumps and logs round
+// every stand (the old cuts from when it was built) and out across the marsh. kind 'log' | 'stump'; n: which model
+// (logs: 0 big spruce log, 1 spruce log, 2 and 3 trees blown over with their root plates; stumps: 0 mossy, 1 rotten,
+// 2 low cut, 3 snapped off high, 4 broken); s: its size. A moose steps over a log or a low stump, but walks round a
+// root plate or a tall stump: those are in SOLIDS too, with the rocks.
+const LOG_KINDS = 4,
+  STUMP_KINDS = 5;
+// how far round each model the animals keep (m, before its size): 0 = they step over it
+const LOG_SOLID = [0, 0, 3.1, 2.35],
+  STUMP_SOLID = [0.7, 0.8, 0, 0.5, 0.55];
+let DEADWOOD = [],
+  SOLIDS = [];
+function buildDeadwood() {
+  const r = mulberry32(6060),
+    R = (a, b) => lerp(a, b, r());
+  const out = [],
+    solid = [];
+  const clear = (x, z, room) => {
+    if (groundAt(x, z) < WATER_Y + 0.12 || streamDist(x, z) < 2 + room) return false;
+    if (nearestStandDist(x, z) < 4 + room) return false;
+    for (const k of ROCKS) if (Math.hypot(k.x - x, k.z - z) < k.r + room) return false;
+    return true;
+  };
+  const put = (kind, x, z, room) => {
+    if (!clear(x, z, room)) return false;
+    const it = { kind, x, z, yaw: R(0, TAU), s: R(0.85, 1.2) };
+    it.n = Math.floor(r() * (kind === 'log' ? LOG_KINDS : STUMP_KINDS));
+    const sr = (kind === 'log' ? LOG_SOLID : STUMP_SOLID)[it.n] * it.s;
+    if (sr) {
+      // (with a moose's width or more between any two, so none gets wedged between them)
+      for (const k of solid) if (Math.hypot(k.x - x, k.z - z) < sr + k.r + 4) return false;
+      for (const k of ROCKS) if (Math.hypot(k.x - x, k.z - z) < sr + k.r + 4) return false;
+      solid.push({ x, z, r: sr });
+    }
+    out.push(it);
+    return true;
+  };
+  // round every stand: the stumps of the trees cut to build it and open the lane, and a log or two
+  for (const st of STANDS) {
+    // (in front of it, where the hunter can see them: a bearing is yaw, facing (-sin, -cos))
+    const front = (spread, d) => {
+      const a = st.yaw + R(-spread, spread);
+      return [st.x - Math.sin(a) * d, st.z - Math.cos(a) * d];
+    };
+    for (let n = 0, i = 0; n < 7 && i < 80; i++) {
+      const [x, z] = front(1.5, R(6, 35));
+      if (put('stump', x, z, 0.8)) n++;
+    }
+    for (let n = 0, i = 0; n < 3 && i < 60; i++) {
+      const [x, z] = front(1.4, R(12, 45));
+      if (inStandCorridor(x, z, 60)) continue; // nothing lying across the near lane
+      if (put('log', x, z, 9)) n++; // (room for its whole length, whichever way it lies)
+    }
+  }
+  // out across the marsh and along its edge
+  for (let n = 0, i = 0; n < 220 && i < 3000; i++) {
+    const x = R(-250, 250),
+      z = R(-770, 0);
+    if (marshE(x, z) > 0.05) continue;
+    if (put('stump', x, z, 0.8)) n++;
+  }
+  for (let n = 0, i = 0; n < 110 && i < 3000; i++) {
+    const x = R(-250, 250),
+      z = R(-770, 0);
+    if (marshE(x, z) > 0.05 || inStandCorridor(x, z, 50)) continue;
+    if (put('log', x, z, 9)) n++; // (room for its whole length, whichever way it lies)
+  }
+  DEADWOOD = out;
+  SOLIDS = [...ROCKS, ...solid];
+}
 // builds it all (once) and hands world.js what the rest of the game uses
 let W = null;
 export function build() {
@@ -340,6 +410,7 @@ export function build() {
   buildWaterPts();
   buildShrubs();
   buildRocks();
+  buildDeadwood();
   W = {
     id: 'the-marsh',
     MARSH,
@@ -353,6 +424,8 @@ export function build() {
     SHRUBS,
     SHRUB_PTS,
     ROCKS,
+    DEADWOOD,
+    SOLIDS,
     marshE,
     pondE,
     streamDist,

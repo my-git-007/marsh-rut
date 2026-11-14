@@ -428,11 +428,12 @@ function deadStubs(B, r, axis, R0, H, y0, y1, L0, L1, low) {
       const P0 = axis(y).addScaledVector(h, rb * 0.8);
       // short and blunt, broken off: not tapering to a point (thin cones read as spikes from the stand)
       const r0 = 0.025 + rb * 0.12;
-      const pts = [0, 1].map((s) => ({
+      // (the last ring, a hair further out and almost no width, closes the broken end)
+      const pts = [0, 1, 1.02].map((s) => ({
         p: P0.clone()
           .addScaledVector(h, L * s)
           .addScaledVector(up, L * s * dn),
-        r: r0 * (1 - s * 0.35),
+        r: s > 1 ? 0.002 : r0 * (1 - s * 0.35),
         ao: 0.7,
       }));
       B.tube(pts, low ? 3 : 4);
@@ -478,6 +479,7 @@ function snag(seed, H0, detail = 1, form = 'classic') {
         [
           { p: p0, r: rt * 0.45, ao: 1 },
           { p: tip, r: rt * 0.12, ao: 1 },
+          { p: tip.clone().add(new THREE.Vector3(0, 0.01, 0)), r: 0.002, ao: 1 }, // (closes the end)
         ],
         4,
       );

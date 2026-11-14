@@ -267,7 +267,8 @@ async function seat(host, name, stand) {
     await import('./render/boulders.js')
       .then((m) => m.buildBoulders())
       .catch((err) => console.warn('Boulders failed', err));
-    await import('./render/deadwood.js')
+    // logs and stumps (render/deadwood.js): not waited for, they come in while the hunter settles
+    import('./render/deadwood.js')
       .then(async (m) => (await m.buildDeadwood()) && (updateDeadwood = m.updateDeadwood))
       .catch((err) => console.warn('Logs and stumps failed', err));
   }

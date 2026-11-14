@@ -72,7 +72,7 @@ const reveal = () => {
 // build one map's ground, sky, water and timber (the grass and 3D plants come once the hunter is seated)
 async function buildMap(id) {
   const name = (LOCATIONS.find((l) => l.id === id) || {}).name || 'the hunting grounds';
-  st(id === 'the-marsh' ? 'Shaping the marsh…' : 'Shaping the valley…');
+  st(`Shaping ${name}…`);
   await tick();
   useWorld(id);
   built = id;
@@ -239,7 +239,7 @@ async function seat(host, name, stand) {
     ? { left: (sd.look.left * Math.PI) / 180, right: (sd.look.right * Math.PI) / 180 }
     : marshSpan(PLAYER);
   setLookLimits(PLAYER.yaw, span.left, span.right);
-  // looking a touch down to start with (a map's high stand looks further down, onto the valley below it)
+  // looking a touch down to start with (a map's stand can set its own pitch)
   V.pitch = sd.look && typeof sd.look.pitch === 'number' ? sd.look.pitch : -0.035;
   if (!host.local) {
     host.onHunters = (list) => {

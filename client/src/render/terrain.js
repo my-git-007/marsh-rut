@@ -1,8 +1,7 @@
 // render/terrain.js — split out of the original single-file game (game.src.html)
 import * as THREE from 'three';
 import { PI, clamp, lin, mix3, noise2, smoothstep } from '../../../shared/util.js';
-import { MAP, WATER_Y, canopyAt, groundAt, marshE } from '../../../shared/world.js';
-import { buildAlpineFar, buildAlpineNear } from './alpine.js';
+import { WATER_Y, canopyAt, groundAt, marshE } from '../../../shared/world.js';
 import { scene } from './core.js';
 import { T } from './textures.js';
 
@@ -29,10 +28,6 @@ function groundColor(x, z, h, e) {
   return lin(mix3(f, m, 1 - smoothstep(-0.005, 0.025, e)));
 }
 function buildTerrain() {
-  if (MAP.id === 'alpine-valley-stream') {
-    buildAlpineFar(scene);
-    return buildAlpineNear(terrainMat(), scene);
-  }
   const X0 = -720,
     X1 = 720,
     Z0 = -1120,

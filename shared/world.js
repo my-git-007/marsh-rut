@@ -7,12 +7,12 @@
 // chose): a Sim calls useWorld(its map) before it does anything, and the bindings below switch to that map.
 // Switching is cheap: each map is built once and kept.
 import { build as buildMarsh } from './maps/marsh.js';
-import { build as buildAlpine } from './maps/alpine.js';
 export { WATER_Y } from './maps/common.js';
 
-export const MAP_IDS = ['the-marsh', 'alpine-valley-stream'];
-// (fixed comparisons, no lookup by name: an id from a player's message can only ever pick one of these builders)
-const builderFor = (id) => (id === 'alpine-valley-stream' ? buildAlpine : buildMarsh);
+export const MAP_IDS = ['the-marsh'];
+// (fixed comparisons, no lookup by name: an id from a player's message can only ever pick one of these builders.
+// One map for now; add the next as `id === '...' ? buildIt : buildMarsh`.)
+const builderFor = () => buildMarsh;
 export const DEFAULT_MAP = 'the-marsh';
 
 let W = null;

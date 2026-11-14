@@ -60,8 +60,9 @@ for (const sc of [
   console.log('scenario', sc, 'ok,', s.bodies.size, 'animals');
 }
 
-// Every map, and two marshes on different maps stepped together in one process (as on the server): each must keep
-// to its own ground. An animal standing on the other map's ground would show up as a body far off its own floor.
+// Every map, stepped together in one process (as on the server; with more than one map, each must keep to its own
+// ground: an animal standing on another map's ground would show up as a body far off its own floor). Animals must
+// come out on every map.
 import { MAP_IDS, useWorld, groundAt, marshE } from '../shared/world.js';
 {
   const sims = MAP_IDS.map((id) => {
@@ -93,6 +94,6 @@ import { MAP_IDS, useWorld, groundAt, marshE } from '../shared/world.js';
     console.log(`map ${s.map}: stands ${s.stands.map((t) => t.name).join(', ')} · ${s.bodies.size} animals now`);
     console.log('  ' + s.debugText().split('\n').slice(0, 4).join('\n  '));
   }
-  if (!seen['alpine-valley-stream spawn']) throw new Error('nothing ever came out in the alpine valley');
+  for (const id of MAP_IDS) if (!seen[id + ' spawn']) throw new Error(`nothing ever came out on ${id}`);
   console.log('maps ok:', MAP_IDS.join(', '));
 }

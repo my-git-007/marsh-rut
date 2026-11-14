@@ -22,7 +22,7 @@ import { WebSocketServer } from 'ws';
 import { Sim } from '../shared/sim/sim.js';
 import { MAP_IDS, DEFAULT_MAP, useWorld } from '../shared/world.js';
 
-// build every map now (the valley takes most of a second), not inside some player's hello while every marsh waits
+// build every map now, not inside some player's hello while every marsh waits
 for (const id of MAP_IDS) useWorld(id);
 import { TICK_HZ, SEND_EVERY, PROTOCOL_VERSION } from '../shared/protocol.js';
 import { whoIs, AUTH_OFF } from './auth.js';
@@ -175,6 +175,8 @@ function leave(c, closeMarsh = false) {
 
 async function hello(c, msg) {
   if (msg.v !== PROTOCOL_VERSION) return deny(c, 'version');
+  // a map this server doesn't have (one taken out, like Alpine Valley Stream): the page is out of date
+  if (msg.map != null && !MAP_IDS.includes(msg.map)) return deny(c, 'version');
   let who;
   try {
     who = await whoIs(msg.token);

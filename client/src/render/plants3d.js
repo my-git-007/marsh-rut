@@ -1101,7 +1101,7 @@ let LIVE = null; // what was built, for the binocular swap
 
 // trees: [{x, y, z, h, rot, tile, hide(on)}], shrubs: [{x, y, z, sy, rot, tile, hide(on)}]; centre = the hunter's
 // stand. Builds everything first and only then hides the cards it replaces, so a failure leaves the old forest.
-// shrubTints: the two bush kinds' leaf colours, if the map has its own (Alpine Valley: gold willow, red dwarf birch).
+// shrubTints: the two bush kinds' leaf colours, if the map has its own (none does now).
 function buildPlants3D(trees, shrubs, centre, shrubTints) {
   const t0 = performance.now();
   const added = [],

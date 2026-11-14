@@ -406,23 +406,17 @@ clearInterval(keep);
 ok(sleepy.msgs.includes('idle') && sleepy.closed, 'an inactive player is told "idle" and disconnected');
 ok(!busy.closed, 'an active player stays connected');
 
-// 7. maps: a player can pick the alpine valley; their one marsh moves there and back
+// 7. maps: Alpine Valley Stream was taken out (2026-11). A page from before that asks for it is told to reload, before
+// anything is opened for the player (so their game in another tab isn't kicked out)
 const ann = await hunter(8093, 'Ann', 0, 'alpine-valley-stream');
 ok(
-  ann.you && ann.you.x === 0 && ann.you.z === 0 && ann.you.y > 5,
-  `a player who picks Alpine Valley Stream sits in its stand (${ann.you && [ann.you.x, ann.you.z, ann.you.y.toFixed(1)]})`,
+  ann.denied === 'version' && !ann.you,
+  `a page asking for the old Alpine Valley Stream is told to reload (${ann.denied})`,
 );
-const annMv = await answer(ann, 'moved', { t: 'stand', stand: 3 });
-ok(annMv.error && !annMv.you, 'the valley has one stand: moving to a marsh stand is refused');
 ann.ws.close();
 await wait(300);
-const annBack = await hunter(8093, 'Ann', 0);
-ok(
-  annBack.you && annBack.you.z === 10,
-  `the same player back on Grassland Marsh sits at the South knoll (z ${annBack.you && annBack.you.z})`,
-);
 const annOdd = await hunter(8093, 'Ann', 0, 'no-such-place');
-ok(annOdd.you && annOdd.you.z === 10, 'an unknown map name gets Grassland Marsh');
+ok(annOdd.denied === 'version' && !annOdd.you, `an unknown map name is refused (${annOdd.denied})`);
 annOdd.ws.close();
 
 for (const h of [bobBack, busy]) h.ws.close();

@@ -20,7 +20,6 @@ import { PLAYER, TEST } from '../state.js';
 import { atlasMats, buildInstanced, crossGeo, grassGeo, hideInstance, windInject } from './billboards.js';
 import { buildPlants3D, plants3dWanted } from './plants3d.js';
 import { C, SUN_DIR, scene } from './core.js';
-import { alpineGrassColour, alpineTrees } from './alpine.js';
 import { T } from './textures.js';
 
 /* ================= vegetation ================= */
@@ -43,7 +42,6 @@ function buildGrass() {
     fz = Math.sin(FWD);
   // test scenes (?test=zoo, catalog, ...): a wide clearing in front of the stand, so every animal is in full view
   const clearing = TEST && TEST !== '1' && TEST !== 'solo';
-  const alpine = MAP.id === 'alpine-valley-stream';
   const tryAdd = (x, z) => {
     if (clearing) {
       const dx = x - PLAYER.x,
@@ -53,29 +51,11 @@ function buildGrass() {
       if (f > 3 && f < 340 && l < 35 + f * 0.45) return;
     }
     const e = marshE(x, z);
-    // (the valley: tundra grass on the slopes too, thinning out up them)
-    if (e > (alpine ? 0.6 : 0.035)) return;
-    const edgeK = alpine ? 1 - smoothstep(0.25, 0.6, e) * 0.85 : 1 - smoothstep(-0.012, 0.035, e);
+    if (e > 0.035) return;
+    const edgeK = 1 - smoothstep(-0.012, 0.035, e);
     if (Math.random() > edgeK * edgeK + 0.02) return;
     const h = groundAt(x, z);
     if (h < WATER_Y + 0.05) return;
-    if (alpine) {
-      const dens = 0.6 + 0.4 * noise2(x * 0.03 + 70, z * 0.03);
-      if (Math.random() > dens + 0.2) return;
-      const wet = 1 - smoothstep(WATER_Y + 0.05, WATER_Y + 0.7, h);
-      const c = alpineGrassColour(x, z).map((v, i) => v * (1 - wet * [0.3, 0.2, 0.4][i]));
-      items.push({
-        x,
-        y: h - 0.05,
-        z,
-        rot: rand(0, TAU),
-        tx: rand(-0.08, 0.08),
-        sx: rand(0.75, 1.25),
-        sy: rand(0.45, 0.85) * (0.8 + 0.3 * dens) * (0.6 + 0.4 * edgeK),
-        c: lin(c).map((v) => Math.pow(v, 0.45) * 1.18),
-      });
-      return;
-    }
     const dens = 0.55 + 0.45 * noise2(x * 0.03 + 70, z * 0.03);
     if (Math.random() > dens + 0.25) return;
     const n1 = noise2(x * 0.009 + 11, z * 0.009),
@@ -102,7 +82,7 @@ function buildGrass() {
       c: lin(c).map((v) => Math.pow(v, 0.45) * 1.18),
     });
   };
-  const GB = alpine ? { x0: -480, x1: 1150, z0: -1080, z1: 60 } : { x0: -260, x1: 260, z0: -760, z1: 10 };
+  const GB = { x0: -260, x1: 260, z0: -760, z1: 10 };
   for (let i = 0; i < 95000; i++) tryAdd(rand(GB.x0, GB.x1), rand(GB.z0, GB.z1));
   // extra-dense grass in front of this player's stand (it's only scenery, so each browser does its own)
   for (let i = 0; i < 70000; i++) {
@@ -115,13 +95,6 @@ function buildGrass() {
       r = Math.sqrt(Math.random()) * 110;
     tryAdd(PLAYER.x + Math.cos(a) * r, PLAYER.z + Math.sin(a) * r);
   }
-  // the valley's short tundra grass: thicker still right below the stand, where the hunter looks straight down on it
-  if (alpine)
-    for (let i = 0; i < 30000; i++) {
-      const a = rand(-PI * 0.6, PI * 0.6) + FWD,
-        r = Math.sqrt(Math.random()) * 45;
-      tryAdd(PLAYER.x + Math.cos(a) * r, PLAYER.z + Math.sin(a) * r);
-    }
   const sunH = new THREE.Vector3(SUN_DIR.x, 0, SUN_DIR.z).normalize();
   const nrm = new THREE.Vector3(sunH.x * 0.6, 1, sunH.z * 0.6).normalize();
   const mat = new THREE.MeshLambertMaterial({
@@ -199,10 +172,6 @@ const TT = [
   { h: [7, 15], w: 0.3 },
 ];
 function buildForest() {
-  if (MAP.id === 'alpine-valley-stream') {
-    const { items, near } = alpineTrees(TT);
-    return plantForest(items, near);
-  }
   const items = [],
     near = [];
   let tries = 0;

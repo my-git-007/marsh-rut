@@ -1,7 +1,6 @@
 // render/ridges.js — split out of the original single-file game (game.src.html)
 import * as THREE from 'three';
 import { TAU, clamp, hexLin, lerp, mix3, noise2 } from '../../../shared/util.js';
-import { MAP } from '../../../shared/world.js';
 import { PLAYER } from '../state.js';
 import { FOG_COL, scene } from './core.js';
 
@@ -37,7 +36,6 @@ function buildRidge(R, hmin, hmax, col, haze, seed, N) {
   scene.add(m);
 }
 function buildRidges() {
-  if (MAP.look && MAP.look.mountains) return; // the map has real mountains all around (render/alpine.js)
   const fc = [FOG_COL.r, FOG_COL.g, FOG_COL.b];
   const f = (c, h) => {
     const l = hexLin(c);

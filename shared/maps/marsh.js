@@ -288,6 +288,47 @@ function buildShrubs() {
   });
   SHRUB_PTS = SHRUBS.map((i) => ({ x: i.x, z: i.z }));
 }
+// Boulders left by the glaciers, out in the marsh: a few big erratics with smaller rocks round them, and some
+// loose ones. Seeded and shared, so the animals walk round the same rocks every player sees (render/boulders.js
+// draws them; sim/body.js keeps the animals out of them). size: across the rock (m); r: its footprint radius;
+// m: which scanned rock (0 flat, 1 mossy, 2 round, 3 the big erratic).
+let ROCKS = [];
+function buildRocks() {
+  ROCKS = withSeed(4242, () => {
+    const out = [];
+    const ok = (x, z, s) => {
+      if (marshE(x, z) > 0.03 || groundAt(x, z) < WATER_Y + 0.15 || streamDist(x, z) < 3 + s * 0.5) return false;
+      if (nearestStandDist(x, z) < 20 + s || inStandCorridor(x, z, 70)) return false;
+      // not on top of a willow clump or another rock
+      for (const b of SHRUBS) if (Math.hypot(b.x - x, b.z - z) < s * 0.5 + b.sx * 0.4) return false;
+      // and a moose's width or more between rocks, so none can get wedged between two (or bounce from one to the other)
+      for (const k of out) if (Math.hypot(k.x - x, k.z - z) < s * 0.42 + k.r + 4) return false;
+      return true;
+    };
+    const put = (x, z, s) => {
+      if (!ok(x, z, s)) return false;
+      const m = s > 5 ? 3 : Math.floor(rand(0, 3));
+      out.push({ x, z, size: s, m, yaw: rand(0, TAU), tilt: rand(-0.1, 0.1), r: s * 0.42 });
+      return true;
+    };
+    // the erratics, each with a few rocks that came with it
+    for (let n = 0, i = 0; n < 12 && i < 400; i++) {
+      const x = rand(-220, 220),
+        z = rand(-740, -40),
+        s = rand(4.5, 10);
+      if (!put(x, z, s)) continue;
+      n++;
+      for (let k = 0, c = Math.floor(rand(2, 6)); k < c; k++) {
+        const a = rand(0, TAU),
+          q = s * rand(0.7, 1.6);
+        put(x + Math.cos(a) * q, z + Math.sin(a) * q, s * rand(0.15, 0.4));
+      }
+    }
+    // loose rocks across the marsh, from knee-high to as tall as a man
+    for (let n = 0, i = 0; n < 30 && i < 600; i++) if (put(rand(-220, 220), rand(-740, -40), rand(0.9, 3.2))) n++;
+    return out;
+  });
+}
 // builds it all (once) and hands world.js what the rest of the game uses
 let W = null;
 export function build() {
@@ -298,6 +339,7 @@ export function build() {
   placeStands();
   buildWaterPts();
   buildShrubs();
+  buildRocks();
   W = {
     id: 'the-marsh',
     MARSH,
@@ -310,6 +352,7 @@ export function build() {
     WATER_PTS,
     SHRUBS,
     SHRUB_PTS,
+    ROCKS,
     marshE,
     pondE,
     streamDist,

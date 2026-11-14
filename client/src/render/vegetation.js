@@ -5,6 +5,7 @@ import {
   MAP,
   POND,
   POOLS,
+  ROCKS,
   SHRUBS,
   STANDS,
   STREAM,
@@ -256,11 +257,16 @@ function buildForest() {
     items.push({ x, y: groundAt(x, z) - 0.2, z, rot: rand(0, TAU), sx: h * TT[t].w, sy: h, tile: t });
   }
   // dead standing spruce out in the marsh: an old, drowned stand. Single snags all over, and groves of them
-  // where the water came up and killed a patch of timber (the first 60 m of the shooting lane stays clear).
-  const snagAt = (x, z, h) => {
-    if (marshE(x, z) > -0.01 || groundAt(x, z) < WATER_Y + 0.1 || inFrontCorridor(x, z, 60)) return;
-    if (nearestStandDist(x, z) < 8) return;
+  // where the water came up and killed a patch of timber (these keep out of the first 60 m of the shooting lane).
+  const onRock = (x, z) => ROCKS.some((k) => Math.hypot(k.x - x, k.z - z) < k.r + 1);
+  const snagHere = (x, z, h) => {
+    if (groundAt(x, z) < WATER_Y + 0.1 || nearestStandDist(x, z) < 7 || onRock(x, z)) return false;
     items.push({ x, y: groundAt(x, z) - 0.2, z, rot: rand(0, TAU), sx: h * 0.3, sy: h, tile: 7 });
+    return true;
+  };
+  const snagAt = (x, z, h) => {
+    if (marshE(x, z) > -0.01 || inFrontCorridor(x, z, 60)) return;
+    snagHere(x, z, h);
   };
   for (let i = 0; i < 700; i++) snagAt(rand(-240, 240), rand(-760, -40), rand(4, 13) * (chance(0.25) ? 0.6 : 1));
   for (let g = 0; g < 16; g++) {
@@ -271,6 +277,23 @@ function buildForest() {
       const a = rand(0, TAU),
         r = Math.sqrt(Math.random()) * rand(12, 30);
       snagAt(cx + Math.cos(a) * r, cz + Math.sin(a) * r, rand(6, 15));
+    }
+  }
+  // and round every stand, so the old dead timber starts right where the hunter sits: a few beside and behind it,
+  // and one or two out in the shooting lane (not so many that they're in the way)
+  for (const st of STANDS) {
+    let inLane = 0;
+    for (let n = 0, i = 0; n < 9 && i < 80; i++) {
+      const a = rand(0, TAU),
+        d = rand(9, 50),
+        x = st.x + Math.cos(a) * d,
+        z = st.z + Math.sin(a) * d;
+      const lane = inFrontCorridor(x, z, 120);
+      if (lane && (inLane >= 2 || d < 22)) continue;
+      if (snagHere(x, z, rand(5, 14))) {
+        n++;
+        if (lane) inLane++;
+      }
     }
   }
   // understory: young spruce & brush along the timber edge

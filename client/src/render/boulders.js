@@ -1,21 +1,9 @@
 // render/boulders.js — scanned boulders (Megascans, made small by tools/scan-assets/prep.py), from knee-high stones
-// to glacial erratics the size of a cabin. Alpine Valley Stream gets them all through the valley, in loose groups;
-// the marsh gets a scatter of big erratics along its edges and islands. Seeded, so every visit has the same rocks.
-// Loaded after the trees; on any error the map simply has no boulders.
+// to glacial erratics the size of a cabin. Where they go is the map's (shared/maps/*.js ROCKS: seeded, the same for
+// every player, and solid to the animals); a map without rocks loads nothing. On any error the map has no boulders.
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { TAU, lerp, mulberry32 } from '../../../shared/util.js';
-import {
-  MAP,
-  WATER_Y,
-  groundAt,
-  inStandCorridor,
-  marshE,
-  nearestStandDist,
-  streamDist,
-} from '../../../shared/world.js';
-import { PLAYER } from '../state.js';
-import { V } from '../ui/input.js';
+import { ROCKS, groundAt } from '../../../shared/world.js';
 import { scene } from './core.js';
 import { addObstacle } from './vegetation.js';
 import flatUrl from '../../assets/scan/boulder-flat.glb?url';
@@ -58,58 +46,11 @@ const _m = new THREE.Matrix4(),
   _s = new THREE.Vector3(),
   _e = new THREE.Euler();
 
-// where the rocks go on this map: [{x, z, size (largest dimension, m), m (model index)}]
-function layout() {
-  const r = mulberry32(MAP.id === 'alpine-valley-stream' ? 4711 : 1903);
-  const R = (a, b) => lerp(a, b, r());
-  const alpine = MAP.id === 'alpine-valley-stream';
-  const ok = (x, z, size) => {
-    const h = groundAt(x, z);
-    if (h < WATER_Y + 0.3 || streamDist(x, z) < 3 + size * 0.5) return false;
-    if (nearestStandDist(x, z) < 10 + size) return false;
-    if (inStandCorridor(x, z, 60)) return false; // the shooting lane stays clear near the stand
-    return alpine ? true : marshE(x, z) > -0.02 && marshE(x, z) < 0.08; // the marsh: its edges and islands
-  };
-  // knee-high stones, rocks as tall as a man, boulders the size of a truck, and glacial erratics like a cabin
-  // (the small ones vanish in the dwarf birch, so most are big)
-  const size = () => {
-    const u = r();
-    return u < 0.3 ? R(0.8, 1.6) : u < 0.65 ? R(1.6, 3.5) : u < 0.9 ? R(3.5, 7) : R(8, 14);
-  };
-  const pickModel = (s) => (s > 7 ? 3 : s > 3.5 && r() < 0.4 ? 3 : Math.floor(r() * 3));
-  const out = [];
-  const put = (x, z, s) => {
-    if (ok(x, z, s)) out.push({ x, z, size: s, m: pickModel(s), yaw: r() * TAU, tilt: R(-0.12, 0.12) });
-  };
-  const N = alpine ? 320 : 60;
-  const span = alpine ? 900 : 650;
-  // only where the hunter can look from the stand (a bearing is yaw = atan2(-dx, -dz)); all round if no limits
-  const L = V.lim,
-    lo = L ? L.yaw0 - L.right - 0.15 : 0,
-    hi = L ? L.yaw0 + L.left + 0.15 : TAU;
-  for (let i = 0; i < N; i++) {
-    // closer to the stand more often (where single rocks show), but out across the valley too
-    const a = R(lo, hi),
-      d = 25 + Math.pow(r(), 1.3) * span;
-    const x = PLAYER.x - Math.sin(a) * d,
-      z = PLAYER.z - Math.cos(a) * d;
-    const s = alpine ? size() : R(3, 12);
-    put(x, z, s);
-    // a big one usually has company: smaller rocks that broke off it or were dropped with it
-    if (s > 2.5 && r() < 0.7)
-      for (let k = 0, n = Math.floor(R(2, 7)); k < n; k++) {
-        const b = r() * TAU,
-          q = s * R(0.6, 1.8);
-        put(x + Math.cos(b) * q, z + Math.sin(b) * q, s * R(0.15, 0.45));
-      }
-  }
-  return out;
-}
-
 export async function buildBoulders() {
   const t0 = performance.now();
+  const rocks = ROCKS;
+  if (!rocks.length) return null;
   const models = await Promise.all([flatUrl, mossyUrl, roundUrl, erraticUrl].map(model));
-  const rocks = layout();
   const cells = new Map();
   for (const k of rocks) {
     const key = `${k.m}|${Math.floor(k.x / CELL)}|${Math.floor(k.z / CELL)}`;

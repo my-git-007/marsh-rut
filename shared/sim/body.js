@@ -2,11 +2,28 @@
 // code needs to know about (bedded, grazing, swaying, fighting). No meshes here: each browser draws the
 // animal from the snapshot the host sends (x, z, heading, speed, gait, flags, where it is looking).
 import { clamp, wrapA } from '../util.js';
-import { outDist } from '../world.js';
+import { outDist, rockDetour, rockOut } from '../world.js';
 import { SPECIES } from './catalog.js';
 
 export const FLAG = { graze: 1, bed: 2, sway: 4, fight: 8, alert: 16, thrash: 32, forage: 64, quills: 128 };
 export const MODES = ['walk', 'trot', 'run'];
+
+// The rocks out in the marsh are solid: a walker heads round one that is in its way (to a point beside it), a
+// target inside one moves to its edge, and anything that ends up inside one (pushed, or placed) is put back out.
+// pad: the animal's half-width.
+function aimPast(b, pad) {
+  const t = b.target;
+  const o = rockOut(t.x, t.z, pad + 0.5);
+  if (o) b.target = o;
+  return rockDetour(b.x, b.z, b.target.x, b.target.z, pad, 30) || b.target;
+}
+function keepOut(b, pad) {
+  const o = rockOut(b.x, b.z, pad);
+  if (o) {
+    b.x = o.x;
+    b.z = o.z;
+  }
+}
 
 export class Body {
   // kind: bull | cow | calf ; vis: what a browser needs to build the same-looking animal (scale, coat, antlers, seed)
@@ -40,6 +57,10 @@ export class Body {
   }
   get scale() {
     return this.vis.scale;
+  }
+  // half its width, for keeping out of the rocks (a moose; the smaller animals override it)
+  get pad() {
+    return 0.9 * (this.scale || 1);
   }
   get run() {
     return this.mode === 'run';
@@ -88,7 +109,8 @@ export class Body {
         this.target = null;
         this.arrived = true;
       } else {
-        const des = Math.atan2(-dz, dx),
+        const aim = aimPast(this, this.pad);
+        const des = Math.atan2(-(aim.z - this.z), aim.x - this.x),
           diff = wrapA(des - this.h),
           tr = (this.mode === 'run' ? 1.5 : this.mode === 'trot' ? 1.1 : 0.75) * dt;
         this.h += clamp(diff, -tr, tr);
@@ -104,6 +126,7 @@ export class Body {
     if (this.speed < 0.001) this.speed = 0;
     this.x += Math.cos(this.h) * this.speed * dt;
     this.z -= Math.sin(this.h) * this.speed * dt;
+    keepOut(this, this.pad);
     this.bd += ((this.bedOn ? 1 : 0) - this.bd) * Math.min(1, dt * (this.bedOn ? 0.6 : 1.2));
     this.alertT -= dt;
     this.thrashT -= dt;
@@ -142,6 +165,9 @@ export class CritterBody extends Body {
     this.forage = 0;
     this.forageOn = false;
   }
+  get pad() {
+    return this.kind === 'bear' ? 0.7 : 0.4;
+  }
   update(dt) {
     const sp = this.sp;
     let ts = 0;
@@ -153,7 +179,8 @@ export class CritterBody extends Body {
         this.target = null;
         this.arrived = true;
       } else {
-        const des = Math.atan2(-dz, dx),
+        const aim = aimPast(this, this.pad);
+        const des = Math.atan2(-(aim.z - this.z), aim.x - this.x),
           diff = wrapA(des - this.h),
           tr = (sp.turn || 1.4) * (this.mode === 'run' ? 1.2 : 1) * dt;
         this.h += clamp(diff, -tr, tr);
@@ -166,6 +193,7 @@ export class CritterBody extends Body {
     if (this.speed < 0.01) this.speed = 0;
     this.x += Math.cos(this.h) * this.speed * dt;
     this.z -= Math.sin(this.h) * this.speed * dt;
+    keepOut(this, this.pad);
     this.forage += ((this.forageOn && this.speed < 0.3 ? 1 : 0) - this.forage) * Math.min(1, dt * 1.5);
     this.alertT -= dt;
   }

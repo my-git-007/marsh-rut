@@ -440,15 +440,22 @@ function deadStubs(B, r, axis, R0, H, y0, y1, L0, L1, low) {
 
 // Dead standing spruce (a snag): a weathered grey bole, the top snapped off or thinning to a dead spike, the branches
 // gone to stubs low down and to bare, drooping dead limbs with a few grey twigs higher up. No needles.
-function snag(seed, H, detail = 1) {
+// form: 'classic' (as above), 'bare' (stubs only, often snapped short), 'branchy' (dead limbs nearly to the ground,
+// often a forked top), 'lean' (tipped over 10-20 degrees, as the bog gave way under it).
+function snag(seed, H0, detail = 1, form = 'classic') {
   const r = rngOf(seed),
     B = new Builder(),
     up = new THREE.Vector3(0, 1, 0);
   const low = detail < 1;
-  const R0 = 0.36 * (H / 14);
-  const broken = r() < 0.6; // snapped top (blunt), else it thins to a dead spike
-  const lean = new THREE.Vector3(r(-0.03, 0.03), 0, r(-0.03, 0.03));
-  const bend = r(-0.25, 0.25);
+  const R0 = 0.36 * (H0 / 14);
+  const bare = form === 'bare',
+    branchy = form === 'branchy';
+  const H = bare ? H0 * r(0.55, 0.85) : H0; // a bare one is often snapped off well down
+  const broken = bare || r() < 0.6; // snapped top (blunt), else it thins to a dead spike
+  const tipA = r(0, TAU),
+    tip = form === 'lean' ? r(0.17, 0.36) : r(0, 0.03); // how far it leans (rise over run)
+  const lean = new THREE.Vector3(Math.cos(tipA) * tip, 0, Math.sin(tipA) * tip);
+  const bend = r(-0.25, 0.25) * (form === 'lean' ? 2 : 1);
   const axis = (y) => new THREE.Vector3(lean.x * y + bend * (y / H) ** 3, y, lean.z * y);
   const trunk = [];
   for (let i = 0; i <= 10; i++) {
@@ -472,8 +479,26 @@ function snag(seed, H, detail = 1) {
         3,
       );
     }
-  // stubs low down, longer dead limbs higher up
-  deadStubs(B, r, axis, R0, H, 0.8, H * 0.45, 0.08, 0.45, low);
+  // stubs low down, longer dead limbs higher up (a branchy one keeps its limbs much lower)
+  const limbs0 = branchy ? 0.18 : 0.45;
+  deadStubs(B, r, axis, R0, H, 0.8, bare ? H * 0.9 : H * limbs0, 0.08, bare ? 0.3 : 0.45, low);
+  // a forked top: a second leader that took over after the first one died back
+  if (branchy && r() < 0.6) {
+    const a = r(0, TAU),
+      y0 = H * r(0.62, 0.75),
+      out = new THREE.Vector3(Math.cos(a), 0, Math.sin(a));
+    const L = H - y0;
+    B.tube(
+      [0, 0.35, 0.7, 1].map((s) => ({
+        p: axis(y0)
+          .addScaledVector(out, R0 * 0.5 + L * 0.35 * Math.sqrt(s))
+          .addScaledVector(up, L * 0.95 * s),
+        r: R0 * (1 - 0.62 * (y0 / H)) * 0.7 * (1 - s * 0.85),
+        ao: 0.9,
+      })),
+      low ? 4 : 6,
+    );
+  }
   const normalAt = (p) => {
     const a = axis(p.y),
       n = new THREE.Vector3(p.x - a.x, 0.6, p.z - a.z).normalize();
@@ -481,15 +506,15 @@ function snag(seed, H, detail = 1) {
     return n;
   };
   let a0 = r(0, TAU);
-  for (let y = H * 0.45; y < H * 0.95; y += r(0.5, 1.0) * (low ? 1.5 : 1)) {
+  for (let y = H * limbs0; !bare && y < H * 0.95; y += r(0.5, 1.0) * (branchy ? 0.6 : 1) * (low ? 1.5 : 1)) {
     a0 += 2.4;
-    if (r() < 0.35) continue; // many have fallen off
-    const n = Math.round(r(1, 3));
+    if (r() < (branchy ? 0.1 : 0.35)) continue; // many have fallen off
+    const n = Math.round(r(1, branchy ? 4 : 3));
     for (let k = 0; k < n; k++) {
       const t = y / H,
         a = a0 + (k / n) * TAU + r(-0.4, 0.4),
         h = new THREE.Vector3(Math.cos(a), 0, Math.sin(a)),
-        L = (1.6 * (1 - t) + 0.3) * r(0.5, 1.1),
+        L = (1.6 * (1 - t) + 0.3) * r(0.5, 1.1) * (branchy ? 1.3 : 1),
         rb = R0 * (1 - 0.62 * t);
       const P0 = axis(y).addScaledVector(h, rb * 0.8);
       const at = (s) =>
@@ -1024,7 +1049,16 @@ const SPECIES = [
   { tiles: [0], seeds: [7, 31], P: CONIFERS.white, leaf: 'spray', wood: 0x9a8f84, amt: 0.25 },
   { tiles: [1], seeds: [21, 52], P: CONIFERS.pine, leaf: 'pine', tint: [1.02, 1.0, 0.9], wood: 0xa0785a, amt: 0.22 },
   // dead standing spruce: silver-grey weathered wood, grey twigs
-  { tiles: [7], seeds: [4, 15, 23], snag: true, leaf: 'dead', wood: [1, 1, 1], amt: 0.06 },
+  {
+    tiles: [7],
+    seeds: [4, 15, 23, 37, 41, 58],
+    forms: ['classic', 'bare', 'branchy', 'lean', 'bare', 'lean'],
+    snag: true,
+    leaf: 'dead',
+    wood: [1, 1, 1],
+    amt: 0.06,
+    pool: 50,
+  },
   { tiles: [2], seeds: [13, 44], P: CONIFERS.black, leaf: 'spray', tint: [0.8, 0.86, 0.9], wood: 0x857a70, amt: 0.2 },
   { tiles: [3], seeds: [5, 61], P: CONIFERS.fir, leaf: 'spray', tint: [0.88, 1.02, 0.9], wood: 0x8f8a80, amt: 0.25 },
   { tiles: [6], seeds: [9, 27], P: CONIFERS.tamarack, leaf: 'larch', wood: 0x8a7060, amt: 0.3 },
@@ -1117,9 +1151,13 @@ function buildPlants3D(trees, shrubs, centre, shrubTints) {
         wood: woodMat(colour(sp.wood), TREE_H, sp.amt, !!sp.snag),
         leaf: leafMat(texs[sp.leaf], TREE_H, sp.amt, sp.tint ? colour(sp.tint) : null),
       };
-      const list = sp.seeds.map((seed) => {
+      const list = sp.seeds.map((seed, i) => {
         const make = (d) =>
-          sp.broad ? broadleaf(seed, TREE_H, d) : sp.snag ? snag(seed, TREE_H, d) : spruce(seed, TREE_H, d, sp.P);
+          sp.broad
+            ? broadleaf(seed, TREE_H, d)
+            : sp.snag
+              ? snag(seed, TREE_H, d, sp.forms[i])
+              : spruce(seed, TREE_H, d, sp.P);
         const light = make(sp.broad ? 0.4 : sp.snag ? 0.5 : 0.35);
         return {
           mats,
@@ -1127,7 +1165,7 @@ function buildPlants3D(trees, shrubs, centre, shrubTints) {
           light,
           imp: bakeImpostor(plantMeshes(light, mats), { tileH: 256, H0: TREE_H, AMT: sp.amt }),
           items: { full: [], light: [], imp: [] },
-          pool: POOL_TREES,
+          pool: sp.pool || POOL_TREES,
           shrub: false,
           H: TREE_H,
         };

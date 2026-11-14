@@ -266,6 +266,9 @@ async function seat(host, name, stand) {
     await import('./render/boulders.js')
       .then((m) => m.buildBoulders())
       .catch((err) => console.warn('Boulders failed', err));
+    await import('./render/deadwood.js')
+      .then((m) => m.buildDeadwood())
+      .catch((err) => console.warn('Logs and stumps failed', err));
   }
   if (TEST) setupTest();
   else if (SHOWCASE && host.local) {

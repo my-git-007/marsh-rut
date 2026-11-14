@@ -15,6 +15,8 @@ import {
 } from '../shared/sim/catalog.js';
 import { makeBullParams } from '../shared/sim/bullparams.js';
 import { WildEvent } from '../shared/sim/wildlife.js';
+import { Body } from '../shared/sim/body.js';
+import { ROCKS, inWater, rockOut, useWorld } from '../shared/world.js';
 
 let fail = 0;
 const ok = (c, m) => {
@@ -228,13 +230,21 @@ ok(hareRan >= N * 0.5, `... the hare bolts (or is caught): ${pct(hareRan, N)}`);
   s.addHunter('b', 'B');
   const seen = new Set();
   let worst = 0,
-    calfT = 0;
+    calfT = 0,
+    inRock = 0,
+    byRock = 0;
   for (let t = 0; t < 7200; t += 0.05) {
     s.update(0.05);
     s.takeEvents();
     for (const b of s.bodies.values()) {
       seen.add(b.kind);
       if (!Number.isFinite(b.x)) throw new Error('NaN ' + b.kind);
+      for (const k of ROCKS) {
+        const d = Math.hypot(b.x - k.x, b.z - k.z);
+        if (d < k.r + 0.4)
+          inRock++; // (its middle never closer than half a body to the rock's edge)
+        else if (d < k.r + 4) byRock += 0.05;
+      }
     }
     for (const c of s.cows)
       if (['graze', 'listen', 'bed', 'walk', 'drink'].includes(c.state))
@@ -248,8 +258,47 @@ ok(hareRan >= N * 0.5, `... the hare bolts (or is caught): ${pct(hareRan, N)}`);
     `two hours: a calf is never more than ${Math.round(worst)} m from its mother while she is calm (${Math.round(calfT)} calf-seconds)`,
   );
   ok(
+    inRock === 0,
+    `two hours: no animal is ever inside a rock (${ROCKS.length} rocks, ${Math.round(byRock)} animal-seconds beside one)`,
+  );
+  ok(
     ['bull', 'cow'].every((k) => seen.has(k)) && [...seen].every((k) => !SPECIES[k] || MARSH_SPECIES.includes(k)),
     `two hours: seen ${[...seen].sort().join(', ')} (this marsh: moose, ${MARSH_SPECIES.join(', ')})`,
+  );
+}
+
+// moose sent straight through the biggest rocks (and the smaller ones round them) go round and get there
+{
+  const s = new Sim({ log: false });
+  useWorld(s.map);
+  const big = [...ROCKS].sort((a, b) => b.r - a.r).slice(0, 4);
+  const free = (x, z) => !inWater(x, z) && !rockOut(x, z, 1.5);
+  let arrived = 0,
+    inside = 0,
+    N = 0;
+  for (const k of big)
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * Math.PI * 2,
+        D = k.r + 25;
+      const x0 = k.x + Math.cos(a) * D,
+        z0 = k.z + Math.sin(a) * D,
+        x1 = k.x - Math.cos(a) * D,
+        z1 = k.z - Math.sin(a) * D;
+      if (!free(x0, z0) || !free(x1, z1)) continue;
+      N++;
+      const b = new Body(s, 'bull', { scale: 1.1 });
+      b.place(x0, z0, Math.atan2(Math.sin(a), -Math.cos(a))); // facing the rock
+      b.goTo(x1, z1, i % 2 ? 'trot' : 'walk');
+      for (let t = 0; t < 180 && !b.arrived; t += 0.05) {
+        b.update(0.05);
+        for (const q of ROCKS) if (Math.hypot(b.x - q.x, b.z - q.z) < q.r + 0.4) inside++;
+      }
+      if (b.arrived) arrived++;
+      b.remove();
+    }
+  ok(
+    N >= 16 && arrived === N && inside === 0,
+    `moose sent straight through the ${big.length} biggest boulders (${big.map((k) => k.size.toFixed(1)).join(', ')} m) walk round them: arrived ${arrived}/${N}, too close ${inside} times`,
   );
 }
 console.log(fail ? `${fail} failed` : 'all animal checks passed');

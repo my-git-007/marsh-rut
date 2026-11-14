@@ -19,7 +19,7 @@ import { loadRefAssets } from './models/ref-bull.js';
 import { A, audioInit, updateAmbience, updateListener } from './audio/audio.js';
 import { V, clampLook, setLookLimits, showMsg } from './ui/input.js';
 import { LULL, updateLull } from './lull.js';
-import { layoutBinoc, updateHUD } from './ui/hud.js';
+import { layoutBinoc, rangeFind, setDeadwoodHit, updateHUD } from './ui/hud.js';
 import { updateCallLabel } from './calls.js';
 import { LocalHost, RemoteHost } from './net/hosts.js';
 import { watchIdle } from './ui/idle.js';
@@ -38,7 +38,7 @@ window.addEventListener('error', (e) => {
     (e.message || String(e)) + ' @' + (e.filename || '').split('/').pop() + ':' + (e.lineno || '?') + '\n';
 });
 window.__log = [];
-window.__marsh = { NET, PLAYER, ANIMALS, G, V, UI, A }; // for tests and the console
+window.__marsh = { NET, PLAYER, ANIMALS, G, V, UI, A, groundAt, camera, rangeFind }; // for tests and the console
 
 // Online when a server is configured (?server=wss://… or VITE_SERVER_URL at build time): players log in and
 // the server runs each player's own marsh. Otherwise (or with ?solo) the marsh runs in this tab, no account.
@@ -269,7 +269,11 @@ async function seat(host, name, stand) {
       .catch((err) => console.warn('Boulders failed', err));
     // logs and stumps (render/deadwood.js): not waited for, they come in while the hunter settles
     import('./render/deadwood.js')
-      .then(async (m) => (await m.buildDeadwood()) && (updateDeadwood = m.updateDeadwood))
+      .then(async (m) => {
+        if (!(await m.buildDeadwood())) return;
+        updateDeadwood = m.updateDeadwood;
+        setDeadwoodHit(m.deadwoodHit);
+      })
       .catch((err) => console.warn('Logs and stumps failed', err));
   }
   if (TEST) setupTest();

@@ -285,7 +285,7 @@ function plantForest(items, near) {
   buildInstanced(items, crossGeo(3, 0.55), m, { cell: 140, tile: true, cast: true, depth: d, track: FOREST.track });
   FOREST.items = items;
   FOREST.near = near;
-  for (const it of items) addObstacle(it.x, it.y, it.z, it.sy, it.tile);
+  for (const it of items) it.ob = addObstacle(it.x, it.y, it.z, it.sy, it.tile);
   for (const tr of near) addObstacle(tr.x, tr.y, tr.z, tr.h, tr.t);
   buildNearTrees(near);
 }
@@ -330,6 +330,16 @@ function addObstacle(x, y, z, h, tile, shrubW) {
       if (!OB.has(k)) OB.set(k, []);
       OB.get(k).push(o);
     }
+  return o;
+}
+// where a leaning dead tree's bole is at height u above its base, from straight above its foot (render/plants3d.js)
+let leanX = 0,
+  leanZ = 0;
+function leanAt(o, u) {
+  const L = o.lean,
+    b = (u / L.H) ** 3;
+  leanX = L.x * u + L.bx * b;
+  leanZ = L.z * u + L.bz * b;
 }
 // the radius of an obstacle at height u above its base (0 = outside it)
 function obRadius(o, u) {
@@ -344,6 +354,13 @@ function obRadius(o, u) {
   if (o.kind === 2) return o.R * Math.sqrt(Math.max(0, 1 - f * f)); // a dome
   return o.R;
 }
+// (in test runs: the leaning dead trees' obstacles, to aim at)
+if (/[?&]test=/.test(location.search))
+  window.__leaners = () => {
+    const out = new Set();
+    for (const l of OB.values()) for (const o of l) if (o.lean && Math.hypot(o.lean.x, o.lean.z) > 0.15) out.add(o);
+    return [...out];
+  };
 // distance along the sightline (o: start, d: unit direction) to the first tree or bush, or null within tMax
 let obStamp = 0;
 function obstacleHit(o, d, tMax) {
@@ -376,7 +393,7 @@ function obCheck(list, o, d, hl, tMax, best) {
         mx = o.x + d.x * tc - b.x,
         mz = o.z + d.z * tc - b.z,
         m2 = mx * mx + mz * mz,
-        R = b.R + 0.3;
+        R = b.R + 0.3 + (b.lean ? Math.hypot(b.lean.x, b.lean.z) * b.h + Math.hypot(b.lean.bx, b.lean.bz) : 0);
       if (m2 > R * R) continue;
       // the hunter's own eye inside it (a big spruce right beside the stand): look past it, not at it
       const ex = o.x - b.x,
@@ -386,12 +403,16 @@ function obCheck(list, o, d, hl, tMax, best) {
       const half = Math.sqrt(R * R - m2) / hl;
       const ta = Math.max(0.5, tc - half),
         tb = Math.min(tMax, tc + half);
-      for (let s = 0; s <= 12; s++) {
-        const tt = ta + ((tb - ta) * s) / 12;
+      // (steps of 0.2 m or less sideways, so a thin snag isn't stepped over)
+      const n = Math.min(80, Math.max(12, Math.ceil(((tb - ta) * hl) / 0.2)));
+      for (let s = 0; s <= n; s++) {
+        const tt = ta + ((tb - ta) * s) / n;
         if (tt > tb || (best !== null && tt >= best)) break;
-        const dx = o.x + d.x * tt - b.x,
-          dz = o.z + d.z * tt - b.z,
-          rr = obRadius(b, o.y + d.y * tt - b.y);
+        const u = o.y + d.y * tt - b.y;
+        if (b.lean) leanAt(b, u);
+        const dx = o.x + d.x * tt - b.x - (b.lean ? leanX : 0),
+          dz = o.z + d.z * tt - b.z - (b.lean ? leanZ : 0),
+          rr = obRadius(b, u);
         if (rr > 0 && dx * dx + dz * dz < rr * rr) {
           best = tt;
           break;
@@ -416,6 +437,7 @@ function buildPlants() {
       h: it.sy,
       rot: it.rot,
       tile: it.tile,
+      ob: it.ob, // (its rangefinder obstacle: the 3D plants tell it a snag's lean)
       hide: (on) => hideInstance(FOREST.track, it, on),
     });
   for (const tr of FOREST.near)

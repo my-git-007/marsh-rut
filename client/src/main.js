@@ -58,6 +58,7 @@ const netMsg = (t) => {
   if (el) el.textContent = t || '';
 };
 const tick = () => new Promise((r) => setTimeout(r, 0));
+let updateDeadwood = null; // (once the logs and stumps have loaded: render/deadwood.js)
 let sky = null,
   grassBuilt = false,
   USER = null,
@@ -267,7 +268,7 @@ async function seat(host, name, stand) {
       .then((m) => m.buildBoulders())
       .catch((err) => console.warn('Boulders failed', err));
     await import('./render/deadwood.js')
-      .then((m) => m.buildDeadwood())
+      .then(async (m) => (await m.buildDeadwood()) && (updateDeadwood = m.updateDeadwood))
       .catch((err) => console.warn('Logs and stumps failed', err));
   }
   if (TEST) setupTest();
@@ -521,6 +522,7 @@ function loop(now) {
     return;
   }
   updatePlants3D(camera, V.fov);
+  if (updateDeadwood) updateDeadwood(camera, V.fov);
   renderReflection();
   renderer.render(scene, camera);
 }

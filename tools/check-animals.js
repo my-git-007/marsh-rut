@@ -16,7 +16,7 @@ import {
 import { makeBullParams } from '../shared/sim/bullparams.js';
 import { WildEvent } from '../shared/sim/wildlife.js';
 import { Body } from '../shared/sim/body.js';
-import { ROCKS, inWater, rockOut, useWorld } from '../shared/world.js';
+import { ROCKS, SOLIDS, inWater, rockOut, useWorld } from '../shared/world.js';
 
 let fail = 0;
 const ok = (c, m) => {
@@ -243,9 +243,9 @@ ok(hareRan >= N * 0.5, `... the hare bolts (or is caught): ${pct(hareRan, N)}`);
     for (const b of s.bodies.values()) {
       seen.add(b.kind);
       if (!Number.isFinite(b.x)) throw new Error('NaN ' + b.kind);
-      for (const k of ROCKS) {
+      for (const k of SOLIDS) {
         const d = Math.hypot(b.x - k.x, b.z - k.z);
-        // (never more than half its width over the rock's edge)
+        // (never more than half its width over the edge of a rock, root plate or tall stump)
         if (d < k.r + b.pad * 0.5) inRock++;
         if (d - k.r < closest.gap) closest = { kind: b.kind, gap: d - k.r, pad: b.pad };
         else if (d < k.r + 4) byRock += 0.05;
@@ -264,7 +264,7 @@ ok(hareRan >= N * 0.5, `... the hare bolts (or is caught): ${pct(hareRan, N)}`);
   );
   ok(
     inRock === 0,
-    `two hours: no animal is ever inside a rock (${ROCKS.length} rocks, ${Math.round(byRock)} animal-seconds beside one; closest a ${closest.kind} ${closest.gap.toFixed(2)} m from its edge, half-width ${closest.pad?.toFixed(2)} m)`,
+    `two hours: no animal is ever inside a rock, root plate or tall stump (${ROCKS.length} rocks, ${SOLIDS.length - ROCKS.length} of the wood, ${Math.round(byRock)} animal-seconds beside one; closest a ${closest.kind} ${closest.gap.toFixed(2)} m from its edge, half-width ${closest.pad?.toFixed(2)} m)`,
   );
   ok(
     ['bull', 'cow'].every((k) => seen.has(k)) && [...seen].every((k) => !SPECIES[k] || MARSH_SPECIES.includes(k)),
@@ -272,11 +272,13 @@ ok(hareRan >= N * 0.5, `... the hare bolts (or is caught): ${pct(hareRan, N)}`);
   );
 }
 
-// moose sent straight through the biggest rocks (and the smaller ones round them) go round and get there
+// moose sent straight through the biggest rocks (and the smaller ones round them), and the biggest root plates, go
+// round and get there
 {
   const s = new Sim({ log: false });
   useWorld(s.map);
-  const big = [...ROCKS].sort((a, b) => b.r - a.r).slice(0, 4);
+  const wood = SOLIDS.filter((k) => !ROCKS.includes(k));
+  const big = [...[...ROCKS].sort((a, b) => b.r - a.r).slice(0, 4), ...wood.sort((a, b) => b.r - a.r).slice(0, 3)];
   const free = (x, z) => !inWater(x, z) && !rockOut(x, z, 1.5);
   let arrived = 0,
     inside = 0,
@@ -296,14 +298,14 @@ ok(hareRan >= N * 0.5, `... the hare bolts (or is caught): ${pct(hareRan, N)}`);
       b.goTo(x1, z1, i % 2 ? 'trot' : 'walk');
       for (let t = 0; t < 180 && !b.arrived; t += 0.05) {
         b.update(0.05);
-        for (const q of ROCKS) if (Math.hypot(b.x - q.x, b.z - q.z) < q.r + 0.4) inside++;
+        for (const q of SOLIDS) if (Math.hypot(b.x - q.x, b.z - q.z) < q.r + 0.4) inside++;
       }
       if (b.arrived) arrived++;
       b.remove();
     }
   ok(
-    N >= 16 && arrived === N && inside === 0,
-    `moose sent straight through the ${big.length} biggest boulders (${big.map((k) => k.size.toFixed(1)).join(', ')} m) walk round them: arrived ${arrived}/${N}, too close ${inside} times`,
+    N >= 20 && arrived === N && inside === 0,
+    `moose sent straight through the 4 biggest boulders and 3 biggest root plates (${big.map((k) => (2 * k.r).toFixed(1)).join(', ')} m across) walk round them: arrived ${arrived}/${N}, too close ${inside} times`,
   );
 }
 console.log(fail ? `${fail} failed` : 'all animal checks passed');

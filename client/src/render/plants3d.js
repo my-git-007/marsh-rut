@@ -422,18 +422,21 @@ function deadStubs(B, r, axis, R0, H, y0, y1, L0, L1, low) {
     for (let k = 0; k < n; k++) {
       const a = a0 + (k / n) * TAU + r(-0.4, 0.4),
         h = new THREE.Vector3(Math.cos(a), 0, Math.sin(a)),
-        L = r(L0, L1),
+        L = r(L0, L1) * 0.6,
         rb = R0 * Math.pow(1 - y / H, 0.9),
         dn = r(-0.35, 0.1);
       const P0 = axis(y).addScaledVector(h, rb * 0.8);
-      const pts = [0, 1].map((s) => ({
+      // short and blunt, broken off: not tapering to a point (thin cones read as spikes from the stand)
+      const r0 = 0.025 + rb * 0.12;
+      // (the last ring, a hair further out and almost no width, closes the broken end)
+      const pts = [0, 1, 1.02].map((s) => ({
         p: P0.clone()
           .addScaledVector(h, L * s)
           .addScaledVector(up, L * s * dn),
-        r: 0.025 * (1 - s * 0.6) + rb * 0.12 * (1 - s),
+        r: s > 1 ? 0.002 : r0 * (1 - s * 0.35),
         ao: 0.7,
       }));
-      B.tube(pts, 3);
+      B.tube(pts, low ? 3 : 4);
     }
   }
 }
@@ -465,18 +468,20 @@ function snag(seed, H0, detail = 1, form = 'classic') {
     trunk.push({ p: axis(y - 0.3 * (i === 0)), r: rr, ao: 0.6 + 0.4 * f });
   }
   B.tube(trunk, low ? 5 : 8);
-  // the snapped top: a few jagged splinters
+  // the snapped top: a few short, ragged splinters round the break
   if (broken)
-    for (let k = 0; k < 3; k++) {
-      const a = r(0, TAU),
-        p0 = axis(H).add(new THREE.Vector3(Math.cos(a), 0, Math.sin(a)).multiplyScalar(R0 * 0.2));
-      const tip = p0.clone().add(new THREE.Vector3(r(-0.08, 0.08), r(0.3, 0.9), r(-0.08, 0.08)));
+    for (let k = 0; k < 4; k++) {
+      const a = (k / 4) * TAU + r(-0.5, 0.5),
+        rt = R0 * 0.38,
+        p0 = axis(H - 0.05).add(new THREE.Vector3(Math.cos(a), 0, Math.sin(a)).multiplyScalar(rt * 0.55));
+      const tip = p0.clone().add(new THREE.Vector3(r(-0.04, 0.04), r(0.1, 0.4), r(-0.04, 0.04)));
       B.tube(
         [
-          { p: p0, r: R0 * 0.16, ao: 1 },
-          { p: tip, r: 0.01, ao: 1 },
+          { p: p0, r: rt * 0.45, ao: 1 },
+          { p: tip, r: rt * 0.12, ao: 1 },
+          { p: tip.clone().add(new THREE.Vector3(0, 0.01, 0)), r: 0.002, ao: 1 }, // (closes the end)
         ],
-        3,
+        4,
       );
     }
   // stubs low down, longer dead limbs higher up (a branchy one keeps its limbs much lower)

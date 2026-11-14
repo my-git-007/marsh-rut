@@ -232,7 +232,8 @@ ok(hareRan >= N * 0.5, `... the hare bolts (or is caught): ${pct(hareRan, N)}`);
   let worst = 0,
     calfT = 0,
     inRock = 0,
-    byRock = 0;
+    byRock = 0,
+    closest = { gap: Infinity };
   for (let t = 0; t < 7200; t += 0.05) {
     s.update(0.05);
     s.takeEvents();
@@ -241,8 +242,9 @@ ok(hareRan >= N * 0.5, `... the hare bolts (or is caught): ${pct(hareRan, N)}`);
       if (!Number.isFinite(b.x)) throw new Error('NaN ' + b.kind);
       for (const k of ROCKS) {
         const d = Math.hypot(b.x - k.x, b.z - k.z);
-        if (d < k.r + 0.4)
-          inRock++; // (its middle never closer than half a body to the rock's edge)
+        // (never more than half its width over the rock's edge)
+        if (d < k.r + b.pad * 0.5) inRock++;
+        if (d - k.r < closest.gap) closest = { kind: b.kind, gap: d - k.r, pad: b.pad };
         else if (d < k.r + 4) byRock += 0.05;
       }
     }
@@ -259,7 +261,7 @@ ok(hareRan >= N * 0.5, `... the hare bolts (or is caught): ${pct(hareRan, N)}`);
   );
   ok(
     inRock === 0,
-    `two hours: no animal is ever inside a rock (${ROCKS.length} rocks, ${Math.round(byRock)} animal-seconds beside one)`,
+    `two hours: no animal is ever inside a rock (${ROCKS.length} rocks, ${Math.round(byRock)} animal-seconds beside one; closest a ${closest.kind} ${closest.gap.toFixed(2)} m from its edge, half-width ${closest.pad?.toFixed(2)} m)`,
   );
   ok(
     ['bull', 'cow'].every((k) => seen.has(k)) && [...seen].every((k) => !SPECIES[k] || MARSH_SPECIES.includes(k)),

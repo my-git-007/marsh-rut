@@ -1222,8 +1222,8 @@ function buildPlants3D(trees, shrubs, centre, shrubTints) {
         t.ob.lean = {
           x: A.lx * c + A.lz * sn,
           z: -A.lx * sn + A.lz * c,
-          bx: A.bend * c,
-          bz: -A.bend * sn,
+          bx: A.bend * it.s * c,
+          bz: -A.bend * it.s * sn,
           H: A.H * it.s,
         };
       }

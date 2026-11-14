@@ -34,27 +34,34 @@ const _ray = new THREE.Ray(),
   _hit = new THREE.Vector3(),
   _m = new THREE.Matrix4(),
   _b = new THREE.Box3();
-// an animal's own box (its body, legs, head and antlers in its rest pose), in its root's frame; made once
+// an animal's box as it stands (or lies) now: its body, legs, head and antlers, in its root's frame (only for the
+// few animals near the sightline, five times a second)
+const _box = new THREE.Box3(),
+  _c = new THREE.Vector3(),
+  _h = new THREE.Vector3();
 function animalBox(a) {
-  if (a._rfBox) return a._rfBox;
   const root = a.M.root;
   root.updateMatrixWorld(true);
   _inv.copy(root.matrixWorld).invert();
-  const box = new THREE.Box3();
+  _box.makeEmpty();
   root.traverse((m) => {
-    if (!m.isMesh || !m.geometry) return;
+    if (!m.isMesh || !m.geometry || !m.visible) return;
     if (!m.geometry.boundingBox) m.geometry.computeBoundingBox();
-    box.union(_b.copy(m.geometry.boundingBox).applyMatrix4(_m.multiplyMatrices(_inv, m.matrixWorld)));
+    _box.union(_b.copy(m.geometry.boundingBox).applyMatrix4(_m.multiplyMatrices(_inv, m.matrixWorld)));
   });
   // (a little inside its outline: the box's corners are air round the rump and brisket)
-  const c = box.getCenter(new THREE.Vector3()),
-    h = box.getSize(new THREE.Vector3()).multiplyScalar(0.45);
-  h.y = box.getSize(_hit).y * 0.5;
-  a._rfBox = new THREE.Box3(c.clone().sub(h), c.clone().add(h));
-  return a._rfBox;
+  _box.getCenter(_c);
+  _box.getSize(_h).multiplyScalar(0.5);
+  _h.x *= 0.9;
+  _h.z *= 0.9;
+  return _box.set(_c.clone().sub(_h), _c.clone().add(_h));
 }
 // the ground (or the water) with a short grass top: where a sightline comes down to it
-const surface = (x, z) => Math.max(groundAt(x, z), WATER_Y) + (marshE(x, z) < 0 ? 0.2 : 0.1) + canopyAt(x, z);
+const surface = (x, z) => {
+  const g = groundAt(x, z);
+  if (g < WATER_Y) return WATER_Y; // open water: no grass on it
+  return g + (marshE(x, z) < 0 ? 0.2 : 0.1) + canopyAt(x, z);
+};
 function rangeFind() {
   const dir = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
   const o = camera.position;

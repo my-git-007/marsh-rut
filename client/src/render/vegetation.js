@@ -333,10 +333,13 @@ function addObstacle(x, y, z, h, tile, shrubW) {
   return o;
 }
 // where a leaning dead tree's bole is at height u above its base, from straight above its foot (render/plants3d.js)
+let leanX = 0,
+  leanZ = 0;
 function leanAt(o, u) {
   const L = o.lean,
     b = (u / L.H) ** 3;
-  return [L.x * u + L.bx * b, L.z * u + L.bz * b];
+  leanX = L.x * u + L.bx * b;
+  leanZ = L.z * u + L.bz * b;
 }
 // the radius of an obstacle at height u above its base (0 = outside it)
 function obRadius(o, u) {
@@ -405,10 +408,10 @@ function obCheck(list, o, d, hl, tMax, best) {
       for (let s = 0; s <= n; s++) {
         const tt = ta + ((tb - ta) * s) / n;
         if (tt > tb || (best !== null && tt >= best)) break;
-        const u = o.y + d.y * tt - b.y,
-          [lx, lz] = b.lean ? leanAt(b, u) : [0, 0];
-        const dx = o.x + d.x * tt - b.x - lx,
-          dz = o.z + d.z * tt - b.z - lz,
+        const u = o.y + d.y * tt - b.y;
+        if (b.lean) leanAt(b, u);
+        const dx = o.x + d.x * tt - b.x - (b.lean ? leanX : 0),
+          dz = o.z + d.z * tt - b.z - (b.lean ? leanZ : 0),
           rr = obRadius(b, u);
         if (rr > 0 && dx * dx + dz * dz < rr * rr) {
           best = tt;

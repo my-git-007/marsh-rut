@@ -551,7 +551,8 @@ function snag(seed, H0, detail = 1, form = 'classic') {
       normalAt,
       [1, 1, 1],
     );
-  return { wood: B.geo(B.wood), leaf: B.geo(B.leaf) };
+  // (its axis, for the rangefinder: at height y the bole is at (lx*y + bend*(y/H)^3, y, lz*y))
+  return { wood: B.geo(B.wood), leaf: B.geo(B.leaf), axis: { lx: lean.x, lz: lean.z, bend, H } };
 }
 
 // Aspen / birch: a straight pale trunk, branches angled up in the top half, round clusters of leaves on the outer part.
@@ -1168,6 +1169,7 @@ function buildPlants3D(trees, shrubs, centre, shrubTints) {
           mats,
           makeFull: () => make(1), // only built if a tree of this kind stands within FULL_R
           light,
+          axis: light.axis, // (a snag's: how it leans)
           imp: bakeImpostor(plantMeshes(light, mats), { tileH: 256, H0: TREE_H, AMT: sp.amt }),
           items: { full: [], light: [], imp: [] },
           pool: sp.pool || POOL_TREES,
@@ -1211,6 +1213,20 @@ function buildPlants3D(trees, shrubs, centre, shrubTints) {
       if (testInfo && d > 25) (nearest[t.tile] ||= []).push({ x: t.x, y: t.y, z: t.z, h: t.h, d });
       const k = list[Math.floor(hash(t.x, t.z) * list.length) % list.length];
       const it = { x: t.x, y: t.y, z: t.z, rot: t.rot, s: t.h / TREE_H };
+      // a dead tree: tell the rangefinder how tall it really is and which way it leans, in the marsh's frame
+      if (k.axis && t.ob) {
+        const c = Math.cos(t.rot),
+          sn = Math.sin(t.rot),
+          A = k.axis;
+        t.ob.h = A.H * it.s;
+        t.ob.lean = {
+          x: A.lx * c + A.lz * sn,
+          z: -A.lx * sn + A.lz * c,
+          bx: A.bend * c,
+          bz: -A.bend * sn,
+          H: A.H * it.s,
+        };
+      }
       k.items[d < FULL_R ? 'full' : d < LIGHT_R ? 'light' : 'imp'].push(it);
       hides.push(t.hide);
     }

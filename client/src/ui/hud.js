@@ -2,7 +2,8 @@
 import * as THREE from 'three';
 import { PI, clamp, compassName, smoothstep } from '../../../shared/util.js';
 import { WIND } from '../../../shared/wind.js';
-import { canopyAt, groundAt, marshE } from '../../../shared/world.js';
+import { WATER_Y, canopyAt, groundAt, marshE } from '../../../shared/world.js';
+import { CRITTERS } from '../models/critters.js';
 import { camera } from '../render/core.js';
 import { obstacleHit } from '../render/vegetation.js';
 import { LULL } from '../lull.js';
@@ -26,40 +27,83 @@ function layoutBinoc() {
 }
 let rangeT = 0,
   dbgT = 0;
+// what the binoculars' rangefinder reads: the distance along the line of sight to the first thing it meets (an
+// animal, a tree or bush, a log or stump, the water, or the ground just above its grass)
+const _ray = new THREE.Ray(),
+  _inv = new THREE.Matrix4(),
+  _hit = new THREE.Vector3(),
+  _m = new THREE.Matrix4(),
+  _b = new THREE.Box3();
+// an animal's own box (its body, legs, head and antlers in its rest pose), in its root's frame; made once
+function animalBox(a) {
+  if (a._rfBox) return a._rfBox;
+  const root = a.M.root;
+  root.updateMatrixWorld(true);
+  _inv.copy(root.matrixWorld).invert();
+  const box = new THREE.Box3();
+  root.traverse((m) => {
+    if (!m.isMesh || !m.geometry) return;
+    if (!m.geometry.boundingBox) m.geometry.computeBoundingBox();
+    box.union(_b.copy(m.geometry.boundingBox).applyMatrix4(_m.multiplyMatrices(_inv, m.matrixWorld)));
+  });
+  // (a little inside its outline: the box's corners are air round the rump and brisket)
+  const c = box.getCenter(new THREE.Vector3()),
+    h = box.getSize(new THREE.Vector3()).multiplyScalar(0.45);
+  h.y = box.getSize(_hit).y * 0.5;
+  a._rfBox = new THREE.Box3(c.clone().sub(h), c.clone().add(h));
+  return a._rfBox;
+}
+// the ground (or the water) with a short grass top: where a sightline comes down to it
+const surface = (x, z) => Math.max(groundAt(x, z), WATER_Y) + (marshE(x, z) < 0 ? 0.2 : 0.1) + canopyAt(x, z);
 function rangeFind() {
   const dir = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
   const o = camera.position;
   let best = null;
-  for (const a of ANIMALS) {
-    if (!a.M.root.visible) continue;
-    const s = a.o.scale;
-    const cx = a.x,
-      cy = groundAt(a.x, a.z) + 1.4 * s,
-      cz = a.z;
-    const vx = cx - o.x,
-      vy = cy - o.y,
-      vz = cz - o.z;
-    const t = vx * dir.x + vy * dir.y + vz * dir.z;
-    if (t < 0) continue;
-    const px = o.x + dir.x * t - cx,
-      py = o.y + dir.y * t - cy,
-      pz = o.z + dir.z * t - cz;
-    if (px * px + py * py + pz * pz < 1.3 * s * s * 1.3 && (!best || t < best)) best = t;
+  for (const a of [...ANIMALS, ...CRITTERS]) {
+    if (!a.M || !a.M.root.visible) continue;
+    const root = a.M.root;
+    // (only the ones near the line: a cheap check before the box)
+    const vx = root.position.x - o.x,
+      vz = root.position.z - o.z,
+      tc = vx * dir.x + vz * dir.z;
+    if (tc < 0 || vx * vx + vz * vz - (tc * tc) / (dir.x * dir.x + dir.z * dir.z) > 64) continue;
+    _ray.set(o, dir).applyMatrix4(_inv.copy(root.matrixWorld).invert());
+    if (!_ray.intersectBox(animalBox(a), _hit)) continue;
+    const t = _hit.applyMatrix4(root.matrixWorld).distanceTo(o);
+    if (!best || t < best) best = t;
   }
-  let t = 2;
+  // the ground: in steps (longer further out), then narrowed down to where the line crosses it
+  let t = 2,
+    prev = 2,
+    hitT = null;
   while (t < 1900) {
-    const x = o.x + dir.x * t,
-      y = o.y + dir.y * t,
-      z = o.z + dir.z * t;
-    // the ground and its grass (deep in the woods, the canopy); the trees and bushes themselves are checked below
-    const top = groundAt(x, z) + canopyAt(x, z) + (marshE(x, z) < 0 ? 0.8 : 0.3);
-    if (y < top) break;
+    if (o.y + dir.y * t < surface(o.x + dir.x * t, o.z + dir.z * t)) {
+      let lo = prev,
+        hi = t;
+      for (let i = 0; i < 14; i++) {
+        const m = (lo + hi) / 2;
+        if (o.y + dir.y * m < surface(o.x + dir.x * m, o.z + dir.z * m)) hi = m;
+        else lo = m;
+      }
+      hitT = hi;
+      break;
+    }
+    prev = t;
     t += 0.5 + t * 0.008;
   }
-  if (t < 1900 && (!best || t < best)) best = t;
+  let what = best ? 'animal' : null;
+  if (hitT !== null && (!best || hitT < best)) (best = hitT), (what = 'ground');
   const tree = obstacleHit(o, dir, best || 1900);
-  if (tree !== null && (!best || tree < best)) best = tree;
+  if (tree !== null && (!best || tree < best)) (best = tree), (what = 'tree');
+  const wood = deadwoodHit && deadwoodHit(o, dir, best || 1900);
+  if (wood && (!best || wood < best)) (best = wood), (what = 'wood');
+  rangeFind.what = what; // (for tests)
   return best;
+}
+// (set once the logs and stumps have loaded: render/deadwood.js)
+let deadwoodHit = null;
+export function setDeadwoodHit(f) {
+  deadwoodHit = f;
 }
 function updateHUD(dt) {
   const heading = ((((-V.yaw * 180) / PI) % 360) + 360) % 360;

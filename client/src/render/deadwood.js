@@ -88,6 +88,17 @@ const _m = new THREE.Matrix4(),
 const GROUPS = []; // per model: its near and far meshes, and every placed copy ({ m: matrix, p: where })
 let seen = null; // where the camera was (and its field of view) when they were last sorted near and far
 
+// the rangefinder: how far along a sightline (o, unit d) to the first log or stump drawn, or null within tMax
+const _rc = new THREE.Raycaster();
+export function deadwoodHit(o, d, tMax) {
+  _rc.set(o, d);
+  _rc.far = tMax;
+  const meshes = [];
+  for (const G of GROUPS) meshes.push(G.near, G.far);
+  const h = _rc.intersectObjects(meshes, false);
+  return h.length ? h[0].distance : null;
+}
+
 // each frame: the copies near the camera (or that look near, through the binoculars) from the full scan, the rest
 // from the light copy. Only re-sorted when the view has moved or zoomed, which in a stand is seldom.
 export function updateDeadwood(cam, fov) {
